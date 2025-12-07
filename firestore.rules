@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // トーナメント
+    match /tournaments/{tournamentId} {
+      // 読み取り: ログインユーザーで作成者、または公開URL経由
+      allow read: if (request.auth != null && 
+                      resource.data.createdBy == request.auth.uid) ||
+                  resource.data.publicUrlId != null;
+      
+      // 作成: ログインユーザーのみ
+      allow create: if request.auth != null && 
+                       request.resource.data.createdBy == request.auth.uid;
+      
+      // 更新・削除: 作成者のみ
+      allow update, delete: if request.auth != null && 
+                               resource.data.createdBy == request.auth.uid;
+      
+      // マーク（サブコレクション）
+      match /marks/{markId} {
+        // 読み取り: 誰でも（公開URL経由でも読める）
+        allow read: if true;
+        
+        // 作成・更新・削除: トーナメントの作成者のみ
+        allow create, update, delete: if request.auth != null && 
+                                         get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.createdBy == request.auth.uid;
+      }
+    }
+  }
+}
+
