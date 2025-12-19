@@ -56,16 +56,39 @@ export default function CreateTournamentPage() {
 
     try {
       // PDFをBase64に変換
+      console.log("PDF変換を開始します...");
       const base64Image = await convertPdfToBase64(pdfFile, 2.5);
+      console.log("PDF変換が完了しました。画像サイズ:", base64Image.length, "文字");
+      
+      // 画像サイズチェック（Firestoreの1MB制限を考慮）
+      if (base64Image.length > 900000) {
+        throw new Error("画像が大きすぎます。PDFファイルを小さくするか、別のPDFファイルを試してください。");
+      }
       
       // 大会を作成
+      console.log("大会を作成します...");
       const tournamentId = await createTournament(name, base64Image, user.uid);
+      console.log("大会の作成が完了しました。ID:", tournamentId);
       
       // 編集ページに遷移
       router.push(`/tournament/${tournamentId}`);
     } catch (err) {
       console.error("Error creating tournament:", err);
-      setError("大会の作成に失敗しました");
+      let errorMessage = "大会の作成に失敗しました";
+      
+      if (err instanceof Error) {
+        errorMessage = err.message || errorMessage;
+        // Firebaseエラーの場合、より詳細なメッセージを表示
+        if (err.message.includes("permission")) {
+          errorMessage = "権限がありません。Firestoreのセキュリティルールを確認してください。";
+        } else if (err.message.includes("network") || err.message.includes("fetch")) {
+          errorMessage = "ネットワークエラーが発生しました。接続を確認してください。";
+        } else if (err.message.includes("Canvas")) {
+          errorMessage = "PDFの変換に失敗しました。PDFファイルが正しいか確認してください。";
+        }
+      }
+      
+      setError(errorMessage);
       setUploading(false);
     }
   };

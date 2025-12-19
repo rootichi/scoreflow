@@ -37,17 +37,41 @@ export const createTournament = async (
   pdfPageImage: string,
   userId: string
 ): Promise<string> => {
-  const tournamentData = {
-    name,
-    createdBy: userId,
-    createdAt: serverTimestamp(),
-    expiresAt: getExpiresAt(),
-    publicUrlId: generatePublicUrlId(),
-    pdfPageImage,
-  };
+  try {
+    if (!db) {
+      throw new Error("Firestoreが初期化されていません");
+    }
 
-  const docRef = await addDoc(collection(db, TOURNAMENTS_COLLECTION), tournamentData);
-  return docRef.id;
+    const tournamentData = {
+      name,
+      createdBy: userId,
+      createdAt: serverTimestamp(),
+      expiresAt: getExpiresAt(),
+      publicUrlId: generatePublicUrlId(),
+      pdfPageImage,
+    };
+
+    console.log("Firestoreに大会データを保存します...");
+    const docRef = await addDoc(collection(db, TOURNAMENTS_COLLECTION), tournamentData);
+    console.log("大会データの保存が完了しました。ID:", docRef.id);
+    
+    return docRef.id;
+  } catch (error) {
+    console.error("Firestore保存エラー:", error);
+    if (error instanceof Error) {
+      // Firebaseエラーの詳細を取得
+      const errorMessage = error.message || "不明なエラー";
+      if (errorMessage.includes("permission") || errorMessage.includes("PERMISSION_DENIED")) {
+        throw new Error("権限がありません。Firestoreのセキュリティルールを確認してください。");
+      } else if (errorMessage.includes("network") || errorMessage.includes("unavailable")) {
+        throw new Error("ネットワークエラーが発生しました。接続を確認してください。");
+      } else if (errorMessage.includes("quota") || errorMessage.includes("resource-exhausted")) {
+        throw new Error("Firestoreのクォータに達しています。");
+      }
+      throw new Error(`Firestore保存エラー: ${errorMessage}`);
+    }
+    throw new Error("Firestoreへの保存中に不明なエラーが発生しました");
+  }
 };
 
 // 大会取得（ID指定）

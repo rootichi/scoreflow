@@ -15,27 +15,62 @@ export const convertPdfToBase64 = async (
   file: File,
   scale: number = 2.5
 ): Promise<string> => {
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  
-  const page = await pdf.getPage(1);
-  
-  const viewport = page.getViewport({ scale });
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-  
-  if (!context) {
-    throw new Error("Canvas context not available");
+  try {
+    // PDF.jsのworkerが正しく設定されているか確認
+    if (typeof window === "undefined") {
+      throw new Error("PDF変換はブラウザ環境でのみ実行できます");
+    }
+
+    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+      throw new Error("PDF.js workerが設定されていません");
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    
+    // PDFドキュメントを読み込み
+    const pdf = await pdfjsLib.getDocument({ 
+      data: arrayBuffer,
+      verbosity: 0 // ログを抑制
+    }).promise;
+    
+    // ページ数を確認
+    const numPages = pdf.numPages;
+    if (numPages === 0) {
+      throw new Error("PDFファイルにページがありません");
+    }
+    
+    // 1ページ目を取得
+    const page = await pdf.getPage(1);
+    
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    
+    if (!context) {
+      throw new Error("Canvas context not available");
+    }
+
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+
+    await page.render({
+      canvasContext: context,
+      viewport: viewport,
+    }).promise;
+
+    const base64 = canvas.toDataURL("image/png", 0.85);
+    
+    if (!base64 || base64.length === 0) {
+      throw new Error("画像の変換に失敗しました");
+    }
+
+    return base64;
+  } catch (error) {
+    console.error("PDF変換エラー:", error);
+    if (error instanceof Error) {
+      throw new Error(`PDF変換エラー: ${error.message}`);
+    }
+    throw new Error("PDF変換中に不明なエラーが発生しました");
   }
-
-  canvas.height = viewport.height;
-  canvas.width = viewport.width;
-
-  await page.render({
-    canvasContext: context,
-    viewport: viewport,
-  }).promise;
-
-  return canvas.toDataURL("image/png", 0.85);
 };
 
