@@ -76,6 +76,9 @@ export const createTournament = async (
 
 // 大会取得（ID指定）
 export const getTournament = async (tournamentId: string): Promise<Tournament | null> => {
+  if (!db) {
+    throw new Error("Firestore is not initialized");
+  }
   const docRef = doc(db, TOURNAMENTS_COLLECTION, tournamentId);
   const docSnap = await getDoc(docRef);
   
@@ -93,6 +96,9 @@ export const getTournament = async (tournamentId: string): Promise<Tournament | 
 export const getTournamentByPublicUrlId = async (
   publicUrlId: string
 ): Promise<Tournament | null> => {
+  if (!db) {
+    throw new Error("Firestore is not initialized");
+  }
   const q = query(
     collection(db, TOURNAMENTS_COLLECTION),
     where("publicUrlId", "==", publicUrlId)
@@ -112,6 +118,9 @@ export const getTournamentByPublicUrlId = async (
 
 // ユーザーの大会一覧取得
 export const getUserTournaments = async (userId: string): Promise<Tournament[]> => {
+  if (!db) {
+    throw new Error("Firestore is not initialized");
+  }
   const q = query(
     collection(db, TOURNAMENTS_COLLECTION),
     where("createdBy", "==", userId)
@@ -129,6 +138,9 @@ export const addMark = async (
   tournamentId: string,
   mark: Omit<Mark, "createdAt">
 ): Promise<string> => {
+  if (!db) {
+    throw new Error("Firestore is not initialized");
+  }
   const markData = {
     ...mark,
     createdAt: serverTimestamp(),
@@ -146,6 +158,9 @@ export const deleteMark = async (
   tournamentId: string,
   markId: string
 ): Promise<void> => {
+  if (!db) {
+    throw new Error("Firestore is not initialized");
+  }
   const markRef = doc(
     db,
     TOURNAMENTS_COLLECTION,
@@ -162,6 +177,9 @@ export const updateMark = async (
   markId: string,
   updates: Partial<Omit<Mark, "createdAt">>
 ): Promise<void> => {
+  if (!db) {
+    throw new Error("Firestore is not initialized");
+  }
   const markRef = doc(
     db,
     TOURNAMENTS_COLLECTION,
@@ -177,6 +195,9 @@ export const subscribeMarks = (
   tournamentId: string,
   callback: (marks: Array<Mark & { id: string }>) => void
 ): (() => void) => {
+  if (!db) {
+    throw new Error("Firestore is not initialized");
+  }
   const marksRef = collection(db, TOURNAMENTS_COLLECTION, tournamentId, MARKS_COLLECTION);
   
   return onSnapshot(marksRef, (snapshot) => {

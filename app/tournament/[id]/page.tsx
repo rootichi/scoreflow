@@ -24,6 +24,8 @@ import {
   handleScoreDragSnap,
 } from "@/lib/utils/snapUtils";
 import { createMarkUpdateData, updateMarkSafely, updateMarkCoordinates } from "@/lib/utils/markUtils";
+import { getPublicUrl, copyToClipboard } from "@/lib/utils/url";
+import { showError, showSuccess, showPrompt } from "@/lib/utils/notification";
 import {
   DEFAULT_LINE_COLOR,
   DEFAULT_SCORE_COLOR,
@@ -43,7 +45,7 @@ export default function TournamentEditPage() {
   const router = useRouter();
   const params = useParams();
   const tournamentId = params.id as string;
-  const [user, loading] = useAuthState(auth);
+  const [user, loading] = useAuthState(auth!);
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [marks, setMarks] = useState<Array<Mark & { id: string }>>([]);
   const [mode, setMode] = useState<"line" | "score" | null>(null);
@@ -64,18 +66,24 @@ export default function TournamentEditPage() {
     if (!user || !tournamentId) return;
 
     const loadTournament = async () => {
-      const data = await getTournament(tournamentId);
-      if (!data) {
-        alert("大会が見つかりません");
+      try {
+        const data = await getTournament(tournamentId);
+        if (!data) {
+          showError("大会が見つかりません");
+          router.push("/");
+          return;
+        }
+        if (data.createdBy !== user.uid) {
+          showError("この大会を編集する権限がありません");
+          router.push("/");
+          return;
+        }
+        setTournament(data);
+      } catch (error) {
+        console.error("Error loading tournament:", error);
+        showError("大会の読み込みに失敗しました");
         router.push("/");
-        return;
       }
-      if (data.createdBy !== user.uid) {
-        alert("この大会を編集する権限がありません");
-        router.push("/");
-        return;
-      }
-      setTournament(data);
     };
 
     loadTournament();
@@ -108,7 +116,7 @@ export default function TournamentEditPage() {
 
 
 
-  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleCanvasMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const coords = getRelativeCoordinates(e);
     
     if (mode === "line" && isDrawing && lineStart) {
@@ -318,7 +326,16 @@ export default function TournamentEditPage() {
     } else {
       setSnapGuide(null);
     }
-  };
+  }, [
+    mode,
+    isDrawing,
+    lineStart,
+    draggingHandle,
+    draggingMark,
+    marks,
+    localMarks,
+    getRelativeCoordinates,
+  ]);
 
   // Undo/Redo処理を先に定義（useEffectで使用するため）
   const handleUndo = useCallback(async () => {
@@ -618,7 +635,7 @@ export default function TournamentEditPage() {
     // スコア追加モード
     if (mode === "score") {
       if (!scoreValue.trim()) {
-        alert("スコアを入力してください");
+        showError("スコアを入力してください");
         return;
       }
       const coords = getRelativeCoordinates(e);
@@ -666,10 +683,15 @@ export default function TournamentEditPage() {
             <h1 className="text-xl font-bold">{tournament.name}</h1>
             <div className="flex gap-4 items-center">
               <button
-                onClick={() => {
-                  const url = `${window.location.origin}/p/${tournament.publicUrlId}`;
-                  navigator.clipboard.writeText(url);
-                  alert("公開URLをコピーしました");
+                onClick={async () => {
+                  try {
+                    const url = getPublicUrl(tournament.publicUrlId);
+                    await copyToClipboard(url);
+                    showSuccess("公開URLをコピーしました");
+                  } catch (error) {
+                    console.error("Failed to copy URL:", error);
+                    showError("URLのコピーに失敗しました");
+                  }
                 }}
                 className="text-sm text-blue-600 hover:text-blue-700"
               >
@@ -733,7 +755,7 @@ export default function TournamentEditPage() {
             <button
               onClick={() => {
                 setMode(mode === "score" ? null : "score");
-                const value = prompt("スコアを入力してください:");
+                const value = showPrompt("スコアを入力してください:");
                 if (value) {
                   setScoreValue(value);
                 } else {

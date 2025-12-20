@@ -4,7 +4,8 @@
 
 ## 技術スタック
 
-- Next.js 14 (App Router)
+- Next.js 16 (App Router)
+- React 19
 - TypeScript
 - TailwindCSS
 - Firebase (Firestore / Authentication / Hosting)
@@ -138,4 +139,6 @@ firebase deploy --only hosting
 - ✅ エラーハンドリング改善完了
 - ✅ PDF変換機能動作確認済み
 - ✅ 大会作成機能動作確認済み
+- ✅ Next.js 16 / React 19 へのアップグレード完了
+- ✅ コード最適化・リファクタリング完了
 

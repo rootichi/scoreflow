@@ -7,6 +7,8 @@ import { auth } from "@/lib/firebase/auth";
 import { signInWithGoogle, signOut } from "@/lib/firebase/auth";
 import { getUserTournaments } from "@/lib/firebase/tournaments";
 import { Tournament } from "@/lib/firebase/types";
+import { getPublicUrl, copyToClipboard } from "@/lib/utils/url";
+import { showSuccess, showError } from "@/lib/utils/notification";
 
 export default function Home() {
   const router = useRouter();
@@ -16,6 +18,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
+    if (!auth) return;
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setLoading(false);
@@ -34,7 +37,7 @@ export default function Home() {
       await signInWithGoogle();
     } catch (error) {
       console.error("Sign in error:", error);
-      alert("ログインに失敗しました");
+      showError("ログインに失敗しました");
     }
   }, []);
 
@@ -50,9 +53,10 @@ export default function Home() {
   // 検索とソートを最適化
   const sortedTournaments = useMemo(() => {
     // 検索フィルタリング
-    const filtered = searchQuery.trim()
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const filtered = normalizedQuery
       ? tournaments.filter((tournament) =>
-          tournament.name.toLowerCase().includes(searchQuery.toLowerCase())
+          tournament.name.toLowerCase().includes(normalizedQuery)
         )
       : tournaments;
 
@@ -64,18 +68,17 @@ export default function Home() {
     });
   }, [tournaments, searchQuery]);
 
-  // 公開URLを生成
-  const getPublicUrl = useCallback((publicUrlId: string) => {
-    if (typeof window === "undefined") return `/p/${publicUrlId}`;
-    return `${window.location.origin}/p/${publicUrlId}`;
-  }, []);
-
   // URLをコピー
-  const handleCopyUrl = useCallback((publicUrlId: string) => {
-    const url = getPublicUrl(publicUrlId);
-    navigator.clipboard.writeText(url);
-    alert("公開URLをコピーしました");
-  }, [getPublicUrl]);
+  const handleCopyUrl = useCallback(async (publicUrlId: string) => {
+    try {
+      const url = getPublicUrl(publicUrlId);
+      await copyToClipboard(url);
+      showSuccess("公開URLをコピーしました");
+    } catch (error) {
+      console.error("Failed to copy URL:", error);
+      showError("URLのコピーに失敗しました");
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -196,7 +199,7 @@ export default function Home() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleCopyUrl(tournament.publicUrlId);
+                          void handleCopyUrl(tournament.publicUrlId);
                         }}
                         className="text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap"
                         type="button"
