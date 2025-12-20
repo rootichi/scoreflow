@@ -6,6 +6,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase/auth";
 import { createTournament } from "@/lib/firebase/tournaments";
 import { convertPdfToBase64 } from "@/lib/pdf/converter";
+import { showError } from "@/lib/utils/notification";
 
 export default function CreateTournamentClient() {
   const router = useRouter();
@@ -34,7 +35,9 @@ export default function CreateTournamentClient() {
       setPdfFile(file);
       setError(null);
     } else {
-      setError("PDFファイルを選択してください");
+      const errorMsg = "PDFファイルを選択してください";
+      setError(errorMsg);
+      showError(errorMsg);
     }
   };
 
@@ -42,12 +45,16 @@ export default function CreateTournamentClient() {
     e.preventDefault();
     
     if (!name.trim()) {
-      setError("大会名を入力してください");
+      const errorMsg = "大会名を入力してください";
+      setError(errorMsg);
+      showError(errorMsg);
       return;
     }
 
     if (!pdfFile) {
-      setError("PDFファイルを選択してください");
+      const errorMsg = "PDFファイルを選択してください";
+      setError(errorMsg);
+      showError(errorMsg);
       return;
     }
 
@@ -67,6 +74,9 @@ export default function CreateTournamentClient() {
       
       // 大会を作成
       console.log("大会を作成します...");
+      console.log("ユーザーID:", user.uid);
+      console.log("大会名:", name);
+      
       const tournamentId = await createTournament(name, base64Image, user.uid);
       console.log("大会の作成が完了しました。ID:", tournamentId);
       
@@ -74,17 +84,29 @@ export default function CreateTournamentClient() {
       router.push(`/tournament/${tournamentId}`);
     } catch (err) {
       console.error("Error creating tournament:", err);
+      console.error("Error details:", {
+        name: err instanceof Error ? err.name : "Unknown",
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      });
+      
       let errorMessage = "大会の作成に失敗しました";
       
       if (err instanceof Error) {
         errorMessage = err.message || errorMessage;
         // Firebaseエラーの場合、より詳細なメッセージを表示
-        if (errorMessage.includes("permission")) {
+        if (errorMessage.includes("同じ名称の大会が既に存在します")) {
+          errorMessage = "同じ名称の大会が既に存在します。別の名称を入力してください。";
+        } else if (errorMessage.includes("permission") || errorMessage.includes("PERMISSION_DENIED")) {
           errorMessage = "権限がありません。Firestoreのセキュリティルールを確認してください。";
-        } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
+        } else if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorMessage.includes("unavailable")) {
           errorMessage = "ネットワークエラーが発生しました。接続を確認してください。";
         } else if (errorMessage.includes("Canvas")) {
           errorMessage = "PDFの変換に失敗しました。PDFファイルが正しいか確認してください。";
+        } else if (errorMessage.includes("タイムアウト")) {
+          errorMessage = "保存に時間がかかりすぎています。PDFファイルのサイズを小さくするか、しばらくしてから再度お試しください。";
+        } else if (errorMessage.includes("quota") || errorMessage.includes("resource-exhausted")) {
+          errorMessage = "Firestoreのクォータに達しています。";
         }
       }
       

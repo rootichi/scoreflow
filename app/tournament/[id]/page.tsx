@@ -67,18 +67,18 @@ export default function TournamentEditPage() {
 
     const loadTournament = async () => {
       try {
-        const data = await getTournament(tournamentId);
-        if (!data) {
+      const data = await getTournament(tournamentId);
+      if (!data) {
           showError("大会が見つかりません");
-          router.push("/");
-          return;
-        }
-        if (data.createdBy !== user.uid) {
+        router.push("/");
+        return;
+      }
+      if (data.createdBy !== user.uid) {
           showError("この大会を編集する権限がありません");
-          router.push("/");
-          return;
-        }
-        setTournament(data);
+        router.push("/");
+        return;
+      }
+      setTournament(data);
       } catch (error) {
         console.error("Error loading tournament:", error);
         showError("大会の読み込みに失敗しました");
@@ -124,10 +124,11 @@ export default function TournamentEditPage() {
       const dx = Math.abs(coords.x - lineStart.x);
       const dy = Math.abs(coords.y - lineStart.y);
       
-      if (dx > dy) {
-        // 水平線：スナップ処理
-        if (canvasRef.current) {
-          const rect = canvasRef.current.getBoundingClientRect();
+      if (canvasRef.current) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        
+        if (dx > dy) {
+          // 水平線：スナップ処理
           const { snappedX, snapTargetX } = findSnapPosition(
             coords.x,
             coords.y,
@@ -143,11 +144,8 @@ export default function TournamentEditPage() {
           } else {
             setSnapGuide(null);
           }
-        }
-      } else {
-        // 垂直線：スナップ処理
-        if (canvasRef.current) {
-          const rect = canvasRef.current.getBoundingClientRect();
+        } else {
+          // 垂直線：スナップ処理
           const { snappedY, snapTargetY } = findSnapPositionVertical(
             coords.x,
             coords.y,
@@ -266,6 +264,7 @@ export default function TournamentEditPage() {
                   const { adjustedLine, snapGuide: guide } = handleHorizontalLineDragSnap(
                     coords,
                     rect.width,
+                    rect.height,
                     marks,
                     movedLine
                   );
@@ -282,6 +281,7 @@ export default function TournamentEditPage() {
                   const rect = canvasRef.current.getBoundingClientRect();
                   const { adjustedLine, snapGuide: guide } = handleVerticalLineDragSnap(
                     coords,
+                    rect.width,
                     rect.height,
                     marks,
                     movedLine

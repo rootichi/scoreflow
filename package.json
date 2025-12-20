@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "firebase:setup": "bash scripts/firebase-setup.sh",
+    "firebase:deploy:rules": "bash scripts/firebase-deploy-rules.sh",
+    "firebase:check:rules": "bash scripts/firebase-check-rules.sh"
   },
   "dependencies": {
     "firebase": "^10.12.2",

@@ -1,4 +1,5 @@
 import { LineMark, Mark, ScoreMark } from "@/lib/firebase/types";
+import { SNAP_DISTANCE_PX, MIN_LINE_LENGTH } from "@/lib/constants";
 
 export interface Coordinates {
   x: number;
@@ -16,9 +17,6 @@ export interface VerticalSnapResult {
   snapTargetY: number | null;
   snapToTop: boolean;
 }
-
-const SNAP_DISTANCE_PX = 8;
-const MIN_LINE_LENGTH = 0.01;
 
 /**
  * 水平線の端点を取得（相対座標）
@@ -96,6 +94,46 @@ export const collectVerticalEndpoints = (
       }
     });
   return endpoints;
+};
+
+/**
+ * 既存の水平線のY座標を収集（一直線上に並べるため）
+ */
+export const collectHorizontalLineYCoordinates = (
+  marks: Array<Mark & { id: string }>,
+  excludeMarkId?: string
+): number[] => {
+  const yCoordinates: number[] = [];
+  marks
+    .filter((m) => m.type === "line" && (!excludeMarkId || m.id !== excludeMarkId))
+    .forEach((mark) => {
+      const line = mark as LineMark & { id: string };
+      if (isHorizontalLine(line)) {
+        // 水平線のY座標（y1とy2は同じ）
+        yCoordinates.push(line.y1);
+      }
+    });
+  return yCoordinates;
+};
+
+/**
+ * 既存の垂直線のX座標を収集（一直線上に並べるため）
+ */
+export const collectVerticalLineXCoordinates = (
+  marks: Array<Mark & { id: string }>,
+  excludeMarkId?: string
+): number[] => {
+  const xCoordinates: number[] = [];
+  marks
+    .filter((m) => m.type === "line" && (!excludeMarkId || m.id !== excludeMarkId))
+    .forEach((mark) => {
+      const line = mark as LineMark & { id: string };
+      if (isVerticalLine(line)) {
+        // 垂直線のX座標（x1とx2は同じ）
+        xCoordinates.push(line.x1);
+      }
+    });
+  return xCoordinates;
 };
 
 /**
@@ -196,23 +234,32 @@ export const findSnapPosition = (
     draggingLine?.id
   );
   
+  // 垂直線のX座標もスナップ候補に追加
+  const verticalLineXCoordinates = collectVerticalLineXCoordinates(
+    marks,
+    draggingLine?.id
+  );
+  
+  // すべてのスナップ候補を統合
+  const allSnapTargets: number[] = [...existingEndpoints, ...verticalLineXCoordinates];
+  
   // 左端と右端を別々に判定
   let leftMinDistance = snapDistance;
   let leftSnapTarget: number | null = null;
   let rightMinDistance = snapDistance;
   let rightSnapTarget: number | null = null;
   
-  existingEndpoints.forEach((endpoint) => {
-    const leftDistance = Math.abs(currentLineEndpoints!.left - endpoint);
-    const rightDistance = Math.abs(currentLineEndpoints!.right - endpoint);
+  allSnapTargets.forEach((target) => {
+    const leftDistance = Math.abs(currentLineEndpoints!.left - target);
+    const rightDistance = Math.abs(currentLineEndpoints!.right - target);
     
     if (leftDistance < leftMinDistance) {
       leftMinDistance = leftDistance;
-      leftSnapTarget = endpoint;
+      leftSnapTarget = target;
     }
     if (rightDistance < rightMinDistance) {
       rightMinDistance = rightDistance;
-      rightSnapTarget = endpoint;
+      rightSnapTarget = target;
     }
   });
   
@@ -290,23 +337,32 @@ export const findSnapPositionVertical = (
     draggingLine?.id
   );
   
+  // 水平線のY座標もスナップ候補に追加
+  const horizontalLineYCoordinates = collectHorizontalLineYCoordinates(
+    marks,
+    draggingLine?.id
+  );
+  
+  // すべてのスナップ候補を統合
+  const allSnapTargets: number[] = [...existingEndpoints, ...horizontalLineYCoordinates];
+  
   // 上端と下端を別々に判定
   let topMinDistance = snapDistance;
   let topSnapTarget: number | null = null;
   let bottomMinDistance = snapDistance;
   let bottomSnapTarget: number | null = null;
   
-  existingEndpoints.forEach((endpoint) => {
-    const topDistance = Math.abs(currentLineEndpoints!.top - endpoint);
-    const bottomDistance = Math.abs(currentLineEndpoints!.bottom - endpoint);
+  allSnapTargets.forEach((target) => {
+    const topDistance = Math.abs(currentLineEndpoints!.top - target);
+    const bottomDistance = Math.abs(currentLineEndpoints!.bottom - target);
     
     if (topDistance < topMinDistance) {
       topMinDistance = topDistance;
-      topSnapTarget = endpoint;
+      topSnapTarget = target;
     }
     if (bottomDistance < bottomMinDistance) {
       bottomMinDistance = bottomDistance;
-      bottomSnapTarget = endpoint;
+      bottomSnapTarget = target;
     }
   });
   
@@ -365,11 +421,8 @@ export const findSnapPositionForScore = (
   const snapDistanceX = SNAP_DISTANCE_PX / canvasWidth;
   const snapDistanceY = SNAP_DISTANCE_PX / canvasHeight;
   
-  // X座標のスナップ候補を収集
+  // X座標のスナップ候補を収集（スコアのみ）
   const xSnapTargets: number[] = [];
-  // 水平線の端点
-  const horizontalEndpoints = collectHorizontalEndpoints(marks, excludeMarkId);
-  xSnapTargets.push(...horizontalEndpoints);
   // 他のスコアの中心X座標
   marks
     .filter((m) => m.type === "score" && (!excludeMarkId || m.id !== excludeMarkId))
@@ -378,11 +431,8 @@ export const findSnapPositionForScore = (
       xSnapTargets.push(scoreMark.x);
     });
   
-  // Y座標のスナップ候補を収集
+  // Y座標のスナップ候補を収集（スコアのみ）
   const ySnapTargets: number[] = [];
-  // 垂直線の端点
-  const verticalEndpoints = collectVerticalEndpoints(marks, excludeMarkId);
-  ySnapTargets.push(...verticalEndpoints);
   // 他のスコアの中心Y座標
   marks
     .filter((m) => m.type === "score" && (!excludeMarkId || m.id !== excludeMarkId))

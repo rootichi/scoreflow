@@ -25,7 +25,7 @@ export const convertPdfToBase64 = async (
       throw new Error("PDF.js workerが設定されていません");
     }
 
-    const arrayBuffer = await file.arrayBuffer();
+  const arrayBuffer = await file.arrayBuffer();
     
     // PDFドキュメントを読み込み
     const pdf = await pdfjsLib.getDocument({ 
@@ -40,25 +40,26 @@ export const convertPdfToBase64 = async (
     }
     
     // 1ページ目を取得
-    const page = await pdf.getPage(1);
-    
-    const viewport = page.getViewport({ scale });
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    
-    if (!context) {
-      throw new Error("Canvas context not available");
-    }
+  const page = await pdf.getPage(1);
+  
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  
+  if (!context) {
+    throw new Error("Canvas context not available");
+  }
 
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  canvas.width = viewport.width;
 
-    await page.render({
-      canvasContext: context,
-      viewport: viewport,
-    }).promise;
+  await page.render({
+    canvasContext: context,
+    viewport: viewport,
+  }).promise;
 
-    const base64 = canvas.toDataURL("image/png", 0.85);
+    // 画像品質を下げてデータサイズを削減（0.6に変更）
+    const base64 = canvas.toDataURL("image/jpeg", 0.6);
     
     if (!base64 || base64.length === 0) {
       throw new Error("画像の変換に失敗しました");
