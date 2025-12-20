@@ -110,67 +110,64 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* ナビゲーションバー */}
-      <nav className="border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center h-14">
-            {/* ロゴ */}
-            <div className="mr-8">
-              <span className="text-base text-gray-700 font-medium">ScoreFlow</span>
-            </div>
-
-            {/* 検索バー */}
-            <div className="flex-1 max-w-2xl">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  placeholder="検索"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
+      {/* 統合ヘッダー */}
+      <div className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200">
+        {/* ナビゲーションバー */}
+        <nav className="border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="flex items-center h-14">
+              {/* ロゴ */}
+              <div className="mr-8">
+                <span className="text-base text-gray-700 font-medium">ScoreFlow</span>
               </div>
-            </div>
 
-            {/* 右側メニュー */}
-            <div className="flex items-center gap-2 ml-6">
-              <button
-                onClick={handleSignOut}
-                className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition"
-                type="button"
-              >
-                ログアウト
-              </button>
+              {/* 検索バー */}
+              <div className="flex-1 max-w-2xl">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="検索"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* 右側メニュー */}
+              <div className="flex items-center gap-2 ml-6">
+                <button
+                  onClick={handleSignOut}
+                  className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition"
+                  type="button"
+                >
+                  ログアウト
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
-      {/* メインコンテンツ */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* 新規作成（検索中は非表示） */}
-        {!searchQuery.trim() && (
-          <div className="mb-8">
-            <h2 className="text-sm text-gray-600 mb-4">新規作成</h2>
-            <button
-              onClick={() => router.push("/create")}
-              className="w-48 h-32 border-2 border-dashed border-gray-300 rounded-lg bg-white hover:border-blue-500 hover:bg-blue-50 transition flex flex-col items-center justify-center group"
-              type="button"
-            >
-              <div className="w-12 h-12 mb-2 flex items-center justify-center">
-                <svg className="w-8 h-8 text-gray-400 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
+        {/* テーブルヘッダー（大会一覧がある場合のみ表示） */}
+        {sortedTournaments.length > 0 && (
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="bg-gray-50 border-b border-gray-200">
+              <div className="grid grid-cols-3 gap-4 px-4 py-2">
+                <div className="text-xs font-medium text-gray-700">名称</div>
+                <div className="text-xs font-medium text-gray-700 col-span-2">公開用URL</div>
               </div>
-            </button>
+            </div>
           </div>
         )}
+      </div>
 
+      {/* メインコンテンツ */}
+      <main className="max-w-7xl mx-auto px-6 py-8" style={{ paddingTop: sortedTournaments.length > 0 ? 'calc(3.5rem + 2.5rem)' : '3.5rem' }}>
         {/* 大会一覧 */}
         {sortedTournaments.length === 0 ? (
           <div className="text-center py-12">
@@ -181,12 +178,6 @@ export default function Home() {
         ) : (
           <div className="border border-gray-200 rounded-lg overflow-hidden">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 w-1/3">名称</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">公開用URL</th>
-                </tr>
-              </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {sortedTournaments.map((tournament) => (
                   <tr
@@ -214,6 +205,18 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {/* 右下固定の新規作成ボタン */}
+      <button
+        onClick={() => router.push("/create")}
+        className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg shadow-lg transition-all duration-200 flex items-center gap-2 z-50 hover:shadow-xl hover:scale-105"
+        type="button"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+        <span>新規作成</span>
+      </button>
     </div>
   );
 }

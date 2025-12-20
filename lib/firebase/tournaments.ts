@@ -477,3 +477,41 @@ export const subscribeMarks = (
   });
 };
 
+// 大会削除（大会とそのマークを完全に削除）
+export const deleteTournament = async (tournamentId: string): Promise<void> => {
+  if (!db) {
+    throw new Error("Firestoreが初期化されていません");
+  }
+
+  try {
+    // 認証状態を確認
+    await waitForAuth();
+    const token = await getAuthToken();
+    if (!token) {
+      throw new Error("認証が必要です");
+    }
+
+    // ネットワーク接続を確認
+    await ensureNetworkConnection();
+
+    // まず、すべてのマークを削除
+    const marksRef = collection(db!, TOURNAMENTS_COLLECTION, tournamentId, MARKS_COLLECTION);
+    const marksSnapshot = await getDocs(marksRef);
+    
+    const deleteMarksPromises = marksSnapshot.docs.map((markDoc) => 
+      deleteDoc(doc(db!, TOURNAMENTS_COLLECTION, tournamentId, MARKS_COLLECTION, markDoc.id))
+    );
+    await Promise.all(deleteMarksPromises);
+
+    // 次に、大会自体を削除
+    const tournamentRef = doc(db!, TOURNAMENTS_COLLECTION, tournamentId);
+    await deleteDoc(tournamentRef);
+  } catch (error) {
+    console.error("大会削除エラー:", error);
+    if (error instanceof Error) {
+      throw new Error(`大会の削除に失敗しました: ${error.message}`);
+    }
+    throw new Error("大会の削除に失敗しました");
+  }
+};
+

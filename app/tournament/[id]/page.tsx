@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase/auth";
-import { getTournament, addMark, deleteMark, updateMark, subscribeMarks } from "@/lib/firebase/tournaments";
+import { getTournament, addMark, deleteMark, updateMark, subscribeMarks, deleteTournament } from "@/lib/firebase/tournaments";
 import { Tournament, Mark, LineMark, ScoreMark } from "@/lib/firebase/types";
 import { Timestamp } from "firebase/firestore";
 import { useHistoryStore } from "@/lib/store/history";
@@ -25,7 +25,7 @@ import {
 } from "@/lib/utils/snapUtils";
 import { createMarkUpdateData, updateMarkSafely, updateMarkCoordinates } from "@/lib/utils/markUtils";
 import { getPublicUrl, copyToClipboard } from "@/lib/utils/url";
-import { showError, showSuccess, showPrompt } from "@/lib/utils/notification";
+import { showError, showSuccess, showPrompt, showConfirm } from "@/lib/utils/notification";
 import {
   DEFAULT_LINE_COLOR,
   DEFAULT_SCORE_COLOR,
@@ -677,116 +677,161 @@ export default function TournamentEditPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
+      {/* 統合ヘッダー */}
+      <div className="fixed top-0 left-0 right-0 z-40 bg-white shadow-sm border-b border-gray-200">
+        {/* 1段目: 大会名とナビゲーション */}
+        <nav className="border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <h1 className="text-xl font-bold">{tournament.name}</h1>
+              <div className="flex gap-4 items-center">
+                <button
+                  onClick={async () => {
+                    try {
+                      const url = getPublicUrl(tournament.publicUrlId);
+                      await copyToClipboard(url);
+                      showSuccess("公開URLをコピーしました");
+                    } catch (error) {
+                      console.error("Failed to copy URL:", error);
+                      showError("URLのコピーに失敗しました");
+                    }
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                  type="button"
+                >
+                  公開URL
+                </button>
+                <button
+                  onClick={() => router.push("/")}
+                  className="text-sm text-gray-600 hover:text-gray-900"
+                  type="button"
+                >
+                  ホーム
+                </button>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        {/* 2段目: 編集ツールバー */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <h1 className="text-xl font-bold">{tournament.name}</h1>
-            <div className="flex gap-4 items-center">
-              <button
-                onClick={async () => {
-                  try {
-                    const url = getPublicUrl(tournament.publicUrlId);
-                    await copyToClipboard(url);
-                    showSuccess("公開URLをコピーしました");
-                  } catch (error) {
-                    console.error("Failed to copy URL:", error);
-                    showError("URLのコピーに失敗しました");
-                  }
-                }}
-                className="text-sm text-blue-600 hover:text-blue-700"
-              >
-                公開URLをコピー
-              </button>
-              <button
-                onClick={() => router.push("/")}
-                className="text-sm text-gray-600 hover:text-gray-900"
-              >
-                戻る
-              </button>
+          <div className="bg-white border-b border-gray-200">
+            <div className="flex justify-between items-center flex-wrap py-3">
+              {/* 左側: 編集ツール */}
+              <div className="flex gap-4 items-center flex-wrap">
+                <span className="text-sm font-medium">編集モード:</span>
+                <button
+                  onClick={handleUndo}
+                  disabled={!canUndo}
+                  className={`px-4 py-2 rounded-lg transition ${
+                    canUndo
+                      ? "bg-gray-600 text-white hover:bg-gray-700"
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+                  title="元に戻す (Ctrl+Z)"
+                  type="button"
+                >
+                  ↶ 元に戻す
+                </button>
+                <button
+                  onClick={handleRedo}
+                  disabled={!canRedo}
+                  className={`px-4 py-2 rounded-lg transition ${
+                    canRedo
+                      ? "bg-gray-600 text-white hover:bg-gray-700"
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+                  title="やり直す (Ctrl+Y)"
+                  type="button"
+                >
+                  ↷ やり直す
+                </button>
+                <div className="border-l border-gray-300 h-6 mx-2"></div>
+                <button
+                  onClick={() => {
+                    setMode(mode === "line" ? null : "line");
+                    setIsDrawing(false);
+                    setLineStart(null);
+                    setLineEnd(null);
+                  }}
+                  className={`px-4 py-2 rounded-lg transition ${
+                    mode === "line"
+                      ? "bg-red-600 text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
+                  type="button"
+                >
+                  ライン追加
+                </button>
+                <button
+                  onClick={() => {
+                    setMode(mode === "score" ? null : "score");
+                    const value = showPrompt("スコアを入力してください:");
+                    if (value) {
+                      setScoreValue(value);
+                    } else {
+                      setMode(null);
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-lg transition ${
+                    mode === "score"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
+                  type="button"
+                >
+                  スコア追加
+                </button>
+                {mode === "line" && isDrawing && (
+                  <span className="text-sm text-gray-600">
+                    ドラッグして線を描画してください
+                  </span>
+                )}
+                {selectedMarkId && mode === null && (
+                  <span className="text-sm text-gray-500">
+                    選択中: Deleteキーで削除、Ctrl+C/Vでコピー&ペースト
+                  </span>
+                )}
+                {mode === "score" && scoreValue && (
+                  <span className="text-sm text-gray-600">
+                    配置位置をクリックしてください（スコア: {scoreValue}）
+                  </span>
+                )}
+              </div>
+
+              {/* 右側: 大会削除ボタン（分離） */}
+              <div className="flex items-center">
+                <div className="border-l border-gray-300 h-6 mx-2"></div>
+                <button
+                  onClick={async () => {
+                    if (showConfirm("この大会を完全に削除しますか？この操作は取り消せません。")) {
+                      try {
+                        await deleteTournament(tournamentId);
+                        showSuccess("大会を削除しました");
+                        router.push("/");
+                      } catch (error) {
+                        console.error("Failed to delete tournament:", error);
+                        showError("大会の削除に失敗しました");
+                      }
+                    }
+                  }}
+                  className="px-4 py-2 rounded-lg transition bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 flex items-center gap-2"
+                  title="大会削除"
+                  type="button"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span className="text-sm font-medium">大会削除</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </nav>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow p-4 mb-4">
-          <div className="flex gap-4 items-center flex-wrap">
-            <span className="text-sm font-medium">編集モード:</span>
-            <button
-              onClick={handleUndo}
-              disabled={!canUndo}
-              className={`px-4 py-2 rounded-lg transition ${
-                canUndo
-                  ? "bg-gray-600 text-white hover:bg-gray-700"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-              }`}
-              title="元に戻す (Ctrl+Z)"
-            >
-              ↶ 元に戻す
-            </button>
-            <button
-              onClick={handleRedo}
-              disabled={!canRedo}
-              className={`px-4 py-2 rounded-lg transition ${
-                canRedo
-                  ? "bg-gray-600 text-white hover:bg-gray-700"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-              }`}
-              title="やり直す (Ctrl+Y)"
-            >
-              ↷ やり直す
-            </button>
-            <div className="border-l border-gray-300 h-6 mx-2"></div>
-            <button
-              onClick={() => {
-                setMode(mode === "line" ? null : "line");
-                setIsDrawing(false);
-                setLineStart(null);
-                setLineEnd(null);
-              }}
-              className={`px-4 py-2 rounded-lg transition ${
-                mode === "line"
-                  ? "bg-red-600 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              ライン追加
-            </button>
-            <button
-              onClick={() => {
-                setMode(mode === "score" ? null : "score");
-                const value = showPrompt("スコアを入力してください:");
-                if (value) {
-                  setScoreValue(value);
-                } else {
-                  setMode(null);
-                }
-              }}
-              className={`px-4 py-2 rounded-lg transition ${
-                mode === "score"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              スコア追加
-            </button>
-            {mode === "line" && isDrawing && (
-              <span className="text-sm text-gray-600">
-                ドラッグして線を描画してください
-              </span>
-            )}
-            {selectedMarkId && mode === null && (
-              <span className="text-sm text-gray-500">
-                選択中: Deleteキーで削除、Ctrl+C/Vでコピー&ペースト
-              </span>
-            )}
-            {mode === "score" && scoreValue && (
-              <span className="text-sm text-gray-600">
-                配置位置をクリックしてください（スコア: {scoreValue}）
-              </span>
-            )}
-          </div>
-        </div>
+      {/* メインコンテンツ */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" style={{ paddingTop: 'calc(4rem + 3.5rem + 1rem)' }}>
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div
