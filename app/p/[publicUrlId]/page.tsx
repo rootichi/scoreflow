@@ -70,8 +70,22 @@ export default function PublicTournamentPage() {
       <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <h1 className="text-xl font-bold">{tournament.name}</h1>
-            <span className="text-sm text-gray-500">ScoreFlow</span>
+            <div className="flex items-center gap-3">
+              <img 
+                src="/logo.png" 
+                alt="ScoreFlow" 
+                className="h-6 w-6 object-contain"
+              />
+              <h1 className="text-xl font-bold">{tournament.name}</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <img 
+                src="/logo.png" 
+                alt="ScoreFlow" 
+                className="h-5 w-5 object-contain opacity-60"
+              />
+              <span className="text-sm text-gray-500">ScoreFlow</span>
+            </div>
           </div>
         </div>
       </nav>
