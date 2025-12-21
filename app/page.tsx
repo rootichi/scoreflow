@@ -307,8 +307,7 @@ export default function Home() {
             <div className="fixed top-0 right-0 h-full w-64 bg-white shadow-2xl z-50 md:hidden transform transition-transform duration-300">
               <div className="flex flex-col h-full">
                 {/* ヘッダー */}
-                <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                  <span className="text-lg font-bold text-gray-900">メニュー</span>
+                <div className="flex items-center justify-end p-4 border-b border-gray-200">
                   <button
                     onClick={() => setIsMenuOpen(false)}
                     className="p-2 text-gray-600 hover:text-gray-900"
@@ -355,7 +354,7 @@ export default function Home() {
                   </a>
                 </nav>
                 {/* CTAボタン */}
-                <div className="p-4 border-t border-gray-200">
+                <div className="p-4 border-t border-gray-200 space-y-3">
                   <button
                     onClick={() => {
                       setIsMenuOpen(false);
@@ -365,6 +364,17 @@ export default function Home() {
                     type="button"
                   >
                     Googleで無料で始める
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      handleSignIn();
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-all duration-200 text-sm flex items-center justify-center gap-2 hover:shadow-lg"
+                    type="button"
+                  >
+                    無料で始める
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -390,7 +400,7 @@ export default function Home() {
             <p className="text-sm sm:text-base text-gray-500 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed px-2">
               大会運営のストレスをゼロに。<br className="sm:hidden" />
               結果記入の往復の必要なし、専門知識不要。<br className="sm:hidden" />
-              入力した瞬間に全員へ反映される、<br className="hidden sm:inline" />
+              入力した瞬間に全員へ反映される、<br />
               大会進行状況可視化SaaSです。
             </p>
             <button
@@ -949,7 +959,10 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-6">
             <div className="flex items-center h-14">
               {/* ロゴ */}
-              <div className="mr-8 flex items-center gap-2">
+              <a
+                href="https://scoreflow-eight.vercel.app/"
+                className="mr-8 flex items-center gap-2 hover:opacity-80 transition-opacity"
+              >
                 <div className="relative h-6 w-6">
                   <Image 
                     src="/logo.png" 
@@ -964,7 +977,7 @@ export default function Home() {
                   />
                 </div>
                 <span className="text-base text-gray-700 font-medium">ScoreFlow</span>
-              </div>
+              </a>
 
               {/* 検索バー */}
               <div className="flex-1 max-w-2xl">

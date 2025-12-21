@@ -685,20 +685,25 @@ export default function TournamentEditPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center gap-3">
-                <div className="relative h-6 w-6">
-                  <Image 
-                    src="/logo.png" 
-                    alt="ScoreFlow" 
-                    fill
-                    className="object-contain"
-                    unoptimized
-                    onError={(e) => {
-                      // 画像が読み込めない場合は非表示にする
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                </div>
-                <span className="text-xl font-bold text-gray-900">ScoreFlow</span>
+                <a
+                  href="https://scoreflow-eight.vercel.app/"
+                  className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                >
+                  <div className="relative h-6 w-6">
+                    <Image 
+                      src="/logo.png" 
+                      alt="ScoreFlow" 
+                      fill
+                      className="object-contain"
+                      unoptimized
+                      onError={(e) => {
+                        // 画像が読み込めない場合は非表示にする
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                  <span className="text-xl font-bold text-gray-900">ScoreFlow</span>
+                </a>
                 <h1 className="text-xl font-bold ml-4">{tournament.name}</h1>
               </div>
               <div className="flex gap-4 items-center">
