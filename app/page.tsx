@@ -30,6 +30,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [animationStep, setAnimationStep] = useState(0);
 
   useEffect(() => {
     if (!auth) return;
@@ -45,6 +46,54 @@ export default function Home() {
 
     return () => unsubscribe();
   }, []);
+
+  // アニメーション制御（未ログイン時のみ）
+  useEffect(() => {
+    if (user || loading) return;
+    
+    let intervalId: NodeJS.Timeout;
+    
+    const startAnimation = () => {
+      // アニメーションをリセット
+      setAnimationStep(0);
+      
+      // ステップ1: トーナメント表を表示（0.3秒後）
+      const timer1 = setTimeout(() => setAnimationStep(1), 300);
+      
+      // ステップ2: 最初のラインを描画（1.2秒後）
+      const timer2 = setTimeout(() => setAnimationStep(2), 1200);
+      
+      // ステップ3: 2本目のラインを描画（2.1秒後）
+      const timer3 = setTimeout(() => setAnimationStep(3), 2100);
+      
+      // ステップ4: 3本目のラインを描画（3.0秒後）
+      const timer4 = setTimeout(() => setAnimationStep(4), 3000);
+      
+      // ステップ5: スコアを表示（3.9秒後）
+      const timer5 = setTimeout(() => setAnimationStep(5), 3900);
+      
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        clearTimeout(timer3);
+        clearTimeout(timer4);
+        clearTimeout(timer5);
+      };
+    };
+    
+    // 初回実行
+    const cleanup1 = startAnimation();
+    
+    // 5.5秒ごとにループ
+    intervalId = setInterval(() => {
+      startAnimation();
+    }, 5500);
+
+    return () => {
+      cleanup1();
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [user, loading]);
 
   const handleSignIn = useCallback(async () => {
     try {
@@ -126,78 +175,207 @@ export default function Home() {
               className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-lg shadow-lg transition-all duration-200 text-lg flex items-center gap-2 mx-auto hover:shadow-xl hover:scale-105"
               type="button"
             >
-              無料で大会を作成する
+              Googleで無料で始める
               <ArrowRight className="w-5 h-5" />
             </button>
           </div>
           
-          {/* UIモック風のグラフィック */}
-          <div className="max-w-4xl mx-auto mt-16 px-4">
+          {/* UIモック風のグラフィック - リアルなトーナメント表 + アニメーション */}
+          <div className="max-w-5xl mx-auto mt-16 px-4">
             <div className="bg-white rounded-lg shadow-2xl p-6 border border-gray-200">
-              <div className="bg-gray-100 rounded aspect-video relative overflow-hidden">
-                {/* PDF風の背景 */}
-                <div className="absolute inset-0 p-8">
-                  <div className="bg-white h-full rounded border-2 border-dashed border-gray-300 flex items-center justify-center">
-                    <div className="text-center">
-                      <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500 text-sm">トーナメント表（PDF）</p>
-                    </div>
-                  </div>
-                </div>
-                {/* 赤いラインとスコアのオーバーレイ */}
-                <div className="absolute inset-0 p-8 pointer-events-none">
-                  <svg className="w-full h-full">
-                    {/* 勝者ライン（赤） */}
-                    <line
-                      x1="20%"
-                      y1="30%"
-                      x2="50%"
-                      y2="30%"
-                      stroke="#ef4444"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                    <line
-                      x1="50%"
-                      y1="30%"
-                      x2="50%"
-                      y2="50%"
-                      stroke="#ef4444"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                    <line
-                      x1="50%"
-                      y1="50%"
-                      x2="80%"
-                      y2="50%"
-                      stroke="#ef4444"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                    {/* スコア表示 */}
+              <div className="bg-gray-50 rounded-lg aspect-video relative overflow-hidden border border-gray-200">
+                <svg 
+                  className="w-full h-full" 
+                  viewBox="0 0 800 450"
+                  preserveAspectRatio="xMidYMid meet"
+                >
+                  {/* 背景（PDF風） */}
+                  <rect width="800" height="450" fill="#ffffff" />
+                  
+                  {/* タイトル */}
+                  {animationStep >= 1 && (
                     <text
-                      x="35%"
-                      y="28%"
-                      fill="#ef4444"
-                      fontSize="20"
+                      x="400"
+                      y="30"
+                      fill="#1f2937"
+                      fontSize="24"
                       fontWeight="bold"
                       textAnchor="middle"
+                      className="transition-opacity duration-500"
+                      style={{ opacity: animationStep >= 1 ? 1 : 0 }}
                     >
-                      21-19
+                      トーナメント表
                     </text>
-                    <text
-                      x="65%"
-                      y="48%"
-                      fill="#ef4444"
-                      fontSize="20"
-                      fontWeight="bold"
-                      textAnchor="middle"
+                  )}
+                  
+                  {/* トーナメント表のツリー構造 */}
+                  {animationStep >= 1 && (
+                    <g className="transition-opacity duration-500" style={{ opacity: animationStep >= 1 ? 1 : 0 }}>
+                      {/* 1回戦（左側） */}
+                      <g>
+                        {/* 参加者ボックス */}
+                        <rect x="50" y="80" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1" rx="4" />
+                        <text x="110" y="100" fill="#374151" fontSize="14" textAnchor="middle" dominantBaseline="middle">選手A</text>
+                        
+                        <rect x="50" y="130" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1" rx="4" />
+                        <text x="110" y="150" fill="#374151" fontSize="14" textAnchor="middle" dominantBaseline="middle">選手B</text>
+                        
+                        <rect x="50" y="200" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1" rx="4" />
+                        <text x="110" y="220" fill="#374151" fontSize="14" textAnchor="middle" dominantBaseline="middle">選手C</text>
+                        
+                        <rect x="50" y="250" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1" rx="4" />
+                        <text x="110" y="270" fill="#374151" fontSize="14" textAnchor="middle" dominantBaseline="middle">選手D</text>
+                      </g>
+                      
+                      {/* 準決勝（中央左） */}
+                      <g>
+                        <rect x="250" y="105" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1" rx="4" />
+                        <text x="310" y="125" fill="#374151" fontSize="14" textAnchor="middle" dominantBaseline="middle">勝者1</text>
+                        
+                        <rect x="250" y="225" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1" rx="4" />
+                        <text x="310" y="245" fill="#374151" fontSize="14" textAnchor="middle" dominantBaseline="middle">勝者2</text>
+                      </g>
+                      
+                      {/* 決勝（中央右） */}
+                      <g>
+                        <rect x="450" y="165" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1" rx="4" />
+                        <text x="510" y="185" fill="#374151" fontSize="14" textAnchor="middle" dominantBaseline="middle">決勝進出者</text>
+                      </g>
+                      
+                      {/* 優勝者（右端） */}
+                      <g>
+                        <rect x="650" y="165" width="120" height="30" fill="#fef3c7" stroke="#f59e0b" strokeWidth="2" rx="4" />
+                        <text x="710" y="185" fill="#92400e" fontSize="14" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">優勝者</text>
+                      </g>
+                      
+                      {/* 接続線（基本構造） */}
+                      <line x1="170" y1="95" x2="250" y2="120" stroke="#9ca3af" strokeWidth="1" />
+                      <line x1="170" y1="145" x2="250" y2="120" stroke="#9ca3af" strokeWidth="1" />
+                      <line x1="170" y1="215" x2="250" y2="240" stroke="#9ca3af" strokeWidth="1" />
+                      <line x1="170" y1="265" x2="250" y2="240" stroke="#9ca3af" strokeWidth="1" />
+                      <line x1="370" y1="120" x2="450" y2="180" stroke="#9ca3af" strokeWidth="1" />
+                      <line x1="370" y1="240" x2="450" y2="180" stroke="#9ca3af" strokeWidth="1" />
+                      <line x1="570" y1="180" x2="650" y2="180" stroke="#9ca3af" strokeWidth="1" />
+                    </g>
+                  )}
+                  
+                  {/* アニメーション付きの勝者ライン（赤） */}
+                  {animationStep >= 2 && (
+                    <g>
+                      {/* 1本目のライン（選手A → 勝者1） */}
+                      <line
+                        x1="170"
+                        y1="95"
+                        x2="250"
+                        y2="120"
+                        stroke="#ef4444"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        pathLength="100"
+                        strokeDasharray="100"
+                        className="transition-all duration-700 ease-out"
+                        style={{
+                          strokeDashoffset: animationStep >= 2 ? "0" : "100",
+                          opacity: animationStep >= 2 ? 1 : 0,
+                        }}
+                      />
+                    </g>
+                  )}
+                  
+                  {animationStep >= 3 && (
+                    <g>
+                      {/* 2本目のライン（勝者1 → 決勝進出者） */}
+                      <line
+                        x1="370"
+                        y1="120"
+                        x2="450"
+                        y2="180"
+                        stroke="#ef4444"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        pathLength="100"
+                        strokeDasharray="100"
+                        className="transition-all duration-700 ease-out"
+                        style={{
+                          strokeDashoffset: animationStep >= 3 ? "0" : "100",
+                          opacity: animationStep >= 3 ? 1 : 0,
+                        }}
+                      />
+                    </g>
+                  )}
+                  
+                  {animationStep >= 4 && (
+                    <g>
+                      {/* 3本目のライン（決勝進出者 → 優勝者） */}
+                      <line
+                        x1="570"
+                        y1="180"
+                        x2="650"
+                        y2="180"
+                        stroke="#ef4444"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        pathLength="100"
+                        strokeDasharray="100"
+                        className="transition-all duration-700 ease-out"
+                        style={{
+                          strokeDashoffset: animationStep >= 4 ? "0" : "100",
+                          opacity: animationStep >= 4 ? 1 : 0,
+                        }}
+                      />
+                    </g>
+                  )}
+                  
+                  {/* アニメーション付きのスコア表示 */}
+                  {animationStep >= 5 && (
+                    <g
+                      className="transition-opacity duration-500"
+                      style={{ opacity: animationStep >= 5 ? 1 : 0 }}
                     >
-                      18-21
-                    </text>
-                  </svg>
-                </div>
+                      {/* スコア1（1回戦） */}
+                      <rect x="200" y="85" width="50" height="20" fill="#ffffff" stroke="#ef4444" strokeWidth="2" rx="4" />
+                      <text
+                        x="225"
+                        y="98"
+                        fill="#ef4444"
+                        fontSize="12"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        21-19
+                      </text>
+                      
+                      {/* スコア2（準決勝） */}
+                      <rect x="350" y="105" width="50" height="20" fill="#ffffff" stroke="#ef4444" strokeWidth="2" rx="4" />
+                      <text
+                        x="375"
+                        y="118"
+                        fill="#ef4444"
+                        fontSize="12"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        18-21
+                      </text>
+                      
+                      {/* スコア3（決勝） */}
+                      <rect x="550" y="155" width="50" height="20" fill="#ffffff" stroke="#ef4444" strokeWidth="2" rx="4" />
+                      <text
+                        x="575"
+                        y="168"
+                        fill="#ef4444"
+                        fontSize="12"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        21-15
+                      </text>
+                    </g>
+                  )}
+                </svg>
               </div>
             </div>
           </div>
