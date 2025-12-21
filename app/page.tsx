@@ -357,7 +357,7 @@ export default function Home() {
                   </a>
                 </nav>
                 {/* CTAボタン */}
-                <div className="p-4 border-t border-gray-200 space-y-3">
+                <div className="p-4 border-t border-gray-200">
                   <button
                     onClick={() => {
                       setIsMenuOpen(false);
@@ -367,17 +367,6 @@ export default function Home() {
                     type="button"
                   >
                     Googleで無料で始める
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      handleSignIn();
-                    }}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-all duration-200 text-sm flex items-center justify-center gap-2 hover:shadow-lg"
-                    type="button"
-                  >
-                    無料で始める
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
