@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Image from "next/image";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase/auth";
 import { getTournament, addMark, deleteMark, updateMark, subscribeMarks, deleteTournament } from "@/lib/firebase/tournaments";
@@ -684,11 +685,19 @@ export default function TournamentEditPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center gap-3">
-                <img 
-                  src="/logo.png" 
-                  alt="ScoreFlow" 
-                  className="h-6 w-6 object-contain"
-                />
+                <div className="relative h-6 w-6">
+                  <Image 
+                    src="/logo.png" 
+                    alt="ScoreFlow" 
+                    fill
+                    className="object-contain"
+                    unoptimized
+                    onError={(e) => {
+                      // 画像が読み込めない場合は非表示にする
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
                 <h1 className="text-xl font-bold">{tournament.name}</h1>
               </div>
               <div className="flex gap-4 items-center">

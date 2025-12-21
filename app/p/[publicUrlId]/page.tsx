@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Image from "next/image";
 import { getTournamentByPublicUrlId, subscribeMarks } from "@/lib/firebase/tournaments";
 import { Tournament, Mark } from "@/lib/firebase/types";
 
@@ -71,19 +72,35 @@ export default function PublicTournamentPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
-              <img 
-                src="/logo.png" 
-                alt="ScoreFlow" 
-                className="h-6 w-6 object-contain"
-              />
+              <div className="relative h-6 w-6">
+                <Image 
+                  src="/logo.png" 
+                  alt="ScoreFlow" 
+                  fill
+                  className="object-contain"
+                  unoptimized
+                  onError={(e) => {
+                    // 画像が読み込めない場合は非表示にする
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </div>
               <h1 className="text-xl font-bold">{tournament.name}</h1>
             </div>
             <div className="flex items-center gap-2">
-              <img 
-                src="/logo.png" 
-                alt="ScoreFlow" 
-                className="h-5 w-5 object-contain opacity-60"
-              />
+              <div className="relative h-5 w-5">
+                <Image 
+                  src="/logo.png" 
+                  alt="ScoreFlow" 
+                  fill
+                  className="object-contain opacity-60"
+                  unoptimized
+                  onError={(e) => {
+                    // 画像が読み込めない場合は非表示にする
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </div>
               <span className="text-sm text-gray-500">ScoreFlow</span>
             </div>
           </div>

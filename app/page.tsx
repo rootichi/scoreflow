@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase/auth";
 import { signInWithGoogle, signOut } from "@/lib/firebase/auth";
@@ -216,11 +217,19 @@ export default function Home() {
             <div className="flex items-center justify-between h-16">
               {/* ロゴ */}
               <div className="flex items-center gap-3">
-                <img 
-                  src="/logo.png" 
-                  alt="ScoreFlow" 
-                  className="h-8 w-8 object-contain"
-                />
+                <div className="relative h-8 w-8">
+                  <Image 
+                    src="/logo.png" 
+                    alt="ScoreFlow" 
+                    fill
+                    className="object-contain"
+                    unoptimized
+                    onError={(e) => {
+                      // 画像が読み込めない場合は非表示にする
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
                 <span className="text-xl font-bold text-gray-900">ScoreFlow</span>
               </div>
 
@@ -791,11 +800,19 @@ export default function Home() {
             <div className="flex items-center h-14">
               {/* ロゴ */}
               <div className="mr-8 flex items-center gap-2">
-                <img 
-                  src="/logo.png" 
-                  alt="ScoreFlow" 
-                  className="h-6 w-6 object-contain"
-                />
+                <div className="relative h-6 w-6">
+                  <Image 
+                    src="/logo.png" 
+                    alt="ScoreFlow" 
+                    fill
+                    className="object-contain"
+                    unoptimized
+                    onError={(e) => {
+                      // 画像が読み込めない場合は非表示にする
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
                 <span className="text-base text-gray-700 font-medium">ScoreFlow</span>
               </div>
 
