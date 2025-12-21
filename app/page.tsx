@@ -219,7 +219,10 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               {/* ロゴ */}
-              <div className="flex items-center gap-3">
+              <a
+                href="https://scoreflow-eight.vercel.app/"
+                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+              >
                 <div className="relative h-8 w-8">
                   <Image 
                     src="/logo.png" 
@@ -234,7 +237,7 @@ export default function Home() {
                   />
                 </div>
                 <span className="text-xl font-bold text-white">ScoreFlow</span>
-              </div>
+              </a>
 
               {/* ナビゲーション（デスクトップ） */}
               <nav className="hidden md:flex items-center gap-8">
