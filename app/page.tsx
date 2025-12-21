@@ -60,65 +60,68 @@ export default function Home() {
       setAnimationStep(1); // トーナメント表は常に表示
       currentStep = 1;
       
-      // ステップ1: トーナメント表を表示（0.3秒後）
+      // アニメーション間隔を1.2秒に設定（均等）
+      const interval = 1200;
+      
+      // ステップ1: トーナメント表を表示（0.5秒後）
       const timer1 = setTimeout(() => {
         setAnimationStep(1);
         currentStep = 1;
-      }, 300);
+      }, 500);
       
-      // ステップ2: 1選手Aのライン（1.0秒後）
+      // ステップ2: 1選手Aのライン（1.7秒後）
       const timer2 = setTimeout(() => {
         setAnimationStep(2);
         currentStep = 2;
-      }, 1000);
+      }, 500 + interval);
       
-      // ステップ3: 1選手Aのスコア（勝者）（1.7秒後）
+      // ステップ3: 1選手Aのスコア（勝者）（2.9秒後）
       const timer3 = setTimeout(() => {
         setAnimationStep(3);
         currentStep = 3;
-      }, 1700);
+      }, 500 + interval * 2);
       
-      // ステップ4: 2選手Bのスコア（敗者）（2.4秒後）
+      // ステップ4: 2選手Bのスコア（敗者）（4.1秒後）
       const timer4 = setTimeout(() => {
         setAnimationStep(4);
         currentStep = 4;
-      }, 2400);
+      }, 500 + interval * 3);
       
-      // ステップ5: 3選手Cのライン（3.1秒後）
+      // ステップ5: 3選手Cのライン（5.3秒後）
       const timer5 = setTimeout(() => {
         setAnimationStep(5);
         currentStep = 5;
-      }, 3100);
+      }, 500 + interval * 4);
       
-      // ステップ6: 3選手Cのスコア（勝者）（3.8秒後）
+      // ステップ6: 3選手Cのスコア（勝者）（6.5秒後）
       const timer6 = setTimeout(() => {
         setAnimationStep(6);
         currentStep = 6;
-      }, 3800);
+      }, 500 + interval * 5);
       
-      // ステップ7: 4選手Dのスコア（敗者）（4.5秒後）
+      // ステップ7: 4選手Dのスコア（敗者）（7.7秒後）
       const timer7 = setTimeout(() => {
         setAnimationStep(7);
         currentStep = 7;
-      }, 4500);
+      }, 500 + interval * 6);
       
-      // ステップ8: 決勝のライン（5.2秒後）
+      // ステップ8: 決勝のライン（8.9秒後）
       const timer8 = setTimeout(() => {
         setAnimationStep(8);
         currentStep = 8;
-      }, 5200);
+      }, 500 + interval * 7);
       
-      // ステップ9: 1選手Aのスコア（勝者）（5.9秒後）
+      // ステップ9: 1選手Aのスコア（勝者）（10.1秒後）
       const timer9 = setTimeout(() => {
         setAnimationStep(9);
         currentStep = 9;
-      }, 5900);
+      }, 500 + interval * 8);
       
-      // ステップ10: 3選手Cのスコア（敗者）（6.6秒後）
+      // ステップ10: 3選手Cのスコア（敗者）（11.3秒後）
       const timer10 = setTimeout(() => {
         setAnimationStep(10);
         currentStep = 10;
-      }, 6600);
+      }, 500 + interval * 9);
       
       return () => {
         clearTimeout(timer1);
@@ -137,10 +140,10 @@ export default function Home() {
     // 初回実行
     const cleanup1 = startAnimation();
     
-    // 7.5秒ごとにループ（最後のステップが終わってから少し待って再開）
+    // 12.5秒ごとにループ（最後のステップが終わってから少し待って再開）
     intervalId = setInterval(() => {
       startAnimation();
-    }, 7500);
+    }, 12500);
 
     return () => {
       cleanup1();
@@ -274,22 +277,23 @@ export default function Home() {
                       
                       {/* 優勝者（右端） */}
                       <g>
-                        <rect x="650" y="190" width="120" height="30" fill="#fef3c7" stroke="#f59e0b" strokeWidth="2" rx="4" />
-                        <text x="710" y="210" fill="#92400e" fontSize="14" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">優勝者</text>
+                        <rect x="580" y="190" width="120" height="30" fill="#fef3c7" stroke="#f59e0b" strokeWidth="2" rx="4" />
+                        <text x="640" y="210" fill="#92400e" fontSize="14" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">優勝者</text>
                       </g>
                       
-                      {/* 接続線（基本構造 - 直角線、均等間隔、横線の長さを統一） */}
+                      {/* 接続線（基本構造 - 直角線、均等間隔、全ての横線の長さを統一） */}
+                      {/* 横線の長さを統一: 全ての横線を80pxに統一 */}
                       {/* 選手Aの接続線 */}
-                      <path d="M 180 100 L 220 100 L 220 130 L 300 130 L 300 190 L 450 190 L 450 190 L 650 190" 
+                      <path d="M 180 100 L 260 100 L 260 130 L 340 130 L 340 190 L 420 190 L 420 190 L 500 190 L 500 190 L 580 190" 
                             stroke="#9ca3af" strokeWidth="1" fill="none" />
                       {/* 選手Bの接続線 */}
-                      <path d="M 180 160 L 220 160 L 220 130 L 300 130 L 300 190 L 450 190 L 450 190 L 650 190" 
+                      <path d="M 180 160 L 260 160 L 260 130 L 340 130 L 340 190 L 420 190 L 420 190 L 500 190 L 500 190 L 580 190" 
                             stroke="#9ca3af" strokeWidth="1" fill="none" />
                       {/* 選手Cの接続線 */}
-                      <path d="M 180 220 L 220 220 L 220 250 L 300 250 L 300 190 L 450 190 L 450 190 L 650 190" 
+                      <path d="M 180 220 L 260 220 L 260 250 L 340 250 L 340 190 L 420 190 L 420 190 L 500 190 L 500 190 L 580 190" 
                             stroke="#9ca3af" strokeWidth="1" fill="none" />
                       {/* 選手Dの接続線 */}
-                      <path d="M 180 280 L 220 280 L 220 250 L 300 250 L 300 190 L 450 190 L 450 190 L 650 190" 
+                      <path d="M 180 280 L 260 280 L 260 250 L 340 250 L 340 190 L 420 190 L 420 190 L 500 190 L 500 190 L 580 190" 
                             stroke="#9ca3af" strokeWidth="1" fill="none" />
                     </g>
                   )}
@@ -299,7 +303,7 @@ export default function Home() {
                     <g>
                       {/* ステップ2: 1選手Aのライン - 横線→縦線→横線まで（準決勝の合流点まで） */}
                       <path
-                        d="M 180 100 L 220 100 L 220 130 L 300 130"
+                        d="M 180 100 L 260 100 L 260 130 L 340 130"
                         stroke="#ef4444"
                         strokeWidth="4"
                         strokeLinecap="round"
@@ -320,7 +324,7 @@ export default function Home() {
                     <g>
                       {/* ステップ5: 3選手Cのライン - 横線→縦線→横線まで（準決勝の合流点まで） */}
                       <path
-                        d="M 180 220 L 220 220 L 220 250 L 300 250"
+                        d="M 180 220 L 260 220 L 260 250 L 340 250"
                         stroke="#ef4444"
                         strokeWidth="4"
                         strokeLinecap="round"
@@ -339,9 +343,9 @@ export default function Home() {
                   
                   {animationStep >= 8 && (
                     <g>
-                      {/* ステップ8: 決勝のライン - 1選手Aから優勝者まで */}
+                      {/* ステップ8: 決勝のライン - 1選手Aから優勝者まで（横線の長さを統一） */}
                       <path
-                        d="M 300 130 L 300 190 L 450 190 L 450 190 L 650 190"
+                        d="M 340 130 L 340 190 L 420 190 L 420 190 L 500 190 L 500 190 L 580 190"
                         stroke="#ef4444"
                         strokeWidth="4"
                         strokeLinecap="round"
@@ -363,7 +367,7 @@ export default function Home() {
                     <g>
                       {/* ステップ3: 1選手Aのスコア（勝者）- 直角部分の真上に「④」 */}
                       <text
-                        x="220"
+                        x="260"
                         y="85"
                         fill="#ef4444"
                         fontSize="16"
@@ -382,7 +386,7 @@ export default function Home() {
                     <g>
                       {/* ステップ4: 2選手Bのスコア（敗者）- 直角部分の真下に「2」 */}
                       <text
-                        x="220"
+                        x="260"
                         y="175"
                         fill="#ef4444"
                         fontSize="16"
@@ -401,7 +405,7 @@ export default function Home() {
                     <g>
                       {/* ステップ6: 3選手Cのスコア（勝者）- 直角部分の真上に「④」 */}
                       <text
-                        x="220"
+                        x="260"
                         y="205"
                         fill="#ef4444"
                         fontSize="16"
@@ -420,7 +424,7 @@ export default function Home() {
                     <g>
                       {/* ステップ7: 4選手Dのスコア（敗者）- 直角部分の真下に「1」 */}
                       <text
-                        x="220"
+                        x="260"
                         y="295"
                         fill="#ef4444"
                         fontSize="16"
@@ -439,7 +443,7 @@ export default function Home() {
                     <g>
                       {/* ステップ9: 1選手Aのスコア（勝者）- 決勝の直角部分の真上に「④」 */}
                       <text
-                        x="300"
+                        x="340"
                         y="115"
                         fill="#ef4444"
                         fontSize="16"
@@ -458,7 +462,7 @@ export default function Home() {
                     <g>
                       {/* ステップ10: 3選手Cのスコア（敗者）- 決勝の直角部分の真下に「3」 */}
                       <text
-                        x="300"
+                        x="340"
                         y="265"
                         fill="#ef4444"
                         fontSize="16"
