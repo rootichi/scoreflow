@@ -297,12 +297,12 @@ export default function Home() {
                 </button>
                 {/* モバイルメニューボタン */}
                 <button
-                  onClick={() => setIsMenuOpen(true)}
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
                   className="md:hidden text-white p-2"
                   type="button"
-                  aria-label="メニューを開く"
+                  aria-label={isMenuOpen ? "メニューを閉じる" : "メニューを開く"}
                 >
-                  <Menu className="w-6 h-6" />
+                  {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                 </button>
               </div>
             </div>

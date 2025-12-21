@@ -109,7 +109,7 @@ export default function PublicTournamentPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
+      <nav className="fixed top-0 left-0 right-0 z-40 bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
@@ -139,7 +139,7 @@ export default function PublicTournamentPage() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" style={{ paddingTop: 'calc(4rem + 2rem)' }}>
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="relative" ref={imageContainerRef}>
             <img
