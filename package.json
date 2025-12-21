@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "firebase": "^10.12.2",
+    "lucide-react": "^0.562.0",
     "next": "^16.0.0",
     "pdfjs-dist": "^4.0.379",
     "react": "^19.0.0",
@@ -32,4 +33,3 @@
     "typescript": "^5.5.4"
   }
 }
-
