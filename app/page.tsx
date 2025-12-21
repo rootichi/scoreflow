@@ -417,9 +417,9 @@ export default function Home() {
           </div>
           
           {/* UIモック風のグラフィック - リアルなトーナメント表 + アニメーション */}
-          <div className="max-w-3xl mx-auto mt-8 sm:mt-16 px-2 sm:px-4">
+          <div className="max-w-5xl mx-auto mt-8 sm:mt-16 px-2 sm:px-4">
             <div className="bg-white rounded-lg shadow-2xl p-3 sm:p-6 border border-gray-200">
-              <div className="bg-gray-50 rounded-lg relative overflow-hidden border border-gray-200" style={{ aspectRatio: '16/9', height: '250px' }}>
+              <div className="bg-gray-50 rounded-lg aspect-video relative overflow-hidden border border-gray-200">
                 <svg 
                   className="w-full h-full" 
                   viewBox="0 0 800 450"
@@ -474,7 +474,7 @@ export default function Home() {
                   
                   {/* アニメーション付きの勝者ライン（赤 - 直角線） */}
                   {animationStep >= 2 && (
-                    <g transform="translate(50, 100) scale(0.4)">
+                    <g>
                       {/* ステップ2: 1選手Aのライン - 横線→縦線→横線まで（準決勝の合流点まで） */}
                       <path
                         d="M 180 100 L 260 100 L 260 130 L 340 130"
