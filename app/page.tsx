@@ -737,7 +737,7 @@ export default function Home() {
         <section id="solution" className="py-12 sm:py-20 px-4 bg-gradient-to-br from-gray-50 to-blue-50">
           <div className="max-w-6xl mx-auto text-center">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8 leading-tight px-2">
-              PDFを作り直す必要なし。<br />
+              結果記入の往復の必要なし。<br />
               専門知識不要。<br className="sm:hidden" />
               リアルタイム。
             </h2>
