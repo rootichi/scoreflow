@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { getTournamentByPublicUrlId, subscribeMarks } from "@/lib/firebase/tournaments";
 import { Tournament, Mark } from "@/lib/firebase/types";
 
 export default function PublicTournamentPage() {
   const params = useParams();
+  const router = useRouter();
   const publicUrlId = params.publicUrlId as string;
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [marks, setMarks] = useState<Array<Mark & { id: string }>>([]);
@@ -72,36 +73,27 @@ export default function PublicTournamentPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
-              <div className="relative h-6 w-6">
-                <Image 
-                  src="/logo.png" 
-                  alt="ScoreFlow" 
-                  fill
-                  className="object-contain"
-                  unoptimized
-                  onError={(e) => {
-                    // 画像が読み込めない場合は非表示にする
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              </div>
-              <h1 className="text-xl font-bold">{tournament.name}</h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="relative h-5 w-5">
-                <Image 
-                  src="/logo.png" 
-                  alt="ScoreFlow" 
-                  fill
-                  className="object-contain opacity-60"
-                  unoptimized
-                  onError={(e) => {
-                    // 画像が読み込めない場合は非表示にする
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              </div>
-              <span className="text-sm text-gray-500">ScoreFlow</span>
+              <button
+                onClick={() => router.push("/")}
+                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                type="button"
+              >
+                <div className="relative h-6 w-6">
+                  <Image 
+                    src="/logo.png" 
+                    alt="ScoreFlow" 
+                    fill
+                    className="object-contain"
+                    unoptimized
+                    onError={(e) => {
+                      // 画像が読み込めない場合は非表示にする
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+                <span className="text-xl font-bold text-gray-900">ScoreFlow</span>
+              </button>
+              <h1 className="text-xl font-bold ml-4">{tournament.name}</h1>
             </div>
           </div>
         </div>

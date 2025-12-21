@@ -698,7 +698,8 @@ export default function TournamentEditPage() {
                     }}
                   />
                 </div>
-                <h1 className="text-xl font-bold">{tournament.name}</h1>
+                <span className="text-xl font-bold text-gray-900">ScoreFlow</span>
+                <h1 className="text-xl font-bold ml-4">{tournament.name}</h1>
               </div>
               <div className="flex gap-4 items-center">
                 <button
