@@ -210,8 +210,66 @@ export default function Home() {
   if (!user) {
     return (
       <div className="min-h-screen bg-white">
+        {/* 固定ヘッダー */}
+        <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              {/* ロゴ */}
+              <div className="flex items-center">
+                <span className="text-xl font-bold text-gray-900">ScoreFlow</span>
+              </div>
+
+              {/* ナビゲーション（デスクトップ） */}
+              <nav className="hidden md:flex items-center gap-8">
+                <a
+                  href="#pain-points"
+                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById("pain-points")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  課題解決
+                </a>
+                <a
+                  href="#features"
+                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  使い方
+                </a>
+                <a
+                  href="#benefits"
+                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById("benefits")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  特徴
+                </a>
+              </nav>
+
+              {/* CTAボタン */}
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handleSignIn}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-all duration-200 text-sm flex items-center gap-2 hover:shadow-lg hover:scale-105"
+                  type="button"
+                >
+                  Googleで無料で始める
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+
         {/* Hero Section */}
-        <section id="hero" className="relative bg-gradient-to-br from-blue-50 via-white to-gray-50 pt-20 pb-32 px-4">
+        <section id="hero" className="relative bg-gradient-to-br from-blue-50 via-white to-gray-50 pt-32 pb-32 px-4">
           <div className="max-w-6xl mx-auto text-center">
             <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
               ScoreFlow
