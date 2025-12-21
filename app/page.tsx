@@ -60,38 +60,33 @@ export default function Home() {
       // ステップ1: トーナメント表を表示（0.3秒後）
       const timer1 = setTimeout(() => setAnimationStep(1), 300);
       
-      // ステップ2: 選手Aのラインを描画（1.2秒後）
+      // ステップ2: 1選手A vs 2選手B（1.2秒後）
+      // 1選手Aから横線→縦線→横線まで（準決勝の合流点まで）
       const timer2 = setTimeout(() => setAnimationStep(2), 1200);
       
-      // ステップ3: 選手Bのラインを描画（2.1秒後）
-      const timer3 = setTimeout(() => setAnimationStep(3), 2100);
+      // ステップ3: 3選手C vs 4選手D（2.5秒後）
+      // 3選手Cから横線→縦線→横線まで（準決勝の合流点まで）
+      const timer3 = setTimeout(() => setAnimationStep(3), 2500);
       
-      // ステップ4: 選手Cのラインを描画（3.0秒後）
-      const timer4 = setTimeout(() => setAnimationStep(4), 3000);
-      
-      // ステップ5: 選手Dのラインを描画（3.9秒後）
-      const timer5 = setTimeout(() => setAnimationStep(5), 3900);
-      
-      // ステップ6: スコアを表示（4.8秒後）
-      const timer6 = setTimeout(() => setAnimationStep(6), 4800);
+      // ステップ4: 1選手A vs 3選手C（決勝）（3.8秒後）
+      // 1選手Aから優勝者まで
+      const timer4 = setTimeout(() => setAnimationStep(4), 3800);
       
       return () => {
         clearTimeout(timer1);
         clearTimeout(timer2);
         clearTimeout(timer3);
         clearTimeout(timer4);
-        clearTimeout(timer5);
-        clearTimeout(timer6);
       };
     };
     
     // 初回実行
     const cleanup1 = startAnimation();
     
-    // 6.5秒ごとにループ
+    // 5.5秒ごとにループ
     intervalId = setInterval(() => {
       startAnimation();
-    }, 6500);
+    }, 5500);
 
     return () => {
       cleanup1();
@@ -215,32 +210,32 @@ export default function Home() {
                   {/* トーナメント表のツリー構造 */}
                   {animationStep >= 1 && (
                     <g className="transition-opacity duration-500" style={{ opacity: animationStep >= 1 ? 1 : 0 }}>
-                      {/* 参加者（左側）- テキスト形式 */}
+                      {/* 参加者（左側）- テキスト形式（均等間隔） */}
                       <g>
                         <text x="50" y="100" fill="#374151" fontSize="14" dominantBaseline="middle">1 選手A</text>
-                        <text x="50" y="150" fill="#374151" fontSize="14" dominantBaseline="middle">2 選手B</text>
+                        <text x="50" y="160" fill="#374151" fontSize="14" dominantBaseline="middle">2 選手B</text>
                         <text x="50" y="220" fill="#374151" fontSize="14" dominantBaseline="middle">3 選手C</text>
-                        <text x="50" y="270" fill="#374151" fontSize="14" dominantBaseline="middle">4 選手D</text>
+                        <text x="50" y="280" fill="#374151" fontSize="14" dominantBaseline="middle">4 選手D</text>
                       </g>
                       
                       {/* 優勝者（右端） */}
                       <g>
-                        <rect x="650" y="165" width="120" height="30" fill="#fef3c7" stroke="#f59e0b" strokeWidth="2" rx="4" />
-                        <text x="710" y="185" fill="#92400e" fontSize="14" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">優勝者</text>
+                        <rect x="650" y="190" width="120" height="30" fill="#fef3c7" stroke="#f59e0b" strokeWidth="2" rx="4" />
+                        <text x="710" y="210" fill="#92400e" fontSize="14" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">優勝者</text>
                       </g>
                       
-                      {/* 接続線（基本構造 - 直角線） */}
+                      {/* 接続線（基本構造 - 直角線、均等間隔） */}
                       {/* 選手Aの接続線 */}
-                      <path d="M 180 95 L 200 95 L 200 120 L 300 120 L 300 180 L 450 180 L 450 180 L 650 180" 
+                      <path d="M 180 100 L 200 100 L 200 130 L 300 130 L 300 190 L 450 190 L 450 190 L 650 190" 
                             stroke="#9ca3af" strokeWidth="1" fill="none" />
                       {/* 選手Bの接続線 */}
-                      <path d="M 180 145 L 200 145 L 200 120 L 300 120 L 300 180 L 450 180 L 450 180 L 650 180" 
+                      <path d="M 180 160 L 200 160 L 200 130 L 300 130 L 300 190 L 450 190 L 450 190 L 650 190" 
                             stroke="#9ca3af" strokeWidth="1" fill="none" />
                       {/* 選手Cの接続線 */}
-                      <path d="M 180 215 L 200 215 L 200 240 L 300 240 L 300 180 L 450 180 L 450 180 L 650 180" 
+                      <path d="M 180 220 L 200 220 L 200 250 L 300 250 L 300 190 L 450 190 L 450 190 L 650 190" 
                             stroke="#9ca3af" strokeWidth="1" fill="none" />
                       {/* 選手Dの接続線 */}
-                      <path d="M 180 265 L 200 265 L 200 240 L 300 240 L 300 180 L 450 180 L 450 180 L 650 180" 
+                      <path d="M 180 280 L 200 280 L 200 250 L 300 250 L 300 190 L 450 190 L 450 190 L 650 190" 
                             stroke="#9ca3af" strokeWidth="1" fill="none" />
                     </g>
                   )}
@@ -248,9 +243,9 @@ export default function Home() {
                   {/* アニメーション付きの勝者ライン（赤 - 直角線） */}
                   {animationStep >= 2 && (
                     <g>
-                      {/* 1本目のライン（選手A → 優勝者への直角線） */}
+                      {/* ステップ2: 1選手A vs 2選手B - 1選手Aから横線→縦線→横線まで（準決勝の合流点まで） */}
                       <path
-                        d="M 180 95 L 200 95 L 200 120 L 300 120 L 300 180 L 450 180 L 450 180 L 650 180"
+                        d="M 180 100 L 200 100 L 200 130 L 300 130"
                         stroke="#ef4444"
                         strokeWidth="4"
                         strokeLinecap="round"
@@ -269,9 +264,9 @@ export default function Home() {
                   
                   {animationStep >= 3 && (
                     <g>
-                      {/* 2本目のライン（選手B → 優勝者への直角線） */}
+                      {/* ステップ3: 3選手C vs 4選手D - 3選手Cから横線→縦線→横線まで（準決勝の合流点まで） */}
                       <path
-                        d="M 180 145 L 200 145 L 200 120 L 300 120 L 300 180 L 450 180 L 450 180 L 650 180"
+                        d="M 180 220 L 200 220 L 200 250 L 300 250"
                         stroke="#ef4444"
                         strokeWidth="4"
                         strokeLinecap="round"
@@ -290,9 +285,9 @@ export default function Home() {
                   
                   {animationStep >= 4 && (
                     <g>
-                      {/* 3本目のライン（選手C → 優勝者への直角線） */}
+                      {/* ステップ4: 1選手A vs 3選手C（決勝）- 1選手Aから優勝者まで */}
                       <path
-                        d="M 180 215 L 200 215 L 200 240 L 300 240 L 300 180 L 450 180 L 450 180 L 650 180"
+                        d="M 300 130 L 300 190 L 450 190 L 450 190 L 650 190"
                         stroke="#ef4444"
                         strokeWidth="4"
                         strokeLinecap="round"
@@ -309,73 +304,165 @@ export default function Home() {
                     </g>
                   )}
                   
-                  {animationStep >= 5 && (
-                    <g>
-                      {/* 4本目のライン（選手D → 優勝者への直角線） */}
-                      <path
-                        d="M 180 265 L 200 265 L 200 240 L 300 240 L 300 180 L 450 180 L 450 180 L 650 180"
-                        stroke="#ef4444"
-                        strokeWidth="4"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        fill="none"
-                        pathLength="100"
-                        strokeDasharray="100"
-                        className="transition-all duration-700 ease-out"
-                        style={{
-                          strokeDashoffset: animationStep >= 5 ? "0" : "100",
-                          opacity: animationStep >= 5 ? 1 : 0,
-                        }}
-                      />
+                  {/* アニメーション付きのスコア表示 */}
+                  {animationStep >= 2 && (
+                    <g
+                      className="transition-opacity duration-500"
+                      style={{ opacity: animationStep >= 2 ? 1 : 0 }}
+                    >
+                      {/* ステップ2: 1選手A vs 2選手B - 1選手Aの直角部分の真上に「④」とスコア */}
+                      <text
+                        x="200"
+                        y="85"
+                        fill="#ef4444"
+                        fontSize="16"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        ④
+                      </text>
+                      <text
+                        x="200"
+                        y="70"
+                        fill="#ef4444"
+                        fontSize="11"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        ④-2
+                      </text>
+                      {/* 2選手Bの直角部分の真下に「2」とスコア */}
+                      <text
+                        x="200"
+                        y="175"
+                        fill="#ef4444"
+                        fontSize="16"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        2
+                      </text>
+                      <text
+                        x="200"
+                        y="190"
+                        fill="#ef4444"
+                        fontSize="11"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        ④-2
+                      </text>
                     </g>
                   )}
                   
-                  {/* アニメーション付きのスコア表示 */}
-                  {animationStep >= 6 && (
+                  {animationStep >= 3 && (
                     <g
                       className="transition-opacity duration-500"
-                      style={{ opacity: animationStep >= 6 ? 1 : 0 }}
+                      style={{ opacity: animationStep >= 3 ? 1 : 0 }}
                     >
-                      {/* スコア1（1回戦：選手A vs 選手B） */}
-                      <rect x="195" y="110" width="50" height="20" fill="#ffffff" stroke="#ef4444" strokeWidth="2" rx="4" />
+                      {/* ステップ3: 3選手C vs 4選手D - 3選手Cの直角部分の真上に「④」とスコア */}
                       <text
-                        x="220"
-                        y="123"
+                        x="200"
+                        y="205"
                         fill="#ef4444"
-                        fontSize="12"
+                        fontSize="16"
                         fontWeight="bold"
                         textAnchor="middle"
                         dominantBaseline="middle"
                       >
-                        21-19
+                        ④
                       </text>
-                      
-                      {/* スコア2（準決勝） */}
-                      <rect x="295" y="170" width="50" height="20" fill="#ffffff" stroke="#ef4444" strokeWidth="2" rx="4" />
                       <text
-                        x="320"
-                        y="183"
+                        x="200"
+                        y="190"
                         fill="#ef4444"
-                        fontSize="12"
+                        fontSize="11"
                         fontWeight="bold"
                         textAnchor="middle"
                         dominantBaseline="middle"
                       >
-                        18-21
+                        ④-1
                       </text>
-                      
-                      {/* スコア3（決勝） */}
-                      <rect x="445" y="170" width="50" height="20" fill="#ffffff" stroke="#ef4444" strokeWidth="2" rx="4" />
+                      {/* 4選手Dの直角部分の真下に「1」とスコア */}
                       <text
-                        x="470"
-                        y="183"
+                        x="200"
+                        y="295"
                         fill="#ef4444"
-                        fontSize="12"
+                        fontSize="16"
                         fontWeight="bold"
                         textAnchor="middle"
                         dominantBaseline="middle"
                       >
-                        21-15
+                        1
+                      </text>
+                      <text
+                        x="200"
+                        y="310"
+                        fill="#ef4444"
+                        fontSize="11"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        ④-1
+                      </text>
+                    </g>
+                  )}
+                  
+                  {animationStep >= 4 && (
+                    <g
+                      className="transition-opacity duration-500"
+                      style={{ opacity: animationStep >= 4 ? 1 : 0 }}
+                    >
+                      {/* ステップ4: 1選手A vs 3選手C（決勝）- 1選手Aの直角部分の真上に「④」とスコア */}
+                      <text
+                        x="300"
+                        y="115"
+                        fill="#ef4444"
+                        fontSize="16"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        ④
+                      </text>
+                      <text
+                        x="300"
+                        y="100"
+                        fill="#ef4444"
+                        fontSize="11"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        ④-3
+                      </text>
+                      {/* 3選手Cの直角部分の真下に「3」とスコア */}
+                      <text
+                        x="300"
+                        y="265"
+                        fill="#ef4444"
+                        fontSize="16"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        3
+                      </text>
+                      <text
+                        x="300"
+                        y="280"
+                        fill="#ef4444"
+                        fontSize="11"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        ④-3
                       </text>
                     </g>
                   )}
