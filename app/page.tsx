@@ -23,6 +23,8 @@ import {
   Users,
   Clock,
   Globe,
+  Menu,
+  X,
 } from "lucide-react";
 
 export default function Home() {
@@ -32,6 +34,7 @@ export default function Home() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [animationStep, setAnimationStep] = useState(0);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!auth) return;
@@ -212,7 +215,7 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-white">
         {/* 固定ヘッダー */}
-        <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+        <header className="fixed top-0 left-0 right-0 z-50 bg-blue-600 border-b border-blue-700 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               {/* ロゴ */}
@@ -230,14 +233,14 @@ export default function Home() {
                     }}
                   />
                 </div>
-                <span className="text-xl font-bold text-gray-900">ScoreFlow</span>
+                <span className="text-xl font-bold text-white">ScoreFlow</span>
               </div>
 
               {/* ナビゲーション（デスクトップ） */}
               <nav className="hidden md:flex items-center gap-8">
                 <a
                   href="#pain-points"
-                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  className="text-sm text-white/90 hover:text-white transition-colors"
                   onClick={(e) => {
                     e.preventDefault();
                     document.getElementById("pain-points")?.scrollIntoView({ behavior: "smooth" });
@@ -247,7 +250,7 @@ export default function Home() {
                 </a>
                 <a
                   href="#features"
-                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  className="text-sm text-white/90 hover:text-white transition-colors"
                   onClick={(e) => {
                     e.preventDefault();
                     document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
@@ -257,7 +260,7 @@ export default function Home() {
                 </a>
                 <a
                   href="#benefits"
-                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  className="text-sm text-white/90 hover:text-white transition-colors"
                   onClick={(e) => {
                     e.preventDefault();
                     document.getElementById("benefits")?.scrollIntoView({ behavior: "smooth" });
@@ -267,21 +270,108 @@ export default function Home() {
                 </a>
               </nav>
 
-              {/* CTAボタン */}
+              {/* デスクトップCTAボタン / モバイルメニューボタン */}
               <div className="flex items-center gap-2 sm:gap-4">
+                {/* デスクトップCTAボタン */}
                 <button
                   onClick={handleSignIn}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 sm:px-6 rounded-lg shadow-md transition-all duration-200 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 hover:shadow-lg hover:scale-105 whitespace-nowrap"
+                  className="hidden md:flex bg-white text-blue-600 hover:bg-gray-100 font-semibold py-2 px-6 rounded-lg shadow-md transition-all duration-200 text-sm items-center gap-2 hover:shadow-lg hover:scale-105 whitespace-nowrap"
                   type="button"
                 >
-                  <span className="hidden sm:inline">Googleで無料で始める</span>
-                  <span className="sm:hidden">始める</span>
-                  <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
+                  Googleで無料で始める
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                {/* モバイルメニューボタン */}
+                <button
+                  onClick={() => setIsMenuOpen(true)}
+                  className="md:hidden text-white p-2"
+                  type="button"
+                  aria-label="メニューを開く"
+                >
+                  <Menu className="w-6 h-6" />
                 </button>
               </div>
             </div>
           </div>
         </header>
+
+        {/* モバイルサイドバー */}
+        {isMenuOpen && (
+          <>
+            {/* オーバーレイ */}
+            <div
+              className="fixed inset-0 bg-black/50 z-50 md:hidden"
+              onClick={() => setIsMenuOpen(false)}
+            />
+            {/* サイドバー */}
+            <div className="fixed top-0 right-0 h-full w-64 bg-white shadow-2xl z-50 md:hidden transform transition-transform duration-300">
+              <div className="flex flex-col h-full">
+                {/* ヘッダー */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                  <span className="text-lg font-bold text-gray-900">メニュー</span>
+                  <button
+                    onClick={() => setIsMenuOpen(false)}
+                    className="p-2 text-gray-600 hover:text-gray-900"
+                    type="button"
+                    aria-label="メニューを閉じる"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                {/* メニュー項目 */}
+                <nav className="flex-1 p-4 space-y-4">
+                  <a
+                    href="#pain-points"
+                    className="block text-gray-700 hover:text-blue-600 transition-colors py-2"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsMenuOpen(false);
+                      document.getElementById("pain-points")?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                  >
+                    課題解決
+                  </a>
+                  <a
+                    href="#features"
+                    className="block text-gray-700 hover:text-blue-600 transition-colors py-2"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsMenuOpen(false);
+                      document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                  >
+                    使い方
+                  </a>
+                  <a
+                    href="#benefits"
+                    className="block text-gray-700 hover:text-blue-600 transition-colors py-2"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsMenuOpen(false);
+                      document.getElementById("benefits")?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                  >
+                    特徴
+                  </a>
+                </nav>
+                {/* CTAボタン */}
+                <div className="p-4 border-t border-gray-200">
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      handleSignIn();
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-all duration-200 text-sm flex items-center justify-center gap-2 hover:shadow-lg"
+                    type="button"
+                  >
+                    Googleで無料で始める
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Hero Section */}
         <section id="hero" className="relative bg-gradient-to-br from-blue-50 via-white to-gray-50 pt-24 sm:pt-32 pb-16 sm:pb-32 px-4">
@@ -314,27 +404,24 @@ export default function Home() {
           </div>
           
           {/* UIモック風のグラフィック - リアルなトーナメント表 + アニメーション */}
-          <div className="max-w-sm sm:max-w-md mx-auto mt-8 sm:mt-16 px-2 sm:px-4">
-            <div className="bg-gray-900 rounded-[2.5rem] shadow-2xl p-2 sm:p-3 border-4 border-gray-800">
-              {/* iPhone風のノッチ */}
-              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-6 bg-gray-900 rounded-b-2xl z-10"></div>
-              {/* スマホ画面 */}
-              <div className="bg-white rounded-[2rem] aspect-[9/16] relative overflow-hidden">
+          <div className="max-w-5xl mx-auto mt-8 sm:mt-16 px-2 sm:px-4">
+            <div className="bg-white rounded-lg shadow-2xl p-3 sm:p-6 border border-gray-200">
+              <div className="bg-gray-50 rounded-lg relative overflow-hidden border border-gray-200" style={{ aspectRatio: '16/9', minHeight: '400px' }}>
                 <svg 
                   className="w-full h-full" 
-                  viewBox="0 0 400 711"
+                  viewBox="0 0 800 450"
                   preserveAspectRatio="xMidYMid meet"
                 >
                   {/* 背景（PDF風） */}
-                  <rect width="400" height="711" fill="#ffffff" />
+                  <rect width="800" height="450" fill="#ffffff" />
                   
                   {/* タイトル */}
                   {animationStep >= 1 && (
                     <text
-                      x="200"
-                      y="40"
+                      x="400"
+                      y="30"
                       fill="#1f2937"
-                      fontSize="18"
+                      fontSize="24"
                       fontWeight="bold"
                       textAnchor="middle"
                       className="transition-opacity duration-500"
@@ -344,9 +431,9 @@ export default function Home() {
                     </text>
                   )}
                   
-                  {/* トーナメント表のツリー構造（縦長画面に合わせて縮小・中央配置） */}
+                  {/* トーナメント表のツリー構造 */}
                   {animationStep >= 1 && (
-                    <g className="transition-opacity duration-500" style={{ opacity: animationStep >= 1 ? 1 : 0 }} transform="translate(50, 100) scale(0.4)">
+                    <g className="transition-opacity duration-500" style={{ opacity: animationStep >= 1 ? 1 : 0 }}>
                       {/* 参加者（左側）- テキスト形式（均等間隔） */}
                       <g>
                         <text x="50" y="100" fill="#374151" fontSize="14" dominantBaseline="middle">1 選手A</text>
@@ -395,7 +482,7 @@ export default function Home() {
                   )}
                   
                   {animationStep >= 5 && (
-                    <g transform="translate(50, 100) scale(0.4)">
+                    <g>
                       {/* ステップ5: 3選手Cのライン - 横線→縦線→横線まで（準決勝の合流点まで） */}
                       <path
                         d="M 180 220 L 260 220 L 260 250 L 340 250"
@@ -416,7 +503,7 @@ export default function Home() {
                   )}
                   
                   {animationStep >= 8 && (
-                    <g transform="translate(50, 100) scale(0.4)">
+                    <g>
                       {/* ステップ8: 決勝のライン - 1選手Aから決勝まで（横線の長さを統一） */}
                       <path
                         d="M 340 130 L 340 190 L 420 190 L 420 190 L 500 190"
@@ -438,7 +525,7 @@ export default function Home() {
                   
                   {/* アニメーション付きのスコア表示 */}
                   {animationStep >= 3 && (
-                    <g transform="translate(50, 100) scale(0.4)">
+                    <g>
                       {/* ステップ3: 1選手Aのスコア（勝者）- 直角部分の真上に「④」 */}
                       <text
                         x="260"
@@ -457,7 +544,7 @@ export default function Home() {
                   )}
                   
                   {animationStep >= 4 && (
-                    <g transform="translate(50, 100) scale(0.4)">
+                    <g>
                       {/* ステップ4: 2選手Bのスコア（敗者）- 直角部分の真下に「2」 */}
                       <text
                         x="260"
@@ -476,7 +563,7 @@ export default function Home() {
                   )}
                   
                   {animationStep >= 6 && (
-                    <g transform="translate(50, 100) scale(0.4)">
+                    <g>
                       {/* ステップ6: 3選手Cのスコア（勝者）- 直角部分の真上に「④」 */}
                       <text
                         x="260"
@@ -495,7 +582,7 @@ export default function Home() {
                   )}
                   
                   {animationStep >= 7 && (
-                    <g transform="translate(50, 100) scale(0.4)">
+                    <g>
                       {/* ステップ7: 4選手Dのスコア（敗者）- 直角部分の真下に「1」 */}
                       <text
                         x="260"
@@ -514,7 +601,7 @@ export default function Home() {
                   )}
                   
                   {animationStep >= 9 && (
-                    <g transform="translate(50, 100) scale(0.4)">
+                    <g>
                       {/* ステップ9: 1選手Aのスコア（勝者）- 決勝の直角部分の真上に「④」 */}
                       <text
                         x="340"
@@ -533,7 +620,7 @@ export default function Home() {
                   )}
                   
                   {animationStep >= 10 && (
-                    <g transform="translate(50, 100) scale(0.4)">
+                    <g>
                       {/* ステップ10: 3選手Cのスコア（敗者）- 決勝の直角部分の真下に「3」 */}
                       <text
                         x="340"
@@ -636,7 +723,7 @@ export default function Home() {
                     <ul className="list-disc list-inside space-y-1.5 text-xs sm:text-sm text-gray-600 leading-relaxed">
                       <li>進行状況を1画面で可視化</li>
                       <li>入力した瞬間に全員へ反映</li>
-                      <li>PDFを作り直す必要なし</li>
+                      <li>結果記入の往復の必要なし</li>
                       <li>ITに詳しくなくても使える</li>
                     </ul>
                   </div>
@@ -978,3 +1065,4 @@ export default function Home() {
     </div>
   );
 }
+
