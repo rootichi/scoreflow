@@ -291,8 +291,7 @@ export default function Home() {
             </h1>
             <p className="text-lg sm:text-xl md:text-2xl text-gray-700 mb-3 sm:mb-4 font-medium leading-relaxed">
               今、どこまで進んでる？<br className="sm:hidden" />
-              <span className="hidden sm:inline">が一瞬で分かる。</span>
-              <span className="sm:hidden">が一瞬で<br />分かる。</span>
+              が一瞬で分かる。
             </p>
             <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8 leading-relaxed">
               トーナメント表に、<br className="sm:hidden" />
@@ -300,8 +299,7 @@ export default function Home() {
             </p>
             <p className="text-sm sm:text-base text-gray-500 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed px-2">
               大会運営のストレスをゼロに。<br className="sm:hidden" />
-              PDFを作り直す必要なし、<br className="sm:hidden" />
-              専門知識不要。<br className="hidden sm:inline" />
+              結果記入の往復の必要なし、専門知識不要。<br className="hidden sm:inline" />
               入力した瞬間に全員へ反映される、<br className="sm:hidden" />
               大会進行状況可視化SaaSです。
             </p>
@@ -563,68 +561,82 @@ export default function Home() {
               よくある問題
             </h2>
             
-            <div className="grid md:grid-cols-2 gap-6 sm:gap-8 mb-12 sm:mb-16">
+            <div className="grid md:grid-cols-2 gap-4 sm:gap-6 mb-12 sm:mb-16">
               {/* Before */}
-              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 sm:p-8">
-                <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                  <XCircle className="w-6 h-6 sm:w-8 sm:h-8 text-red-600 flex-shrink-0" />
-                  <h3 className="text-xl sm:text-2xl font-bold text-red-900 leading-tight">Before：<br className="sm:hidden" />紙の掲示板だと…</h3>
+              <div className="bg-white border-l-4 border-red-500 rounded-r-lg shadow-md p-5 sm:p-6">
+                <div className="flex items-start gap-3 mb-5 sm:mb-6">
+                  <div className="bg-red-50 p-2 rounded-lg flex-shrink-0">
+                    <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-bold text-red-900 leading-tight mb-1">Before</h3>
+                    <p className="text-xs sm:text-sm text-red-700">紙の掲示板だと…</p>
+                  </div>
                 </div>
                 <div className="space-y-4 text-gray-700">
-                  <div>
+                  <div className="bg-red-50 rounded-lg p-3 sm:p-4">
                     <h4 className="font-semibold text-red-800 mb-2 text-sm sm:text-base leading-relaxed">広い会場では、<br className="sm:hidden" />掲示板への往復だけで一苦労</h4>
-                    <p className="text-xs sm:text-sm leading-relaxed">
+                    <p className="text-xs sm:text-sm leading-relaxed text-gray-700">
                       更新が遅れ、情報のタイムラグが<br className="sm:hidden" />
                       進行遅延や現場の混乱を招きます。
                     </p>
                   </div>
-                  <div>
+                  <div className="bg-red-50 rounded-lg p-3 sm:p-4">
                     <h4 className="font-semibold text-red-800 mb-2 text-sm sm:text-base leading-relaxed">狭い会場では、<br className="sm:hidden" />本部が「密」になる</h4>
-                    <p className="text-xs sm:text-sm leading-relaxed">
+                    <p className="text-xs sm:text-sm leading-relaxed text-gray-700">
                       掲示板が本部付近にしかない場合、<br className="sm:hidden" />
                       進捗を知りたい選手や監督が集中し、<br className="sm:hidden" />
                       運営業務の妨げに。
                     </p>
                   </div>
-                  <ul className="list-disc list-inside space-y-2 text-xs sm:text-sm text-gray-600 mt-4 leading-relaxed">
-                    <li>「今どこまで進んでいるの？」と何度も聞かれる</li>
-                    <li>全ての掲示板に結果を貼り直す必要がある</li>
-                    <li>SNSでは情報が断片的</li>
-                    <li>Webサイト更新に専門知識が必要</li>
-                  </ul>
+                  <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                    <ul className="list-disc list-inside space-y-1.5 text-xs sm:text-sm text-gray-600 leading-relaxed">
+                      <li>「今どこまで進んでいるの？」と何度も聞かれる</li>
+                      <li>全ての掲示板に結果を貼り直す必要がある</li>
+                      <li>SNSでは情報が断片的</li>
+                      <li>Webサイト更新に専門知識が必要</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
 
               {/* After */}
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 sm:p-8">
-                <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                  <CheckCircle2 className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 flex-shrink-0" />
-                  <h3 className="text-xl sm:text-2xl font-bold text-blue-900 leading-tight">After：<br className="sm:hidden" />ScoreFlowなら！</h3>
+              <div className="bg-white border-l-4 border-blue-500 rounded-r-lg shadow-md p-5 sm:p-6">
+                <div className="flex items-start gap-3 mb-5 sm:mb-6">
+                  <div className="bg-blue-50 p-2 rounded-lg flex-shrink-0">
+                    <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-bold text-blue-900 leading-tight mb-1">After</h3>
+                    <p className="text-xs sm:text-sm text-blue-700">ScoreFlowなら！</p>
+                  </div>
                 </div>
                 <div className="space-y-4 text-gray-700">
-                  <div>
+                  <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
                     <h4 className="font-semibold text-blue-800 mb-2 text-sm sm:text-base leading-relaxed">どこにいても<br className="sm:hidden" />「今」がわかる</h4>
-                    <p className="text-xs sm:text-sm leading-relaxed">
+                    <p className="text-xs sm:text-sm leading-relaxed text-gray-700">
                       会場に向かう保護者、<br className="sm:hidden" />
                       遠くにいる監督、待機中の選手。<br className="sm:hidden" />
                       スマホ一つで、リアルタイムの進捗が<br className="sm:hidden" />
                       全員の手元に届きます。
                     </p>
                   </div>
-                  <div>
+                  <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
                     <h4 className="font-semibold text-blue-800 mb-2 text-sm sm:text-base leading-relaxed">「もう聞かれない」<br className="sm:hidden" />運営へ</h4>
-                    <p className="text-xs sm:text-sm leading-relaxed">
+                    <p className="text-xs sm:text-sm leading-relaxed text-gray-700">
                       全員が自分のスマホで確認できるから、<br className="sm:hidden" />
                       本部への問い合わせが激減。<br className="sm:hidden" />
                       運営チームは大会進行に集中できます。
                     </p>
                   </div>
-                  <ul className="list-disc list-inside space-y-2 text-xs sm:text-sm text-gray-600 mt-4 leading-relaxed">
-                    <li>進行状況を1画面で可視化</li>
-                    <li>入力した瞬間に全員へ反映</li>
-                    <li>PDFを作り直す必要なし</li>
-                    <li>ITに詳しくなくても使える</li>
-                  </ul>
+                  <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                    <ul className="list-disc list-inside space-y-1.5 text-xs sm:text-sm text-gray-600 leading-relaxed">
+                      <li>進行状況を1画面で可視化</li>
+                      <li>入力した瞬間に全員へ反映</li>
+                      <li>PDFを作り直す必要なし</li>
+                      <li>ITに詳しくなくても使える</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>
