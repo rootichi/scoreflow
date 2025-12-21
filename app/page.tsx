@@ -36,6 +36,18 @@ export default function Home() {
   const [animationStep, setAnimationStep] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // サイドメニューが開いている時に背景のスクロールを無効化
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMenuOpen]);
+
   useEffect(() => {
     if (!auth) return;
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -239,42 +251,41 @@ export default function Home() {
                 <span className="text-xl font-bold text-white">ScoreFlow</span>
               </a>
 
-              {/* ナビゲーション（デスクトップ） */}
-              <nav className="hidden md:flex items-center gap-8">
-                <a
-                  href="#pain-points"
-                  className="text-sm text-white/90 hover:text-white transition-colors"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document.getElementById("pain-points")?.scrollIntoView({ behavior: "smooth" });
-                  }}
-                >
-                  課題解決
-                </a>
-                <a
-                  href="#features"
-                  className="text-sm text-white/90 hover:text-white transition-colors"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
-                  }}
-                >
-                  使い方
-                </a>
-                <a
-                  href="#benefits"
-                  className="text-sm text-white/90 hover:text-white transition-colors"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document.getElementById("benefits")?.scrollIntoView({ behavior: "smooth" });
-                  }}
-                >
-                  特徴
-                </a>
-              </nav>
-
-              {/* デスクトップCTAボタン / モバイルメニューボタン */}
+              {/* ナビゲーションとCTAボタン（デスクトップ） / モバイルメニューボタン */}
               <div className="flex items-center gap-2 sm:gap-4">
+                {/* ナビゲーション（デスクトップ） */}
+                <nav className="hidden md:flex items-center gap-8">
+                  <a
+                    href="#pain-points"
+                    className="text-sm text-white/90 hover:text-white transition-colors"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById("pain-points")?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                  >
+                    課題解決
+                  </a>
+                  <a
+                    href="#features"
+                    className="text-sm text-white/90 hover:text-white transition-colors"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                  >
+                    使い方
+                  </a>
+                  <a
+                    href="#benefits"
+                    className="text-sm text-white/90 hover:text-white transition-colors"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById("benefits")?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                  >
+                    特徴
+                  </a>
+                </nav>
                 {/* デスクトップCTAボタン */}
                 <button
                   onClick={handleSignIn}
@@ -307,10 +318,10 @@ export default function Home() {
               onClick={() => setIsMenuOpen(false)}
             />
             {/* サイドバー */}
-            <div className="fixed top-0 right-0 h-full w-64 bg-white shadow-2xl z-50 md:hidden transform transition-transform duration-300">
-              <div className="flex flex-col h-full">
+            <div className="fixed top-0 right-0 h-full w-64 bg-white shadow-2xl z-50 md:hidden transform transition-transform duration-300 overflow-y-auto">
+              <div className="flex flex-col min-h-full">
                 {/* ヘッダー */}
-                <div className="flex items-center justify-end p-4 border-b border-gray-200">
+                <div className="flex items-center justify-end p-4 border-b border-gray-200 flex-shrink-0">
                   <button
                     onClick={() => setIsMenuOpen(false)}
                     className="p-2 text-gray-600 hover:text-gray-900"
@@ -321,7 +332,7 @@ export default function Home() {
                   </button>
                 </div>
                 {/* メニュー項目 */}
-                <nav className="flex-1 p-4 space-y-4">
+                <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
                   <a
                     href="#pain-points"
                     className="block text-gray-700 hover:text-blue-600 transition-colors py-2"
