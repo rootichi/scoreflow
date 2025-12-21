@@ -268,14 +268,15 @@ export default function Home() {
               </nav>
 
               {/* CTAボタン */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 <button
                   onClick={handleSignIn}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-all duration-200 text-sm flex items-center gap-2 hover:shadow-lg hover:scale-105"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 sm:px-6 rounded-lg shadow-md transition-all duration-200 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 hover:shadow-lg hover:scale-105 whitespace-nowrap"
                   type="button"
                 >
-                  Googleで無料で始める
-                  <ArrowRight className="w-4 h-4" />
+                  <span className="hidden sm:inline">Googleで無料で始める</span>
+                  <span className="sm:hidden">始める</span>
+                  <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
                 </button>
               </div>
             </div>
@@ -283,34 +284,40 @@ export default function Home() {
         </header>
 
         {/* Hero Section */}
-        <section id="hero" className="relative bg-gradient-to-br from-blue-50 via-white to-gray-50 pt-32 pb-32 px-4">
+        <section id="hero" className="relative bg-gradient-to-br from-blue-50 via-white to-gray-50 pt-24 sm:pt-32 pb-16 sm:pb-32 px-4">
           <div className="max-w-6xl mx-auto text-center">
-            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 mb-4 sm:mb-6">
               ScoreFlow
             </h1>
-            <p className="text-xl md:text-2xl text-gray-700 mb-4 font-medium">
-              今、どこまで進んでる？が一瞬で分かる。
+            <p className="text-lg sm:text-xl md:text-2xl text-gray-700 mb-3 sm:mb-4 font-medium leading-relaxed">
+              今、どこまで進んでる？<br className="sm:hidden" />
+              <span className="hidden sm:inline">が一瞬で分かる。</span>
+              <span className="sm:hidden">が一瞬で<br />分かる。</span>
             </p>
-            <p className="text-lg md:text-xl text-gray-600 mb-8">
-              トーナメント表に、リアルタイムを。
+            <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8 leading-relaxed">
+              トーナメント表に、<br className="sm:hidden" />
+              リアルタイムを。
             </p>
-            <p className="text-base text-gray-500 mb-12 max-w-2xl mx-auto">
-              大会運営のストレスをゼロに。PDFを作り直す必要なし、専門知識不要。
-              入力した瞬間に全員へ反映される、大会進行状況可視化SaaSです。
+            <p className="text-sm sm:text-base text-gray-500 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed px-2">
+              大会運営のストレスをゼロに。<br className="sm:hidden" />
+              PDFを作り直す必要なし、<br className="sm:hidden" />
+              専門知識不要。<br className="hidden sm:inline" />
+              入力した瞬間に全員へ反映される、<br className="sm:hidden" />
+              大会進行状況可視化SaaSです。
             </p>
             <button
               onClick={handleSignIn}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-lg shadow-lg transition-all duration-200 text-lg flex items-center gap-2 mx-auto hover:shadow-xl hover:scale-105"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 sm:py-4 px-6 sm:px-8 rounded-lg shadow-lg transition-all duration-200 text-base sm:text-lg flex items-center gap-2 mx-auto hover:shadow-xl hover:scale-105"
               type="button"
             >
               Googleで無料で始める
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
           
           {/* UIモック風のグラフィック - リアルなトーナメント表 + アニメーション */}
-          <div className="max-w-5xl mx-auto mt-16 px-4">
-            <div className="bg-white rounded-lg shadow-2xl p-6 border border-gray-200">
+          <div className="max-w-5xl mx-auto mt-8 sm:mt-16 px-2 sm:px-4">
+            <div className="bg-white rounded-lg shadow-2xl p-3 sm:p-6 border border-gray-200">
               <div className="bg-gray-50 rounded-lg aspect-video relative overflow-hidden border border-gray-200">
                 <svg 
                   className="w-full h-full" 
@@ -347,25 +354,19 @@ export default function Home() {
                         <text x="50" y="280" fill="#374151" fontSize="14" dominantBaseline="middle">4 選手D</text>
                       </g>
                       
-                      {/* 優勝者（右端） */}
-                      <g>
-                        <rect x="580" y="190" width="120" height="30" fill="#fef3c7" stroke="#f59e0b" strokeWidth="2" rx="4" />
-                        <text x="640" y="210" fill="#92400e" fontSize="14" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">優勝者</text>
-                      </g>
-                      
                       {/* 接続線（基本構造 - 直角線、均等間隔、全ての横線の長さを統一） */}
                       {/* 横線の長さを統一: 全ての横線を80pxに統一 */}
                       {/* 選手Aの接続線 */}
-                      <path d="M 180 100 L 260 100 L 260 130 L 340 130 L 340 190 L 420 190 L 420 190 L 500 190 L 500 190 L 580 190" 
+                      <path d="M 180 100 L 260 100 L 260 130 L 340 130 L 340 190 L 420 190 L 420 190 L 500 190" 
                             stroke="#9ca3af" strokeWidth="1" fill="none" />
                       {/* 選手Bの接続線 */}
-                      <path d="M 180 160 L 260 160 L 260 130 L 340 130 L 340 190 L 420 190 L 420 190 L 500 190 L 500 190 L 580 190" 
+                      <path d="M 180 160 L 260 160 L 260 130 L 340 130 L 340 190 L 420 190 L 420 190 L 500 190" 
                             stroke="#9ca3af" strokeWidth="1" fill="none" />
                       {/* 選手Cの接続線 */}
-                      <path d="M 180 220 L 260 220 L 260 250 L 340 250 L 340 190 L 420 190 L 420 190 L 500 190 L 500 190 L 580 190" 
+                      <path d="M 180 220 L 260 220 L 260 250 L 340 250 L 340 190 L 420 190 L 420 190 L 500 190" 
                             stroke="#9ca3af" strokeWidth="1" fill="none" />
                       {/* 選手Dの接続線 */}
-                      <path d="M 180 280 L 260 280 L 260 250 L 340 250 L 340 190 L 420 190 L 420 190 L 500 190 L 500 190 L 580 190" 
+                      <path d="M 180 280 L 260 280 L 260 250 L 340 250 L 340 190 L 420 190 L 420 190 L 500 190" 
                             stroke="#9ca3af" strokeWidth="1" fill="none" />
                     </g>
                   )}
@@ -415,9 +416,9 @@ export default function Home() {
                   
                   {animationStep >= 8 && (
                     <g>
-                      {/* ステップ8: 決勝のライン - 1選手Aから優勝者まで（横線の長さを統一） */}
+                      {/* ステップ8: 決勝のライン - 1選手Aから決勝まで（横線の長さを統一） */}
                       <path
-                        d="M 340 130 L 340 190 L 420 190 L 420 190 L 500 190 L 500 190 L 580 190"
+                        d="M 340 130 L 340 190 L 420 190 L 420 190 L 500 190"
                         stroke="#ef4444"
                         strokeWidth="4"
                         strokeLinecap="round"
@@ -555,33 +556,37 @@ export default function Home() {
         </section>
 
         {/* Pain Points Section */}
-        <section id="pain-points" className="py-20 px-4 bg-white">
+        <section id="pain-points" className="py-12 sm:py-20 px-4 bg-white">
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-16">
-              大会現場でよくある問題
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center text-gray-900 mb-8 sm:mb-16 leading-tight">
+              大会現場で<br className="sm:hidden" />
+              よくある問題
             </h2>
             
-            <div className="grid md:grid-cols-2 gap-8 mb-16">
+            <div className="grid md:grid-cols-2 gap-6 sm:gap-8 mb-12 sm:mb-16">
               {/* Before */}
-              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <XCircle className="w-8 h-8 text-red-600" />
-                  <h3 className="text-2xl font-bold text-red-900">Before：紙の掲示板だと…</h3>
+              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 sm:p-8">
+                <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                  <XCircle className="w-6 h-6 sm:w-8 sm:h-8 text-red-600 flex-shrink-0" />
+                  <h3 className="text-xl sm:text-2xl font-bold text-red-900 leading-tight">Before：<br className="sm:hidden" />紙の掲示板だと…</h3>
                 </div>
                 <div className="space-y-4 text-gray-700">
                   <div>
-                    <h4 className="font-semibold text-red-800 mb-2">広い会場では、掲示板への往復だけで一苦労</h4>
-                    <p className="text-sm">
-                      更新が遅れ、情報のタイムラグが進行遅延や現場の混乱を招きます。
+                    <h4 className="font-semibold text-red-800 mb-2 text-sm sm:text-base leading-relaxed">広い会場では、<br className="sm:hidden" />掲示板への往復だけで一苦労</h4>
+                    <p className="text-xs sm:text-sm leading-relaxed">
+                      更新が遅れ、情報のタイムラグが<br className="sm:hidden" />
+                      進行遅延や現場の混乱を招きます。
                     </p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-red-800 mb-2">狭い会場では、本部が「密」になる</h4>
-                    <p className="text-sm">
-                      掲示板が本部付近にしかない場合、進捗を知りたい選手や監督が集中し、運営業務の妨げに。
+                    <h4 className="font-semibold text-red-800 mb-2 text-sm sm:text-base leading-relaxed">狭い会場では、<br className="sm:hidden" />本部が「密」になる</h4>
+                    <p className="text-xs sm:text-sm leading-relaxed">
+                      掲示板が本部付近にしかない場合、<br className="sm:hidden" />
+                      進捗を知りたい選手や監督が集中し、<br className="sm:hidden" />
+                      運営業務の妨げに。
                     </p>
                   </div>
-                  <ul className="list-disc list-inside space-y-2 text-sm text-gray-600 mt-4">
+                  <ul className="list-disc list-inside space-y-2 text-xs sm:text-sm text-gray-600 mt-4 leading-relaxed">
                     <li>「今どこまで進んでいるの？」と何度も聞かれる</li>
                     <li>全ての掲示板に結果を貼り直す必要がある</li>
                     <li>SNSでは情報が断片的</li>
@@ -591,25 +596,30 @@ export default function Home() {
               </div>
 
               {/* After */}
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <CheckCircle2 className="w-8 h-8 text-blue-600" />
-                  <h3 className="text-2xl font-bold text-blue-900">After：ScoreFlowなら！</h3>
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 sm:p-8">
+                <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                  <CheckCircle2 className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 flex-shrink-0" />
+                  <h3 className="text-xl sm:text-2xl font-bold text-blue-900 leading-tight">After：<br className="sm:hidden" />ScoreFlowなら！</h3>
                 </div>
                 <div className="space-y-4 text-gray-700">
                   <div>
-                    <h4 className="font-semibold text-blue-800 mb-2">どこにいても「今」がわかる</h4>
-                    <p className="text-sm">
-                      会場に向かう保護者、遠くにいる監督、待機中の選手。スマホ一つで、リアルタイムの進捗が全員の手元に届きます。
+                    <h4 className="font-semibold text-blue-800 mb-2 text-sm sm:text-base leading-relaxed">どこにいても<br className="sm:hidden" />「今」がわかる</h4>
+                    <p className="text-xs sm:text-sm leading-relaxed">
+                      会場に向かう保護者、<br className="sm:hidden" />
+                      遠くにいる監督、待機中の選手。<br className="sm:hidden" />
+                      スマホ一つで、リアルタイムの進捗が<br className="sm:hidden" />
+                      全員の手元に届きます。
                     </p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-blue-800 mb-2">「もう聞かれない」運営へ</h4>
-                    <p className="text-sm">
-                      全員が自分のスマホで確認できるから、本部への問い合わせが激減。運営チームは大会進行に集中できます。
+                    <h4 className="font-semibold text-blue-800 mb-2 text-sm sm:text-base leading-relaxed">「もう聞かれない」<br className="sm:hidden" />運営へ</h4>
+                    <p className="text-xs sm:text-sm leading-relaxed">
+                      全員が自分のスマホで確認できるから、<br className="sm:hidden" />
+                      本部への問い合わせが激減。<br className="sm:hidden" />
+                      運営チームは大会進行に集中できます。
                     </p>
                   </div>
-                  <ul className="list-disc list-inside space-y-2 text-sm text-gray-600 mt-4">
+                  <ul className="list-disc list-inside space-y-2 text-xs sm:text-sm text-gray-600 mt-4 leading-relaxed">
                     <li>進行状況を1画面で可視化</li>
                     <li>入力した瞬間に全員へ反映</li>
                     <li>PDFを作り直す必要なし</li>
@@ -622,36 +632,48 @@ export default function Home() {
         </section>
 
         {/* Solution Section */}
-        <section id="solution" className="py-20 px-4 bg-gradient-to-br from-gray-50 to-blue-50">
+        <section id="solution" className="py-12 sm:py-20 px-4 bg-gradient-to-br from-gray-50 to-blue-50">
           <div className="max-w-6xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-8">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8 leading-tight px-2">
               PDFを作り直す必要なし。<br />
-              専門知識不要。リアルタイム。
+              専門知識不要。<br className="sm:hidden" />
+              リアルタイム。
             </h2>
-            <p className="text-xl text-gray-700 mb-12 max-w-3xl mx-auto">
-              ScoreFlowは、PDFで配布されがちな大会トーナメント表をそのまま活かし、
-              観客・選手・関係者が"今どうなっているのか"を直感的に把握できる体験を提供します。
+            <p className="text-base sm:text-xl text-gray-700 mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed px-2">
+              ScoreFlowは、PDFで配布されがちな<br className="sm:hidden" />
+              大会トーナメント表をそのまま活かし、<br className="sm:hidden" />
+              観客・選手・関係者が<br className="sm:hidden" />
+              "今どうなっているのか"を<br className="sm:hidden" />
+              直感的に把握できる体験を提供します。
             </p>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-lg p-6 shadow-md">
-                <FileText className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                <h3 className="font-bold text-lg mb-2">PDFを作り直さない</h3>
-                <p className="text-gray-600 text-sm">
-                  既存のトーナメント表PDFをそのままアップロード。表示レイヤーとして重ねて表示するだけ。
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+              <div className="bg-white rounded-lg p-5 sm:p-6 shadow-md">
+                <FileText className="w-10 h-10 sm:w-12 sm:h-12 text-blue-600 mx-auto mb-3 sm:mb-4" />
+                <h3 className="font-bold text-base sm:text-lg mb-2">PDFを作り直さない</h3>
+                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
+                  既存のトーナメント表PDFを<br className="sm:hidden" />
+                  そのままアップロード。<br className="sm:hidden" />
+                  表示レイヤーとして重ねて表示するだけ。
                 </p>
               </div>
-              <div className="bg-white rounded-lg p-6 shadow-md">
-                <Zap className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                <h3 className="font-bold text-lg mb-2">リアルタイム反映</h3>
-                <p className="text-gray-600 text-sm">
-                  入力した瞬間に全員へ反映。会場にいなくても、スマホ一つで最新の進行状況を確認できます。
+              <div className="bg-white rounded-lg p-5 sm:p-6 shadow-md">
+                <Zap className="w-10 h-10 sm:w-12 sm:h-12 text-blue-600 mx-auto mb-3 sm:mb-4" />
+                <h3 className="font-bold text-base sm:text-lg mb-2">リアルタイム反映</h3>
+                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
+                  入力した瞬間に全員へ反映。<br className="sm:hidden" />
+                  会場にいなくても、<br className="sm:hidden" />
+                  スマホ一つで最新の進行状況を<br className="sm:hidden" />
+                  確認できます。
                 </p>
               </div>
-              <div className="bg-white rounded-lg p-6 shadow-md">
-                <Users className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                <h3 className="font-bold text-lg mb-2">専門知識不要</h3>
-                <p className="text-gray-600 text-sm">
-                  ITに詳しくなくても使える直感的なUI。クリックで描画、ドラッグで配置するだけ。
+              <div className="bg-white rounded-lg p-5 sm:p-6 shadow-md sm:col-span-2 md:col-span-1">
+                <Users className="w-10 h-10 sm:w-12 sm:h-12 text-blue-600 mx-auto mb-3 sm:mb-4" />
+                <h3 className="font-bold text-base sm:text-lg mb-2">専門知識不要</h3>
+                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
+                  ITに詳しくなくても使える<br className="sm:hidden" />
+                  直感的なUI。<br className="sm:hidden" />
+                  クリックで描画、<br className="sm:hidden" />
+                  ドラッグで配置するだけ。
                 </p>
               </div>
             </div>
@@ -659,40 +681,49 @@ export default function Home() {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-20 px-4 bg-white">
+        <section id="features" className="py-12 sm:py-20 px-4 bg-white">
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-16">
-              使い方は3ステップ
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center text-gray-900 mb-8 sm:mb-16 leading-tight">
+              使い方は<br className="sm:hidden" />
+              3ステップ
             </h2>
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
               <div className="text-center">
-                <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <span className="text-2xl font-bold text-blue-600">1</span>
+                <div className="bg-blue-100 w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                  <span className="text-xl sm:text-2xl font-bold text-blue-600">1</span>
                 </div>
-                <Upload className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                <h3 className="text-xl font-bold mb-3">PDFをアップロード</h3>
-                <p className="text-gray-600">
-                  大会トーナメント表（PDF、1ページのみ）をアップロード。大会名を入力するだけ。
+                <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-blue-600 mx-auto mb-3 sm:mb-4" />
+                <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3">PDFをアップロード</h3>
+                <p className="text-sm sm:text-base text-gray-600 leading-relaxed px-2">
+                  大会トーナメント表<br className="sm:hidden" />
+                  （PDF、1ページのみ）をアップロード。<br className="sm:hidden" />
+                  大会名を入力するだけ。
                 </p>
               </div>
               <div className="text-center">
-                <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <span className="text-2xl font-bold text-blue-600">2</span>
+                <div className="bg-blue-100 w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                  <span className="text-xl sm:text-2xl font-bold text-blue-600">2</span>
                 </div>
-                <Share2 className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                <h3 className="text-xl font-bold mb-3">URLを共有</h3>
-                <p className="text-gray-600">
-                  自動生成される短い公開URLを参加者・観客に共有。ログイン不要で誰でも閲覧可能。
+                <Share2 className="w-10 h-10 sm:w-12 sm:h-12 text-blue-600 mx-auto mb-3 sm:mb-4" />
+                <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3">URLを共有</h3>
+                <p className="text-sm sm:text-base text-gray-600 leading-relaxed px-2">
+                  自動生成される短い公開URLを<br className="sm:hidden" />
+                  参加者・観客に共有。<br className="sm:hidden" />
+                  ログイン不要で誰でも閲覧可能。
                 </p>
               </div>
-              <div className="text-center">
-                <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <span className="text-2xl font-bold text-blue-600">3</span>
+              <div className="text-center sm:col-span-2 md:col-span-1">
+                <div className="bg-blue-100 w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                  <span className="text-xl sm:text-2xl font-bold text-blue-600">3</span>
                 </div>
-                <Zap className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                <h3 className="text-xl font-bold mb-3">リアルタイム反映</h3>
-                <p className="text-gray-600">
-                  試合が進むたびに、勝者ラインを描画し、スコアを入力。入力内容がリアルタイムで全員に反映されます。
+                <Zap className="w-10 h-10 sm:w-12 sm:h-12 text-blue-600 mx-auto mb-3 sm:mb-4" />
+                <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3">リアルタイム反映</h3>
+                <p className="text-sm sm:text-base text-gray-600 leading-relaxed px-2">
+                  試合が進むたびに、<br className="sm:hidden" />
+                  勝者ラインを描画し、<br className="sm:hidden" />
+                  スコアを入力。<br className="sm:hidden" />
+                  入力内容がリアルタイムで<br className="sm:hidden" />
+                  全員に反映されます。
                 </p>
               </div>
             </div>
@@ -700,52 +731,64 @@ export default function Home() {
         </section>
 
         {/* Key Benefits Section */}
-        <section id="benefits" className="py-20 px-4 bg-gray-50">
+        <section id="benefits" className="py-12 sm:py-20 px-4 bg-gray-50">
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center text-gray-900 mb-8 sm:mb-16 leading-tight">
               ScoreFlowの特徴
             </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                <Smartphone className="w-8 h-8 text-blue-600 mb-4" />
-                <h3 className="font-bold text-lg mb-2">スマホ・PC完全対応</h3>
-                <p className="text-gray-600 text-sm">
-                  どこからでもアクセス可能。レスポンシブデザインで、あらゆるデバイスで快適に利用できます。
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="bg-white rounded-lg p-5 sm:p-6 shadow-sm border border-gray-200">
+                <Smartphone className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 mb-3 sm:mb-4" />
+                <h3 className="font-bold text-base sm:text-lg mb-2 leading-tight">スマホ・PC<br className="sm:hidden" />完全対応</h3>
+                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
+                  どこからでもアクセス可能。<br className="sm:hidden" />
+                  レスポンシブデザインで、<br className="sm:hidden" />
+                  あらゆるデバイスで快適に利用できます。
                 </p>
               </div>
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                <Globe className="w-8 h-8 text-blue-600 mb-4" />
-                <h3 className="font-bold text-lg mb-2">ログイン不要の閲覧機能</h3>
-                <p className="text-gray-600 text-sm">
-                  観客・選手は公開URLにアクセスするだけで閲覧可能。アカウント作成の手間がありません。
+              <div className="bg-white rounded-lg p-5 sm:p-6 shadow-sm border border-gray-200">
+                <Globe className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 mb-3 sm:mb-4" />
+                <h3 className="font-bold text-base sm:text-lg mb-2 leading-tight">ログイン不要の<br className="sm:hidden" />閲覧機能</h3>
+                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
+                  観客・選手は公開URLに<br className="sm:hidden" />
+                  アクセスするだけで閲覧可能。<br className="sm:hidden" />
+                  アカウント作成の手間がありません。
                 </p>
               </div>
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                <Clock className="w-8 h-8 text-blue-600 mb-4" />
-                <h3 className="font-bold text-lg mb-2">リアルタイム更新</h3>
-                <p className="text-gray-600 text-sm">
-                  運営者が入力した内容が、即座に全員の画面に反映。情報のタイムラグがありません。
+              <div className="bg-white rounded-lg p-5 sm:p-6 shadow-sm border border-gray-200">
+                <Clock className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 mb-3 sm:mb-4" />
+                <h3 className="font-bold text-base sm:text-lg mb-2 leading-tight">リアルタイム更新</h3>
+                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
+                  運営者が入力した内容が、<br className="sm:hidden" />
+                  即座に全員の画面に反映。<br className="sm:hidden" />
+                  情報のタイムラグがありません。
                 </p>
               </div>
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                <FileText className="w-8 h-8 text-blue-600 mb-4" />
-                <h3 className="font-bold text-lg mb-2">PDFを作り直さない</h3>
-                <p className="text-gray-600 text-sm">
-                  既存のトーナメント表をそのまま活用。PDF編集の専門知識は不要です。
+              <div className="bg-white rounded-lg p-5 sm:p-6 shadow-sm border border-gray-200">
+                <FileText className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 mb-3 sm:mb-4" />
+                <h3 className="font-bold text-base sm:text-lg mb-2 leading-tight">PDFを作り直さない</h3>
+                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
+                  既存のトーナメント表を<br className="sm:hidden" />
+                  そのまま活用。<br className="sm:hidden" />
+                  PDF編集の専門知識は不要です。
                 </p>
               </div>
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                <Users className="w-8 h-8 text-blue-600 mb-4" />
-                <h3 className="font-bold text-lg mb-2">大会運営に特化</h3>
-                <p className="text-gray-600 text-sm">
-                  トーナメント形式の競技に最適化。卓球・バドミントン・テニスなど、あらゆる競技に対応。
+              <div className="bg-white rounded-lg p-5 sm:p-6 shadow-sm border border-gray-200">
+                <Users className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 mb-3 sm:mb-4" />
+                <h3 className="font-bold text-base sm:text-lg mb-2 leading-tight">大会運営に特化</h3>
+                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
+                  トーナメント形式の競技に最適化。<br className="sm:hidden" />
+                  卓球・バドミントン・テニスなど、<br className="sm:hidden" />
+                  あらゆる競技に対応。
                 </p>
               </div>
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                <Download className="w-8 h-8 text-blue-600 mb-4" />
-                <h3 className="font-bold text-lg mb-2">成果物のダウンロード</h3>
-                <p className="text-gray-600 text-sm">
-                  大会終了後、完成したトーナメント表をPDF/画像形式でダウンロード可能（実装予定）。
+              <div className="bg-white rounded-lg p-5 sm:p-6 shadow-sm border border-gray-200">
+                <Download className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 mb-3 sm:mb-4" />
+                <h3 className="font-bold text-base sm:text-lg mb-2 leading-tight">成果物の<br className="sm:hidden" />ダウンロード</h3>
+                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
+                  大会終了後、完成した<br className="sm:hidden" />
+                  トーナメント表をPDF/画像形式で<br className="sm:hidden" />
+                  ダウンロード可能（実装予定）。
                 </p>
               </div>
             </div>
@@ -753,27 +796,32 @@ export default function Home() {
         </section>
 
         {/* Closing CTA Section */}
-        <section id="cta" className="py-20 px-4 bg-gradient-to-br from-blue-600 to-blue-700 text-white">
+        <section id="cta" className="py-12 sm:py-20 px-4 bg-gradient-to-br from-blue-600 to-blue-700 text-white">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 leading-tight">
               今すぐ始めましょう
             </h2>
-            <p className="text-xl mb-8 text-blue-100">
-              「もう聞かれない」「もう迷わない」大会運営を、ScoreFlowで実現してください。
+            <p className="text-base sm:text-xl mb-6 sm:mb-8 text-blue-100 leading-relaxed px-2">
+              「もう聞かれない」<br className="sm:hidden" />
+              「もう迷わない」<br className="sm:hidden" />
+              大会運営を、<br className="sm:hidden" />
+              ScoreFlowで実現してください。
             </p>
-            <p className="text-lg mb-12 text-blue-50">
-              試合のスコアと大会の流れを、止めずに共有する。
+            <p className="text-sm sm:text-lg mb-8 sm:mb-12 text-blue-50 leading-relaxed px-2">
+              試合のスコアと大会の流れを、<br className="sm:hidden" />
+              止めずに共有する。
             </p>
             <button
               onClick={handleSignIn}
-              className="bg-white text-blue-600 hover:bg-gray-100 font-semibold py-4 px-8 rounded-lg shadow-lg transition-all duration-200 text-lg flex items-center gap-2 mx-auto hover:shadow-xl hover:scale-105"
+              className="bg-white text-blue-600 hover:bg-gray-100 font-semibold py-3 sm:py-4 px-6 sm:px-8 rounded-lg shadow-lg transition-all duration-200 text-base sm:text-lg flex items-center gap-2 mx-auto hover:shadow-xl hover:scale-105"
               type="button"
             >
               Googleで無料で始める
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
-            <p className="text-sm text-blue-200 mt-6">
-              ※ Googleアカウントがあれば、すぐに利用開始できます
+            <p className="text-xs sm:text-sm text-blue-200 mt-4 sm:mt-6 px-2">
+              ※ Googleアカウントがあれば、<br className="sm:hidden" />
+              すぐに利用開始できます
             </p>
           </div>
         </section>
