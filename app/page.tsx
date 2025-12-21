@@ -215,7 +215,7 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-white">
         {/* 固定ヘッダー */}
-        <header className="fixed top-0 left-0 right-0 z-50 bg-blue-600 border-b border-blue-700 shadow-sm">
+        <header className="fixed top-0 left-0 right-0 z-[100] bg-blue-600 border-b border-blue-700 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               {/* ロゴ */}
@@ -374,7 +374,7 @@ export default function Home() {
         )}
 
         {/* Hero Section */}
-        <section id="hero" className="relative bg-gradient-to-br from-blue-50 via-white to-gray-50 pt-24 sm:pt-32 pb-16 sm:pb-32 px-4">
+        <section id="hero" className="relative bg-gradient-to-br from-blue-50 via-white to-gray-50 pt-24 sm:pt-32 pb-16 sm:pb-32 px-4" style={{ paddingTop: 'calc(4rem + 1rem)' }}>
           <div className="max-w-6xl mx-auto text-center">
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 mb-4 sm:mb-6">
               ScoreFlow
@@ -404,9 +404,9 @@ export default function Home() {
           </div>
           
           {/* UIモック風のグラフィック - リアルなトーナメント表 + アニメーション */}
-          <div className="max-w-5xl mx-auto mt-8 sm:mt-16 px-2 sm:px-4">
+          <div className="max-w-3xl mx-auto mt-8 sm:mt-16 px-2 sm:px-4">
             <div className="bg-white rounded-lg shadow-2xl p-3 sm:p-6 border border-gray-200">
-              <div className="bg-gray-50 rounded-lg relative overflow-hidden border border-gray-200" style={{ aspectRatio: '16/9', minHeight: '400px' }}>
+              <div className="bg-gray-50 rounded-lg relative overflow-hidden border border-gray-200" style={{ aspectRatio: '16/9', height: '250px' }}>
                 <svg 
                   className="w-full h-full" 
                   viewBox="0 0 800 450"
