@@ -291,7 +291,7 @@ export default function Home() {
             </h1>
             <p className="text-lg sm:text-xl md:text-2xl text-gray-700 mb-3 sm:mb-4 font-medium leading-relaxed">
               今、どこまで進んでる？<br className="sm:hidden" />
-              が一瞬で分かる。
+              が"スマホで"分かる。
             </p>
             <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8 leading-relaxed">
               トーナメント表に、<br className="sm:hidden" />
@@ -299,8 +299,8 @@ export default function Home() {
             </p>
             <p className="text-sm sm:text-base text-gray-500 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed px-2">
               大会運営のストレスをゼロに。<br className="sm:hidden" />
-              結果記入の往復の必要なし、専門知識不要。<br className="hidden sm:inline" />
-              入力した瞬間に全員へ反映される、<br className="sm:hidden" />
+              結果記入の往復の必要なし、専門知識不要。<br className="sm:hidden" />
+              入力した瞬間に全員へ反映される、<br className="hidden sm:inline" />
               大会進行状況可視化SaaSです。
             </p>
             <button
@@ -314,24 +314,27 @@ export default function Home() {
           </div>
           
           {/* UIモック風のグラフィック - リアルなトーナメント表 + アニメーション */}
-          <div className="max-w-5xl mx-auto mt-8 sm:mt-16 px-2 sm:px-4">
-            <div className="bg-white rounded-lg shadow-2xl p-3 sm:p-6 border border-gray-200">
-              <div className="bg-gray-50 rounded-lg aspect-video relative overflow-hidden border border-gray-200">
+          <div className="max-w-sm sm:max-w-md mx-auto mt-8 sm:mt-16 px-2 sm:px-4">
+            <div className="bg-gray-900 rounded-[2.5rem] shadow-2xl p-2 sm:p-3 border-4 border-gray-800">
+              {/* iPhone風のノッチ */}
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-6 bg-gray-900 rounded-b-2xl z-10"></div>
+              {/* スマホ画面 */}
+              <div className="bg-white rounded-[2rem] aspect-[9/16] relative overflow-hidden">
                 <svg 
                   className="w-full h-full" 
-                  viewBox="0 0 800 450"
+                  viewBox="0 0 400 711"
                   preserveAspectRatio="xMidYMid meet"
                 >
                   {/* 背景（PDF風） */}
-                  <rect width="800" height="450" fill="#ffffff" />
+                  <rect width="400" height="711" fill="#ffffff" />
                   
                   {/* タイトル */}
                   {animationStep >= 1 && (
                     <text
-                      x="400"
-                      y="30"
+                      x="200"
+                      y="40"
                       fill="#1f2937"
-                      fontSize="24"
+                      fontSize="18"
                       fontWeight="bold"
                       textAnchor="middle"
                       className="transition-opacity duration-500"
@@ -341,9 +344,9 @@ export default function Home() {
                     </text>
                   )}
                   
-                  {/* トーナメント表のツリー構造 */}
+                  {/* トーナメント表のツリー構造（縦長画面に合わせて縮小・中央配置） */}
                   {animationStep >= 1 && (
-                    <g className="transition-opacity duration-500" style={{ opacity: animationStep >= 1 ? 1 : 0 }}>
+                    <g className="transition-opacity duration-500" style={{ opacity: animationStep >= 1 ? 1 : 0 }} transform="translate(50, 100) scale(0.4)">
                       {/* 参加者（左側）- テキスト形式（均等間隔） */}
                       <g>
                         <text x="50" y="100" fill="#374151" fontSize="14" dominantBaseline="middle">1 選手A</text>
@@ -371,7 +374,7 @@ export default function Home() {
                   
                   {/* アニメーション付きの勝者ライン（赤 - 直角線） */}
                   {animationStep >= 2 && (
-                    <g>
+                    <g transform="translate(50, 100) scale(0.4)">
                       {/* ステップ2: 1選手Aのライン - 横線→縦線→横線まで（準決勝の合流点まで） */}
                       <path
                         d="M 180 100 L 260 100 L 260 130 L 340 130"
@@ -392,7 +395,7 @@ export default function Home() {
                   )}
                   
                   {animationStep >= 5 && (
-                    <g>
+                    <g transform="translate(50, 100) scale(0.4)">
                       {/* ステップ5: 3選手Cのライン - 横線→縦線→横線まで（準決勝の合流点まで） */}
                       <path
                         d="M 180 220 L 260 220 L 260 250 L 340 250"
@@ -413,7 +416,7 @@ export default function Home() {
                   )}
                   
                   {animationStep >= 8 && (
-                    <g>
+                    <g transform="translate(50, 100) scale(0.4)">
                       {/* ステップ8: 決勝のライン - 1選手Aから決勝まで（横線の長さを統一） */}
                       <path
                         d="M 340 130 L 340 190 L 420 190 L 420 190 L 500 190"
@@ -435,7 +438,7 @@ export default function Home() {
                   
                   {/* アニメーション付きのスコア表示 */}
                   {animationStep >= 3 && (
-                    <g>
+                    <g transform="translate(50, 100) scale(0.4)">
                       {/* ステップ3: 1選手Aのスコア（勝者）- 直角部分の真上に「④」 */}
                       <text
                         x="260"
@@ -454,7 +457,7 @@ export default function Home() {
                   )}
                   
                   {animationStep >= 4 && (
-                    <g>
+                    <g transform="translate(50, 100) scale(0.4)">
                       {/* ステップ4: 2選手Bのスコア（敗者）- 直角部分の真下に「2」 */}
                       <text
                         x="260"
@@ -473,7 +476,7 @@ export default function Home() {
                   )}
                   
                   {animationStep >= 6 && (
-                    <g>
+                    <g transform="translate(50, 100) scale(0.4)">
                       {/* ステップ6: 3選手Cのスコア（勝者）- 直角部分の真上に「④」 */}
                       <text
                         x="260"
@@ -492,7 +495,7 @@ export default function Home() {
                   )}
                   
                   {animationStep >= 7 && (
-                    <g>
+                    <g transform="translate(50, 100) scale(0.4)">
                       {/* ステップ7: 4選手Dのスコア（敗者）- 直角部分の真下に「1」 */}
                       <text
                         x="260"
@@ -511,7 +514,7 @@ export default function Home() {
                   )}
                   
                   {animationStep >= 9 && (
-                    <g>
+                    <g transform="translate(50, 100) scale(0.4)">
                       {/* ステップ9: 1選手Aのスコア（勝者）- 決勝の直角部分の真上に「④」 */}
                       <text
                         x="340"
@@ -530,7 +533,7 @@ export default function Home() {
                   )}
                   
                   {animationStep >= 10 && (
-                    <g>
+                    <g transform="translate(50, 100) scale(0.4)">
                       {/* ステップ10: 3選手Cのスコア（敗者）- 決勝の直角部分の真下に「3」 */}
                       <text
                         x="340"
