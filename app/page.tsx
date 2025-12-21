@@ -60,17 +60,20 @@ export default function Home() {
       // ステップ1: トーナメント表を表示（0.3秒後）
       const timer1 = setTimeout(() => setAnimationStep(1), 300);
       
-      // ステップ2: 最初のラインを描画（1.2秒後）
+      // ステップ2: 選手Aのラインを描画（1.2秒後）
       const timer2 = setTimeout(() => setAnimationStep(2), 1200);
       
-      // ステップ3: 2本目のラインを描画（2.1秒後）
+      // ステップ3: 選手Bのラインを描画（2.1秒後）
       const timer3 = setTimeout(() => setAnimationStep(3), 2100);
       
-      // ステップ4: 3本目のラインを描画（3.0秒後）
+      // ステップ4: 選手Cのラインを描画（3.0秒後）
       const timer4 = setTimeout(() => setAnimationStep(4), 3000);
       
-      // ステップ5: スコアを表示（3.9秒後）
+      // ステップ5: 選手Dのラインを描画（3.9秒後）
       const timer5 = setTimeout(() => setAnimationStep(5), 3900);
+      
+      // ステップ6: スコアを表示（4.8秒後）
+      const timer6 = setTimeout(() => setAnimationStep(6), 4800);
       
       return () => {
         clearTimeout(timer1);
@@ -78,16 +81,17 @@ export default function Home() {
         clearTimeout(timer3);
         clearTimeout(timer4);
         clearTimeout(timer5);
+        clearTimeout(timer6);
       };
     };
     
     // 初回実行
     const cleanup1 = startAnimation();
     
-    // 5.5秒ごとにループ
+    // 6.5秒ごとにループ
     intervalId = setInterval(() => {
       startAnimation();
-    }, 5500);
+    }, 6500);
 
     return () => {
       cleanup1();
@@ -211,35 +215,12 @@ export default function Home() {
                   {/* トーナメント表のツリー構造 */}
                   {animationStep >= 1 && (
                     <g className="transition-opacity duration-500" style={{ opacity: animationStep >= 1 ? 1 : 0 }}>
-                      {/* 1回戦（左側） */}
+                      {/* 参加者（左側）- テキスト形式 */}
                       <g>
-                        {/* 参加者ボックス */}
-                        <rect x="50" y="80" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1" rx="4" />
-                        <text x="110" y="100" fill="#374151" fontSize="14" textAnchor="middle" dominantBaseline="middle">選手A</text>
-                        
-                        <rect x="50" y="130" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1" rx="4" />
-                        <text x="110" y="150" fill="#374151" fontSize="14" textAnchor="middle" dominantBaseline="middle">選手B</text>
-                        
-                        <rect x="50" y="200" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1" rx="4" />
-                        <text x="110" y="220" fill="#374151" fontSize="14" textAnchor="middle" dominantBaseline="middle">選手C</text>
-                        
-                        <rect x="50" y="250" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1" rx="4" />
-                        <text x="110" y="270" fill="#374151" fontSize="14" textAnchor="middle" dominantBaseline="middle">選手D</text>
-                      </g>
-                      
-                      {/* 準決勝（中央左） */}
-                      <g>
-                        <rect x="250" y="105" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1" rx="4" />
-                        <text x="310" y="125" fill="#374151" fontSize="14" textAnchor="middle" dominantBaseline="middle">勝者1</text>
-                        
-                        <rect x="250" y="225" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1" rx="4" />
-                        <text x="310" y="245" fill="#374151" fontSize="14" textAnchor="middle" dominantBaseline="middle">勝者2</text>
-                      </g>
-                      
-                      {/* 決勝（中央右） */}
-                      <g>
-                        <rect x="450" y="165" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1" rx="4" />
-                        <text x="510" y="185" fill="#374151" fontSize="14" textAnchor="middle" dominantBaseline="middle">決勝進出者</text>
+                        <text x="50" y="100" fill="#374151" fontSize="14" dominantBaseline="middle">1 選手A</text>
+                        <text x="50" y="150" fill="#374151" fontSize="14" dominantBaseline="middle">2 選手B</text>
+                        <text x="50" y="220" fill="#374151" fontSize="14" dominantBaseline="middle">3 選手C</text>
+                        <text x="50" y="270" fill="#374151" fontSize="14" dominantBaseline="middle">4 選手D</text>
                       </g>
                       
                       {/* 優勝者（右端） */}
@@ -248,29 +229,33 @@ export default function Home() {
                         <text x="710" y="185" fill="#92400e" fontSize="14" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">優勝者</text>
                       </g>
                       
-                      {/* 接続線（基本構造） */}
-                      <line x1="170" y1="95" x2="250" y2="120" stroke="#9ca3af" strokeWidth="1" />
-                      <line x1="170" y1="145" x2="250" y2="120" stroke="#9ca3af" strokeWidth="1" />
-                      <line x1="170" y1="215" x2="250" y2="240" stroke="#9ca3af" strokeWidth="1" />
-                      <line x1="170" y1="265" x2="250" y2="240" stroke="#9ca3af" strokeWidth="1" />
-                      <line x1="370" y1="120" x2="450" y2="180" stroke="#9ca3af" strokeWidth="1" />
-                      <line x1="370" y1="240" x2="450" y2="180" stroke="#9ca3af" strokeWidth="1" />
-                      <line x1="570" y1="180" x2="650" y2="180" stroke="#9ca3af" strokeWidth="1" />
+                      {/* 接続線（基本構造 - 直角線） */}
+                      {/* 選手Aの接続線 */}
+                      <path d="M 180 95 L 200 95 L 200 120 L 300 120 L 300 180 L 450 180 L 450 180 L 650 180" 
+                            stroke="#9ca3af" strokeWidth="1" fill="none" />
+                      {/* 選手Bの接続線 */}
+                      <path d="M 180 145 L 200 145 L 200 120 L 300 120 L 300 180 L 450 180 L 450 180 L 650 180" 
+                            stroke="#9ca3af" strokeWidth="1" fill="none" />
+                      {/* 選手Cの接続線 */}
+                      <path d="M 180 215 L 200 215 L 200 240 L 300 240 L 300 180 L 450 180 L 450 180 L 650 180" 
+                            stroke="#9ca3af" strokeWidth="1" fill="none" />
+                      {/* 選手Dの接続線 */}
+                      <path d="M 180 265 L 200 265 L 200 240 L 300 240 L 300 180 L 450 180 L 450 180 L 650 180" 
+                            stroke="#9ca3af" strokeWidth="1" fill="none" />
                     </g>
                   )}
                   
-                  {/* アニメーション付きの勝者ライン（赤） */}
+                  {/* アニメーション付きの勝者ライン（赤 - 直角線） */}
                   {animationStep >= 2 && (
                     <g>
-                      {/* 1本目のライン（選手A → 勝者1） */}
-                      <line
-                        x1="170"
-                        y1="95"
-                        x2="250"
-                        y2="120"
+                      {/* 1本目のライン（選手A → 優勝者への直角線） */}
+                      <path
+                        d="M 180 95 L 200 95 L 200 120 L 300 120 L 300 180 L 450 180 L 450 180 L 650 180"
                         stroke="#ef4444"
                         strokeWidth="4"
                         strokeLinecap="round"
+                        strokeLinejoin="round"
+                        fill="none"
                         pathLength="100"
                         strokeDasharray="100"
                         className="transition-all duration-700 ease-out"
@@ -284,15 +269,14 @@ export default function Home() {
                   
                   {animationStep >= 3 && (
                     <g>
-                      {/* 2本目のライン（勝者1 → 決勝進出者） */}
-                      <line
-                        x1="370"
-                        y1="120"
-                        x2="450"
-                        y2="180"
+                      {/* 2本目のライン（選手B → 優勝者への直角線） */}
+                      <path
+                        d="M 180 145 L 200 145 L 200 120 L 300 120 L 300 180 L 450 180 L 450 180 L 650 180"
                         stroke="#ef4444"
                         strokeWidth="4"
                         strokeLinecap="round"
+                        strokeLinejoin="round"
+                        fill="none"
                         pathLength="100"
                         strokeDasharray="100"
                         className="transition-all duration-700 ease-out"
@@ -306,15 +290,14 @@ export default function Home() {
                   
                   {animationStep >= 4 && (
                     <g>
-                      {/* 3本目のライン（決勝進出者 → 優勝者） */}
-                      <line
-                        x1="570"
-                        y1="180"
-                        x2="650"
-                        y2="180"
+                      {/* 3本目のライン（選手C → 優勝者への直角線） */}
+                      <path
+                        d="M 180 215 L 200 215 L 200 240 L 300 240 L 300 180 L 450 180 L 450 180 L 650 180"
                         stroke="#ef4444"
                         strokeWidth="4"
                         strokeLinecap="round"
+                        strokeLinejoin="round"
+                        fill="none"
                         pathLength="100"
                         strokeDasharray="100"
                         className="transition-all duration-700 ease-out"
@@ -326,17 +309,38 @@ export default function Home() {
                     </g>
                   )}
                   
-                  {/* アニメーション付きのスコア表示 */}
                   {animationStep >= 5 && (
+                    <g>
+                      {/* 4本目のライン（選手D → 優勝者への直角線） */}
+                      <path
+                        d="M 180 265 L 200 265 L 200 240 L 300 240 L 300 180 L 450 180 L 450 180 L 650 180"
+                        stroke="#ef4444"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        fill="none"
+                        pathLength="100"
+                        strokeDasharray="100"
+                        className="transition-all duration-700 ease-out"
+                        style={{
+                          strokeDashoffset: animationStep >= 5 ? "0" : "100",
+                          opacity: animationStep >= 5 ? 1 : 0,
+                        }}
+                      />
+                    </g>
+                  )}
+                  
+                  {/* アニメーション付きのスコア表示 */}
+                  {animationStep >= 6 && (
                     <g
                       className="transition-opacity duration-500"
-                      style={{ opacity: animationStep >= 5 ? 1 : 0 }}
+                      style={{ opacity: animationStep >= 6 ? 1 : 0 }}
                     >
-                      {/* スコア1（1回戦） */}
-                      <rect x="200" y="85" width="50" height="20" fill="#ffffff" stroke="#ef4444" strokeWidth="2" rx="4" />
+                      {/* スコア1（1回戦：選手A vs 選手B） */}
+                      <rect x="195" y="110" width="50" height="20" fill="#ffffff" stroke="#ef4444" strokeWidth="2" rx="4" />
                       <text
-                        x="225"
-                        y="98"
+                        x="220"
+                        y="123"
                         fill="#ef4444"
                         fontSize="12"
                         fontWeight="bold"
@@ -347,10 +351,10 @@ export default function Home() {
                       </text>
                       
                       {/* スコア2（準決勝） */}
-                      <rect x="350" y="105" width="50" height="20" fill="#ffffff" stroke="#ef4444" strokeWidth="2" rx="4" />
+                      <rect x="295" y="170" width="50" height="20" fill="#ffffff" stroke="#ef4444" strokeWidth="2" rx="4" />
                       <text
-                        x="375"
-                        y="118"
+                        x="320"
+                        y="183"
                         fill="#ef4444"
                         fontSize="12"
                         fontWeight="bold"
@@ -361,10 +365,10 @@ export default function Home() {
                       </text>
                       
                       {/* スコア3（決勝） */}
-                      <rect x="550" y="155" width="50" height="20" fill="#ffffff" stroke="#ef4444" strokeWidth="2" rx="4" />
+                      <rect x="445" y="170" width="50" height="20" fill="#ffffff" stroke="#ef4444" strokeWidth="2" rx="4" />
                       <text
-                        x="575"
-                        y="168"
+                        x="470"
+                        y="183"
                         fill="#ef4444"
                         fontSize="12"
                         fontWeight="bold"
