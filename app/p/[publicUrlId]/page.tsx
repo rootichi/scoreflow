@@ -29,8 +29,9 @@ export default function PublicTournamentPage() {
         setTournament(data);
         setLoading(false);
       } catch (err) {
-        console.error("Error loading tournament:", err);
-        setError("大会の読み込みに失敗しました");
+        const { handleError } = require("@/lib/utils/errorHandler");
+        const errorMessage = handleError(err, { operation: "loadPublicTournament", details: { publicUrlId } });
+        setError(errorMessage || "大会の読み込みに失敗しました");
         setLoading(false);
       }
     };

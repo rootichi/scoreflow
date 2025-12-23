@@ -83,34 +83,12 @@ export default function CreateTournamentClient() {
       // 編集ページに遷移
       router.push(`/tournament/${tournamentId}`);
     } catch (err) {
-      console.error("Error creating tournament:", err);
-      console.error("Error details:", {
-        name: err instanceof Error ? err.name : "Unknown",
-        message: err instanceof Error ? err.message : String(err),
-        stack: err instanceof Error ? err.stack : undefined,
+      const { handleError } = require("@/lib/utils/errorHandler");
+      const errorMessage = handleError(err, {
+        operation: "createTournament",
+        details: { name, pdfFileName: pdfFile?.name },
       });
-      
-      let errorMessage = "大会の作成に失敗しました";
-      
-      if (err instanceof Error) {
-        errorMessage = err.message || errorMessage;
-        // Firebaseエラーの場合、より詳細なメッセージを表示
-        if (errorMessage.includes("同じ名称の大会が既に存在します")) {
-          errorMessage = "同じ名称の大会が既に存在します。別の名称を入力してください。";
-        } else if (errorMessage.includes("permission") || errorMessage.includes("PERMISSION_DENIED")) {
-          errorMessage = "権限がありません。Firestoreのセキュリティルールを確認してください。";
-        } else if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorMessage.includes("unavailable")) {
-          errorMessage = "ネットワークエラーが発生しました。接続を確認してください。";
-        } else if (errorMessage.includes("Canvas")) {
-          errorMessage = "PDFの変換に失敗しました。PDFファイルが正しいか確認してください。";
-        } else if (errorMessage.includes("タイムアウト")) {
-          errorMessage = "保存に時間がかかりすぎています。PDFファイルのサイズを小さくするか、しばらくしてから再度お試しください。";
-        } else if (errorMessage.includes("quota") || errorMessage.includes("resource-exhausted")) {
-          errorMessage = "Firestoreのクォータに達しています。";
-        }
-      }
-      
-      setError(errorMessage);
+      setError(errorMessage || "大会の作成に失敗しました");
       setUploading(false);
     }
   };

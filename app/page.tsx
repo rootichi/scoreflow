@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase/auth";
 import { signInWithGoogle, signOut } from "@/lib/firebase/auth";
@@ -23,9 +22,10 @@ import {
   Users,
   Clock,
   Globe,
-  Menu,
-  X,
 } from "lucide-react";
+import { LandingHeader } from "@/components/home/LandingHeader";
+import { TournamentListHeader } from "@/components/home/TournamentListHeader";
+import { TournamentList } from "@/components/home/TournamentList";
 
 export default function Home() {
   const router = useRouter();
@@ -180,9 +180,10 @@ export default function Home() {
   const handleSignIn = useCallback(async () => {
     try {
       await signInWithGoogle();
+      showSuccess("ログインしました");
     } catch (error) {
-      console.error("Sign in error:", error);
-      showError("ログインに失敗しました");
+      const { handleErrorWithNotification } = require("@/lib/utils/errorHandler");
+      handleErrorWithNotification(error, { operation: "signIn" }, "ログインに失敗しました");
     }
   }, []);
 
@@ -190,8 +191,10 @@ export default function Home() {
     try {
       await signOut();
       setTournaments([]);
+      showSuccess("ログアウトしました");
     } catch (error) {
-      console.error("Sign out error:", error);
+      const { handleErrorWithNotification } = require("@/lib/utils/errorHandler");
+      handleErrorWithNotification(error, { operation: "signOut" }, "ログアウトに失敗しました");
     }
   }, []);
 
@@ -218,11 +221,11 @@ export default function Home() {
     try {
       const url = getPublicUrl(publicUrlId);
       await copyToClipboard(url);
-      showSuccess("公開URLをコピーしました");
-    } catch (error) {
-      console.error("Failed to copy URL:", error);
-      showError("URLのコピーに失敗しました");
-    }
+                      showSuccess("公開URLをコピーしました");
+                    } catch (error) {
+                      const { handleErrorWithNotification } = require("@/lib/utils/errorHandler");
+                      handleErrorWithNotification(error, { operation: "copyUrl" }, "URLのコピーに失敗しました");
+                    }
   }, []);
 
   if (loading) {
@@ -236,165 +239,11 @@ export default function Home() {
   if (!user) {
     return (
       <div className="min-h-screen bg-white">
-        {/* 固定ヘッダー */}
-        <header className="fixed top-0 left-0 right-0 z-[100] bg-blue-600 border-b border-blue-700 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              {/* ロゴ */}
-              <a
-                href="https://scoreflow-eight.vercel.app/"
-                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-              >
-                <div className="relative h-8 w-8">
-                  <Image 
-                    src="/logo.png" 
-                    alt="ScoreFlow" 
-                    fill
-                    className="object-contain"
-                    unoptimized
-                    onError={(e) => {
-                      // 画像が読み込めない場合は非表示にする
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                </div>
-                <span className="text-xl font-bold text-white">ScoreFlow</span>
-              </a>
-
-              {/* ナビゲーションとCTAボタン（デスクトップ） / モバイルメニューボタン */}
-              <div className="flex items-center gap-2 sm:gap-4">
-                {/* ナビゲーション（デスクトップ） */}
-                <nav className="hidden md:flex items-center gap-8">
-                  <a
-                    href="#pain-points"
-                    className="text-sm text-white/90 hover:text-white transition-colors"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      document.getElementById("pain-points")?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                  >
-                    課題解決
-                  </a>
-                  <a
-                    href="#features"
-                    className="text-sm text-white/90 hover:text-white transition-colors"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                  >
-                    使い方
-                  </a>
-                  <a
-                    href="#benefits"
-                    className="text-sm text-white/90 hover:text-white transition-colors"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      document.getElementById("benefits")?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                  >
-                    特徴
-                  </a>
-                </nav>
-                {/* デスクトップCTAボタン */}
-                <button
-                  onClick={handleSignIn}
-                  className="hidden md:flex bg-white text-blue-600 hover:bg-gray-100 font-semibold py-2 px-6 rounded-lg shadow-md transition-all duration-200 text-sm items-center gap-2 hover:shadow-lg hover:scale-105 whitespace-nowrap"
-                  type="button"
-                >
-                  Googleで無料で始める
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-                {/* モバイルメニューボタン */}
-                <button
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="md:hidden text-white p-2"
-                  type="button"
-                  aria-label={isMenuOpen ? "メニューを閉じる" : "メニューを開く"}
-                >
-                  {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                </button>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* モバイルサイドバー */}
-        {isMenuOpen && (
-          <>
-            {/* オーバーレイ */}
-            <div
-              className="fixed inset-0 bg-black/50 z-50 md:hidden"
-              onClick={() => setIsMenuOpen(false)}
-            />
-            {/* サイドバー */}
-            <div className="fixed top-0 right-0 h-full w-64 bg-white shadow-2xl z-50 md:hidden transform transition-transform duration-300 overflow-y-auto">
-              <div className="flex flex-col min-h-full">
-                {/* ヘッダー */}
-                <div className="flex items-center justify-end p-4 border-b border-gray-200 flex-shrink-0">
-                  <button
-                    onClick={() => setIsMenuOpen(false)}
-                    className="p-2 text-gray-600 hover:text-gray-900"
-                    type="button"
-                    aria-label="メニューを閉じる"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-                {/* メニュー項目 */}
-                <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
-                  <a
-                    href="#pain-points"
-                    className="block text-gray-700 hover:text-blue-600 transition-colors py-2"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setIsMenuOpen(false);
-                      document.getElementById("pain-points")?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                  >
-                    課題解決
-                  </a>
-                  <a
-                    href="#features"
-                    className="block text-gray-700 hover:text-blue-600 transition-colors py-2"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setIsMenuOpen(false);
-                      document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                  >
-                    使い方
-                  </a>
-                  <a
-                    href="#benefits"
-                    className="block text-gray-700 hover:text-blue-600 transition-colors py-2"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setIsMenuOpen(false);
-                      document.getElementById("benefits")?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                  >
-                    特徴
-                  </a>
-                </nav>
-                {/* CTAボタン */}
-                <div className="p-4 border-t border-gray-200">
-                  <button
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      handleSignIn();
-                    }}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-all duration-200 text-sm flex items-center justify-center gap-2 hover:shadow-lg"
-                    type="button"
-                  >
-                    Googleで無料で始める
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
+        <LandingHeader
+          isMenuOpen={isMenuOpen}
+          setIsMenuOpen={setIsMenuOpen}
+          onSignIn={handleSignIn}
+        />
 
         {/* Hero Section */}
         <section id="hero" className="relative bg-gradient-to-br from-blue-50 via-white to-gray-50 pt-24 sm:pt-32 pb-16 sm:pb-32 px-4" style={{ paddingTop: 'calc(4rem + 1rem)' }}>
@@ -965,147 +814,17 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* 統合ヘッダー */}
-      <div className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200">
-        {/* ナビゲーションバー */}
-        <nav className="border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="flex items-center h-14">
-              {/* ロゴ */}
-              <a
-                href="https://scoreflow-eight.vercel.app/"
-                className="mr-8 flex items-center gap-2 hover:opacity-80 transition-opacity"
-              >
-                <div className="relative h-6 w-6">
-                  <Image 
-                    src="/logo.png" 
-                    alt="ScoreFlow" 
-                    fill
-                    className="object-contain"
-                    unoptimized
-                    onError={(e) => {
-                      // 画像が読み込めない場合は非表示にする
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                </div>
-                <span className="text-base text-gray-700 font-medium">ScoreFlow</span>
-              </a>
-
-              {/* 検索バー（PC版のみ） */}
-              <div className="hidden md:flex flex-1 max-w-2xl">
-                <div className="relative w-full">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
-                    <input
-                      type="text"
-                      placeholder="検索"
-                      value={searchInput}
-                      onChange={(e) => setSearchInput(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                </div>
-              </div>
-
-              {/* 右側メニュー */}
-              <div className="flex items-center gap-2 ml-6">
-                <button
-                  onClick={handleSignOut}
-                  className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition"
-                  type="button"
-                >
-                  ログアウト
-                </button>
-              </div>
-            </div>
-          </div>
-        </nav>
-
-        {/* テーブルヘッダー（大会一覧がある場合のみ表示） */}
-        {sortedTournaments.length > 0 && (
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="bg-gray-50 border-b border-gray-200">
-              <div className="flex items-center gap-4 px-4 py-2">
-                <div className="text-xs font-medium text-gray-700">名称</div>
-                {/* 検索バー（スマホ版のみ） */}
-                <div className="md:hidden flex-1">
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                      <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="検索"
-                      value={searchInput}
-                      onChange={(e) => setSearchInput(e.target.value)}
-                      className="block w-full pl-8 pr-2 py-1.5 border border-gray-300 rounded-md bg-white text-xs text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        {/* 検索結果が0件の場合も検索欄を表示（スマホ版のみ） */}
-        {sortedTournaments.length === 0 && searchQuery.trim() && (
-          <div className="max-w-7xl mx-auto px-6 md:hidden">
-            <div className="bg-gray-50 border-b border-gray-200">
-              <div className="flex items-center gap-4 px-4 py-2">
-                <div className="text-xs font-medium text-gray-700">名称</div>
-                {/* 検索バー（スマホ版のみ） */}
-                <div className="flex-1">
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                      <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="検索"
-                      value={searchInput}
-                      onChange={(e) => setSearchInput(e.target.value)}
-                      className="block w-full pl-8 pr-2 py-1.5 border border-gray-300 rounded-md bg-white text-xs text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      <TournamentListHeader
+        searchInput={searchInput}
+        setSearchInput={setSearchInput}
+        onSignOut={handleSignOut}
+        hasTournaments={sortedTournaments.length > 0}
+        hasSearchQuery={!!searchQuery.trim()}
+      />
 
       {/* メインコンテンツ */}
       <main className="max-w-7xl mx-auto px-6 py-8 md:pt-8 pt-4" style={{ paddingTop: (sortedTournaments.length > 0 || (sortedTournaments.length === 0 && searchQuery.trim())) ? 'calc(3.5rem + 2.5rem + 0.5rem)' : 'calc(3.5rem + 0.5rem)' }}>
-        {/* 大会一覧 */}
-        {sortedTournaments.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">
-              {searchQuery.trim() ? "検索結果が見つかりませんでした" : "大会がありません"}
-            </p>
-          </div>
-        ) : (
-          <div className="border border-gray-200 rounded-lg overflow-hidden">
-            <table className="w-full">
-              <tbody className="bg-white divide-y divide-gray-200">
-                {sortedTournaments.map((tournament) => (
-                  <tr
-                    key={tournament.id}
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => router.push(`/tournament/${tournament.id}`)}
-                  >
-                    <td className="px-4 py-3 text-sm text-gray-900 break-words">{tournament.name}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <TournamentList tournaments={sortedTournaments} searchQuery={searchQuery} />
       </main>
 
       {/* 右下固定の新規作成ボタン */}

@@ -89,8 +89,8 @@ export default function TournamentEditPage() {
       }
       setTournament(data);
       } catch (error) {
-        console.error("Error loading tournament:", error);
-        showError("大会の読み込みに失敗しました");
+        const { handleErrorWithNotification } = require("@/lib/utils/errorHandler");
+        handleErrorWithNotification(error, { operation: "loadTournament", details: { tournamentId } }, "大会の読み込みに失敗しました");
         router.push("/");
       }
     };
@@ -1547,8 +1547,8 @@ export default function TournamentEditPage() {
               showSuccess("大会を削除しました");
               router.push("/");
             } catch (error) {
-              console.error("Failed to delete tournament:", error);
-              showError("大会の削除に失敗しました");
+              const { handleErrorWithNotification } = require("@/lib/utils/errorHandler");
+              handleErrorWithNotification(error, { operation: "deleteTournament", details: { tournamentId } }, "大会の削除に失敗しました");
             }
           }
         }}
