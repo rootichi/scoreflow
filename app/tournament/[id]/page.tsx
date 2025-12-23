@@ -1392,14 +1392,43 @@ export default function TournamentEditPage() {
                     {selectedMarkId === mark.id && mode === null && !draggingHandle && (
                       <>
                         {/* 開始点のハンドル */}
+                        {/* タッチターゲット用の大きな透明な円（スマホ版用） */}
                         <circle
                           cx={displayMark.x1 * 100}
                           cy={displayMark.y1 * 100}
-                          r={HANDLE_RADIUS}
+                          r="1.5"
                           fill="transparent"
+                          stroke="transparent"
+                          className="md:hidden"
+                          onTouchStart={(e) => {
+                            e.stopPropagation();
+                            const touch = e.touches[0];
+                            setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+                            setIsTouchDragging(false);
+                            const coords = getRelativeCoordinates(e as any);
+                            setLocalMarks(marks); // ローカル状態を初期化
+                            setDraggingHandle({
+                              markId: mark.id,
+                              handle: "start",
+                              startX: coords.x,
+                              startY: coords.y,
+                              originalMark: displayMark as LineMark & { id: string },
+                            });
+                            setDraggingMark(null);
+                            e.preventDefault(); // スクロールを防止
+                          }}
+                        />
+                        {/* 見た目のハンドル */}
+                        <circle
+                          cx={displayMark.x1 * 100}
+                          cy={displayMark.y1 * 100}
+                          r="0.8"
+                          fill={SELECTED_COLOR}
+                          fillOpacity="0.2"
                           stroke={SELECTED_COLOR}
-                          strokeWidth={HANDLE_STROKE_WIDTH}
+                          strokeWidth="0.4"
                           style={{ cursor: "pointer" }}
+                          className="md:r-[0.4] md:stroke-[0.2]"
                           onMouseDown={(e) => {
                             e.stopPropagation();
                             const coords = getRelativeCoordinates(e as any);
@@ -1432,14 +1461,43 @@ export default function TournamentEditPage() {
                           }}
                         />
                         {/* 終了点のハンドル */}
+                        {/* タッチターゲット用の大きな透明な円（スマホ版用） */}
                         <circle
                           cx={displayMark.x2 * 100}
                           cy={displayMark.y2 * 100}
-                          r={HANDLE_RADIUS}
+                          r="1.5"
                           fill="transparent"
+                          stroke="transparent"
+                          className="md:hidden"
+                          onTouchStart={(e) => {
+                            e.stopPropagation();
+                            const touch = e.touches[0];
+                            setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+                            setIsTouchDragging(false);
+                            const coords = getRelativeCoordinates(e as any);
+                            setLocalMarks(marks); // ローカル状態を初期化
+                            setDraggingHandle({
+                              markId: mark.id,
+                              handle: "end",
+                              startX: coords.x,
+                              startY: coords.y,
+                              originalMark: displayMark as LineMark & { id: string },
+                            });
+                            setDraggingMark(null);
+                            e.preventDefault(); // スクロールを防止
+                          }}
+                        />
+                        {/* 見た目のハンドル */}
+                        <circle
+                          cx={displayMark.x2 * 100}
+                          cy={displayMark.y2 * 100}
+                          r="0.8"
+                          fill={SELECTED_COLOR}
+                          fillOpacity="0.2"
                           stroke={SELECTED_COLOR}
-                          strokeWidth={HANDLE_STROKE_WIDTH}
+                          strokeWidth="0.4"
                           style={{ cursor: "pointer" }}
+                          className="md:r-[0.4] md:stroke-[0.2]"
                           onMouseDown={(e) => {
                             e.stopPropagation();
                             const coords = getRelativeCoordinates(e as any);
