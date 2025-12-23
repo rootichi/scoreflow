@@ -39,6 +39,11 @@ export function useScrollPrevention(
       // touchmoveのみを制御（touchstartではpreventDefaultしない）
       // Reactのイベントハンドラーが先に動作する必要があるため
       const preventScroll = (e: TouchEvent) => {
+        // ピンチ操作（複数タッチ）の場合は常に許可
+        if (e.touches.length > 1) {
+          return; // ピンチ操作は許可
+        }
+        
         // 編集操作中の場合のみpreventDefault
         // ただし、キャンバス要素内のイベントは許可（Reactのハンドラーが処理する）
         if (isEditingRef.current) {
