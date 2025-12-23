@@ -373,9 +373,7 @@ export default function TournamentEditPage() {
         return;
       }
       // パンモードの場合はピンチズームを許可（preventDefaultしない）
-      // ピンチズーム中は編集モードを維持しない
-      editMode.resetToPan();
-      // ネイティブピンチズームを許可するため、何も処理しない
+      // ネイティブピンチズームを許可するため、何も処理しない（resetToPanは不要）
       return;
     }
     
