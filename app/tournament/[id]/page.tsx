@@ -55,6 +55,7 @@ export default function TournamentEditPage() {
   const [mode, setMode] = useState<EditMode>(null);
   const [scoreValue, setScoreValue] = useState("");
   const canvasRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [lineStart, setLineStart] = useState<{ x: number; y: number } | null>(null);
   const [lineEnd, setLineEnd] = useState<{ x: number; y: number } | null>(null);
@@ -75,7 +76,7 @@ export default function TournamentEditPage() {
   // カスタムフック
   const { imageContainerRef, imageScale } = useImageScale();
   useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark, editMode.canEdit);
-  const { getRelativeCoordinates } = useCanvasCoordinates(canvasRef);
+  const { getRelativeCoordinates } = useCanvasCoordinates(canvasRef, svgRef);
   
   // 編集モードと選択状態を同期
   useEffect(() => {
@@ -1312,6 +1313,7 @@ export default function TournamentEditPage() {
             {/* マークを描画（ドラッグ可能） */}
             {/* すべてのラインを1つのSVGにまとめる */}
             <svg
+              ref={svgRef}
               className="absolute top-0 left-0 w-full h-full"
               style={{ zIndex: 10 }}
               viewBox="0 0 100 100"
