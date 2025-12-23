@@ -907,10 +907,10 @@ export default function TournamentEditPage() {
       {/* 統合ヘッダー */}
       <TournamentHeader tournament={tournament} />
       
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50" style={{ touchAction: "pan-x pan-y" }}>
 
       {/* 2段目: 編集ツールバー */}
-      <div className="fixed top-[calc(4rem+3rem)] left-0 right-0 z-30 bg-white border-b border-gray-200">
+      <div className="fixed top-[calc(4rem+3rem)] left-0 right-0 z-30 bg-white border-b border-gray-200" style={{ touchAction: "pan-x pan-y" }}>
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
           <div className="bg-white">
             {/* スマホ版: コンパクトなアイコンボタン */}
@@ -1280,7 +1280,7 @@ export default function TournamentEditPage() {
       </div>
 
       {/* メインコンテンツ */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pt-[calc(4rem+3rem+3.5rem+1rem)] pt-[calc(4rem+3rem+3rem+1rem)]">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pt-[calc(4rem+3rem+3.5rem+1rem)] pt-[calc(4rem+3rem+3rem+1rem)]" style={{ touchAction: "pan-x pan-y" }}>
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div
@@ -1304,7 +1304,7 @@ export default function TournamentEditPage() {
               userSelect: "none" // テキスト選択を無効化
             }}
           >
-            <div ref={imageContainerRef} className="relative" data-canvas-container>
+            <div ref={imageContainerRef} className="relative" data-canvas-container style={{ touchAction: "pan-x pan-y pinch-zoom" }}>
               <img
                 src={tournament.pdfPageImage}
                 alt="Tournament bracket"
