@@ -62,6 +62,8 @@ export default function TournamentEditPage() {
   const [draggingHandle, setDraggingHandle] = useState<{ markId: string; handle: "start" | "end"; startX: number; startY: number; originalMark: LineMark & { id: string } } | null>(null);
   const [copiedMark, setCopiedMark] = useState<Mark & { id: string } | null>(null);
   const [snapGuide, setSnapGuide] = useState<{ x?: number; y?: number; visible: boolean } | null>(null); // スナップガイドライン（x: 垂直線、y: 水平線）
+  const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null); // タッチ開始位置（スクロール判定用）
+  const [isTouchDragging, setIsTouchDragging] = useState(false); // タッチドラッグ中かどうか
 
   useEffect(() => {
     if (!user || !tournamentId) return;
@@ -105,19 +107,43 @@ export default function TournamentEditPage() {
   }, [tournamentId, reset]);
 
   const getRelativeCoordinates = useCallback((
-    e: React.MouseEvent<HTMLDivElement> | MouseEvent
+    e: React.MouseEvent<HTMLDivElement> | MouseEvent | React.TouchEvent<HTMLDivElement> | TouchEvent
   ): { x: number; y: number } => {
     if (!canvasRef.current) return { x: 0, y: 0 };
     const rect = canvasRef.current.getBoundingClientRect();
-    return {
-      x: (e.clientX - rect.left) / rect.width,
-      y: (e.clientY - rect.top) / rect.height,
-    };
+    
+    // タッチイベントの場合
+    if ('touches' in e && e.touches.length > 0) {
+      const touch = e.touches[0];
+      return {
+        x: (touch.clientX - rect.left) / rect.width,
+        y: (touch.clientY - rect.top) / rect.height,
+      };
+    }
+    
+    // タッチ終了イベントの場合（changedTouchesから取得）
+    if ('changedTouches' in e && e.changedTouches.length > 0) {
+      const touch = e.changedTouches[0];
+      return {
+        x: (touch.clientX - rect.left) / rect.width,
+        y: (touch.clientY - rect.top) / rect.height,
+      };
+    }
+    
+    // マウスイベントの場合
+    if ('clientX' in e && 'clientY' in e) {
+      return {
+        x: (e.clientX - rect.left) / rect.width,
+        y: (e.clientY - rect.top) / rect.height,
+      };
+    }
+    
+    return { x: 0, y: 0 };
   }, []);
 
 
 
-  const handleCanvasMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const handleCanvasMove = useCallback((e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     const coords = getRelativeCoordinates(e);
     
     if (mode === "line" && isDrawing && lineStart) {
@@ -338,6 +364,33 @@ export default function TournamentEditPage() {
     getRelativeCoordinates,
   ]);
 
+  const handleCanvasMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    handleCanvasMove(e);
+  }, [handleCanvasMove]);
+
+  const handleCanvasTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (!touchStartPos) {
+      // タッチ開始位置がない場合でも、編集操作中は処理を続行
+      if (isDrawing || draggingHandle || draggingMark) {
+        e.preventDefault();
+        handleCanvasMove(e);
+      }
+      return;
+    }
+    
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartPos.x);
+    const deltaY = Math.abs(touch.clientY - touchStartPos.y);
+    const SCROLL_THRESHOLD = 10; // px
+    
+    // 編集操作と判定された場合のみpreventDefault
+    if (isDrawing || draggingHandle || draggingMark || deltaX > SCROLL_THRESHOLD || deltaY > SCROLL_THRESHOLD) {
+      e.preventDefault();
+      setIsTouchDragging(true);
+      handleCanvasMove(e);
+    }
+  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove]);
+
   // Undo/Redo処理を先に定義（useEffectで使用するため）
   const handleUndo = useCallback(async () => {
     const action = undo();
@@ -553,6 +606,28 @@ export default function TournamentEditPage() {
     }
   };
 
+  const handleCanvasTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!tournament || !user) return;
+    
+    // タッチ開始位置を記録（スクロール判定用）
+    const touch = e.touches[0];
+    setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+    setIsTouchDragging(false);
+    
+    // ハンドルやマークのタッチでない場合のみ処理
+    if (mode === "line" && !isDrawing && !draggingHandle && !draggingMark) {
+      const coords = getRelativeCoordinates(e);
+      setIsDrawing(true);
+      setLineStart(coords);
+      setLineEnd(coords);
+      setSelectedMarkId(null); // 新しい線を描画開始時は選択を解除
+      e.preventDefault(); // スクロールを防止
+    } else if (mode === null && !draggingHandle && !draggingMark) {
+      // 編集モードで空白をタッチした場合は選択を解除
+      setSelectedMarkId(null);
+    }
+  };
+
   const handleCanvasMouseUp = async (e: React.MouseEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
 
@@ -661,6 +736,118 @@ export default function TournamentEditPage() {
       });
       setScoreValue("");
       setMode(null);
+    }
+  };
+
+  const handleCanvasTouchEnd = async (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!tournament || !user) return;
+
+    // タッチ開始位置をリセット
+    setTouchStartPos(null);
+
+    // ドラッグ操作でない場合（タップのみ）はスコア追加を処理
+    if (!isTouchDragging && !draggingMark && !draggingHandle && mode === "score") {
+      if (!scoreValue.trim()) {
+        showError("スコアを入力してください");
+        setMode(null);
+        return;
+      }
+      const coords = getRelativeCoordinates(e);
+      const markData = {
+        type: "score" as const,
+        pageNumber: DEFAULT_PAGE_NUMBER,
+        x: coords.x,
+        y: coords.y,
+        value: scoreValue,
+        fontSize: DEFAULT_SCORE_FONT_SIZE,
+        color: DEFAULT_LINE_COLOR,
+      };
+      const markId = await addMark(tournamentId, markData);
+      // 履歴に追加（マーク情報も保存）
+      addAction({
+        type: "add",
+        markId,
+        mark: {
+          ...markData,
+          createdAt: Timestamp.now(),
+        } as Mark,
+      });
+      setScoreValue("");
+      setMode(null);
+      setIsTouchDragging(false);
+      return;
+    }
+
+    // ハンドルのドラッグ終了
+    if (draggingHandle) {
+      const updatedMark = localMarks.find((m) => m.id === draggingHandle.markId);
+      // マークが実際に存在するか確認（削除された可能性がある）
+      const existingMark = marks.find((m) => m.id === draggingHandle.markId);
+      if (updatedMark && updatedMark.type === "line" && existingMark) {
+        // 変更前のマーク情報を保存（Undo用）
+        const originalMark = draggingHandle.originalMark;
+        
+        const updateData = createMarkUpdateData(updatedMark);
+        const success = await updateMarkSafely(tournamentId, draggingHandle.markId, updateData);
+
+        if (success) {
+          // 履歴に追加（変更前と変更後のマーク情報を保存）
+          addAction({
+            type: "update",
+            markId: draggingHandle.markId,
+            mark: originalMark,
+            updatedMark: updatedMark,
+          });
+        }
+      }
+      setDraggingHandle(null);
+      setIsTouchDragging(false);
+      return;
+    }
+
+    // マークのドラッグ終了
+    if (draggingMark) {
+      await handleMarkDragEnd();
+      setIsTouchDragging(false);
+      return;
+    }
+
+    // 線の描画完了
+    if (mode === "line" && isDrawing && lineStart && lineEnd) {
+      // 線の長さが0の場合は描画しない
+      if (!isValidLineLength(lineStart, lineEnd)) {
+        setIsDrawing(false);
+        setLineStart(null);
+        setLineEnd(null);
+        setIsTouchDragging(false);
+        return;
+      }
+
+      const markData = {
+        type: "line" as const,
+        pageNumber: DEFAULT_PAGE_NUMBER,
+        x1: lineStart.x,
+        y1: lineStart.y,
+        x2: lineEnd.x,
+        y2: lineEnd.y,
+        color: DEFAULT_LINE_COLOR,
+      };
+      const markId = await addMark(tournamentId, markData);
+      // 履歴に追加（マーク情報も保存）
+      addAction({
+        type: "add",
+        markId,
+        mark: {
+          ...markData,
+          createdAt: Timestamp.now(),
+        } as Mark,
+      });
+      setIsDrawing(false);
+      setLineStart(null);
+      setLineEnd(null);
+      setMode(null);
+      setSelectedMarkId(markId); // 作成した線を選択状態にする
+      setIsTouchDragging(false);
     }
   };
 
@@ -810,9 +997,88 @@ export default function TournamentEditPage() {
                   </span>
                 )}
                 {selectedMarkId && mode === null && (
-                  <span className="text-sm text-gray-500">
-                    選択中: Deleteキーで削除、Ctrl+C/Vでコピー&ペースト
-                  </span>
+                  <>
+                    <span className="text-sm text-gray-500">
+                      選択中: Deleteキーで削除、Ctrl+C/Vでコピー&ペースト
+                    </span>
+                    <div className="flex gap-2 ml-2">
+                      <button
+                        onClick={async () => {
+                          const mark = marks.find((m) => m.id === selectedMarkId);
+                          if (mark) {
+                            await deleteMark(tournamentId, selectedMarkId);
+                            addAction({
+                              type: "delete",
+                              markId: selectedMarkId,
+                              mark,
+                            });
+                            setSelectedMarkId(null);
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-lg transition bg-red-50 text-red-600 hover:bg-red-100 text-sm"
+                        type="button"
+                        title="削除"
+                      >
+                        削除
+                      </button>
+                      <button
+                        onClick={() => {
+                          const mark = marks.find((m) => m.id === selectedMarkId);
+                          if (mark) {
+                            setCopiedMark(mark);
+                            showSuccess("コピーしました");
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-lg transition bg-blue-50 text-blue-600 hover:bg-blue-100 text-sm"
+                        type="button"
+                        title="コピー"
+                      >
+                        コピー
+                      </button>
+                      {copiedMark && (
+                        <button
+                          onClick={async () => {
+                            if (copiedMark && selectedMarkId) {
+                              const markData = {
+                                type: copiedMark.type,
+                                pageNumber: copiedMark.pageNumber,
+                                ...(copiedMark.type === "line"
+                                  ? {
+                                      x1: (copiedMark as LineMark).x1 + COPY_OFFSET,
+                                      y1: (copiedMark as LineMark).y1 + COPY_OFFSET,
+                                      x2: (copiedMark as LineMark).x2 + COPY_OFFSET,
+                                      y2: (copiedMark as LineMark).y2 + COPY_OFFSET,
+                                      color: copiedMark.color,
+                                    }
+                                  : {
+                                      x: (copiedMark as ScoreMark).x + COPY_OFFSET,
+                                      y: (copiedMark as ScoreMark).y + COPY_OFFSET,
+                                      value: (copiedMark as ScoreMark).value,
+                                      fontSize: (copiedMark as ScoreMark).fontSize,
+                                      color: copiedMark.color,
+                                    }),
+                              };
+                              const newMarkId = await addMark(tournamentId, markData);
+                              addAction({
+                                type: "add",
+                                markId: newMarkId,
+                                mark: {
+                                  ...markData,
+                                  createdAt: Timestamp.now(),
+                                } as Mark,
+                              });
+                              setSelectedMarkId(newMarkId);
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-lg transition bg-green-50 text-green-600 hover:bg-green-100 text-sm"
+                          type="button"
+                          title="ペースト"
+                        >
+                          ペースト
+                        </button>
+                      )}
+                    </div>
+                  </>
                 )}
                 {mode === "score" && scoreValue && (
                   <span className="text-sm text-gray-600">
@@ -863,7 +1129,10 @@ export default function TournamentEditPage() {
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
             onClick={handleCanvasClick}
-            style={{ aspectRatio: "auto" }}
+            onTouchStart={handleCanvasTouchStart}
+            onTouchMove={handleCanvasTouchMove}
+            onTouchEnd={handleCanvasTouchEnd}
+            style={{ aspectRatio: "auto", touchAction: "none" }}
           >
             <img
               src={tournament.pdfPageImage}
@@ -919,6 +1188,25 @@ export default function TournamentEditPage() {
                           });
                         }
                       }}
+                      onTouchStart={(e) => {
+                        if (mode === null && !draggingHandle) {
+                          e.stopPropagation();
+                          const touch = e.touches[0];
+                          setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+                          setIsTouchDragging(false);
+                          const coords = getRelativeCoordinates(e as any);
+                          setLocalMarks(marks); // ローカル状態を初期化
+                          setSelectedMarkId(mark.id);
+                          setDraggingMark({
+                            id: mark.id,
+                            type: "line",
+                            startX: coords.x,
+                            startY: coords.y,
+                            originalMark: displayMark,
+                          });
+                          e.preventDefault(); // スクロールを防止
+                        }
+                      }}
                     />
                     {/* 選択状態のハンドル */}
                     {selectedMarkId === mark.id && mode === null && !draggingHandle && (
@@ -945,6 +1233,23 @@ export default function TournamentEditPage() {
                             });
                             setDraggingMark(null);
                           }}
+                          onTouchStart={(e) => {
+                            e.stopPropagation();
+                            const touch = e.touches[0];
+                            setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+                            setIsTouchDragging(false);
+                            const coords = getRelativeCoordinates(e as any);
+                            setLocalMarks(marks); // ローカル状態を初期化
+                            setDraggingHandle({
+                              markId: mark.id,
+                              handle: "start",
+                              startX: coords.x,
+                              startY: coords.y,
+                              originalMark: displayMark as LineMark & { id: string },
+                            });
+                            setDraggingMark(null);
+                            e.preventDefault(); // スクロールを防止
+                          }}
                         />
                         {/* 終了点のハンドル */}
                         <circle
@@ -967,6 +1272,23 @@ export default function TournamentEditPage() {
                               originalMark: displayMark as LineMark & { id: string },
                             });
                             setDraggingMark(null);
+                          }}
+                          onTouchStart={(e) => {
+                            e.stopPropagation();
+                            const touch = e.touches[0];
+                            setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+                            setIsTouchDragging(false);
+                            const coords = getRelativeCoordinates(e as any);
+                            setLocalMarks(marks); // ローカル状態を初期化
+                            setDraggingHandle({
+                              markId: mark.id,
+                              handle: "end",
+                              startX: coords.x,
+                              startY: coords.y,
+                              originalMark: displayMark as LineMark & { id: string },
+                            });
+                            setDraggingMark(null);
+                            e.preventDefault(); // スクロールを防止
                           }}
                         />
                       </>
@@ -1005,6 +1327,25 @@ export default function TournamentEditPage() {
                         startY: coords.y,
                         originalMark: mark,
                       });
+                    }
+                  }}
+                  onTouchStart={(e) => {
+                    if (mode === null) {
+                      e.stopPropagation();
+                      const touch = e.touches[0];
+                      setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+                      setIsTouchDragging(false);
+                      const coords = getRelativeCoordinates(e as any);
+                      setLocalMarks(marks); // ローカル状態を初期化
+                      setSelectedMarkId(mark.id);
+                      setDraggingMark({
+                        id: mark.id,
+                        type: "score",
+                        startX: coords.x,
+                        startY: coords.y,
+                        originalMark: mark,
+                      });
+                      e.preventDefault(); // スクロールを防止
                     }
                   }}
                 >
