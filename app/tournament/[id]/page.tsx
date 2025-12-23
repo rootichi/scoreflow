@@ -363,10 +363,8 @@ export default function TournamentEditPage() {
   }, [handleCanvasMove]);
 
   const handleCanvasTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    // タッチジェスチャーを処理
-    touchGestures.handleTouchMove(e);
-    
     // 複数のタッチポイントがある場合（ピンチ操作）
+    // ピンチ操作の場合は、ジェスチャー処理をスキップしてネイティブピンチズームを許可
     if (e.touches.length > 1) {
       // 編集操作中はピンチ操作を無効化（preventDefaultで制御）
       if (isDrawing || draggingHandle || draggingMark) {
@@ -377,8 +375,12 @@ export default function TournamentEditPage() {
       // パンモードの場合はピンチズームを許可（preventDefaultしない）
       // ピンチズーム中は編集モードを維持しない
       editMode.resetToPan();
+      // ネイティブピンチズームを許可するため、何も処理しない
       return;
     }
+    
+    // タッチジェスチャーを処理（単一タッチの場合のみ）
+    touchGestures.handleTouchMove(e);
     
     // 編集操作中は常にpreventDefaultして処理を続行
     if (isDrawing || draggingHandle || draggingMark) {
@@ -596,18 +598,20 @@ export default function TournamentEditPage() {
   const handleCanvasTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
     
-    // タッチジェスチャーを処理
-    touchGestures.handleTouchStart(e);
-    
     // 複数のタッチポイントがある場合（ピンチ操作）
+    // ピンチ操作の場合は、ジェスチャー処理をスキップしてネイティブピンチズームを許可
     if (e.touches.length > 1) {
       // 編集操作中はピンチ操作を無効化
       if (isDrawing || draggingHandle || draggingMark) {
         e.preventDefault();
         e.stopPropagation();
       }
+      // ネイティブピンチズームを許可するため、何も処理しない
       return;
     }
+    
+    // タッチジェスチャーを処理（単一タッチの場合のみ）
+    touchGestures.handleTouchStart(e);
     
     // タッチ開始位置を記録（スクロール判定用）
     const touch = e.touches[0];
