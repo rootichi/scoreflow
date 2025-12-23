@@ -367,15 +367,15 @@ export default function TournamentEditPage() {
     
     // 複数のタッチポイントがある場合（ピンチ操作）
     if (e.touches.length > 1) {
-      // 編集操作中はピンチ操作を無効化
-      if (editMode.canEdit()) {
+      // 編集操作中はピンチ操作を無効化（preventDefaultで制御）
+      if (isDrawing || draggingHandle || draggingMark) {
         e.preventDefault();
         e.stopPropagation();
-      } else {
-        // パンモードの場合はピンチズームを許可
-        // ピンチズーム中は編集モードを維持しない
-        editMode.resetToPan();
+        return;
       }
+      // パンモードの場合はピンチズームを許可（preventDefaultしない）
+      // ピンチズーム中は編集モードを維持しない
+      editMode.resetToPan();
       return;
     }
     
@@ -1296,8 +1296,9 @@ export default function TournamentEditPage() {
             onTouchEnd={handleCanvasTouchEnd}
             style={{ 
               aspectRatio: "auto", 
-              // Canva風: 編集モードに基づいてtouch-actionを動的に制御
-              touchAction: editMode.canEdit() ? "none" : "pan-x pan-y pinch-zoom",
+              // Canva風: ピンチアウトは常に許可（画像コンテナ内でのみ有効）
+              // 編集操作中はhandleCanvasTouchMoveでpreventDefault()を呼ぶことで制御
+              touchAction: "pan-x pan-y pinch-zoom",
               overscrollBehavior: "none", // スクロールの伝播を防止
               WebkitOverflowScrolling: "auto", // iOSの慣性スクロールを制御
               WebkitTouchCallout: "none", // iOSの長押しメニューを無効化
