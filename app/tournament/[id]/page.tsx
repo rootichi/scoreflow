@@ -40,6 +40,8 @@ import { useImageScale } from "@/lib/hooks/useImageScale";
 import { useScrollPrevention } from "@/lib/hooks/useScrollPrevention";
 import { useCanvasCoordinates } from "@/lib/hooks/useCanvasCoordinates";
 import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
+import { useEditMode } from "@/lib/hooks/useEditMode";
+import { useTouchGestures } from "@/lib/hooks/useTouchGestures";
 import type { DraggingMark, DraggingHandle, SnapGuide, EditMode } from "@/lib/types/canvas";
 import { TournamentHeader } from "@/components/tournament/TournamentHeader";
 
@@ -66,10 +68,28 @@ export default function TournamentEditPage() {
   const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null); // タッチ開始位置（スクロール判定用）
   const [isTouchDragging, setIsTouchDragging] = useState(false); // タッチドラッグ中かどうか
   
+  // Canva風の編集モード管理
+  const editMode = useEditMode();
+  const touchGestures = useTouchGestures();
+  
   // カスタムフック
   const { imageContainerRef, imageScale } = useImageScale();
-  useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark);
+  useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark, editMode.canEdit);
   const { getRelativeCoordinates } = useCanvasCoordinates(canvasRef);
+  
+  // 編集モードと選択状態を同期
+  useEffect(() => {
+    editMode.selectObject(selectedMarkId);
+  }, [selectedMarkId, editMode]);
+  
+  // 描画モードの管理
+  useEffect(() => {
+    if (mode === "line" && isDrawing) {
+      editMode.startDrawing();
+    } else if (mode === null && !isDrawing && !draggingMark && !draggingHandle) {
+      editMode.endDrawing();
+    }
+  }, [mode, isDrawing, draggingMark, draggingHandle, editMode]);
 
   useEffect(() => {
     if (!user || !tournamentId) return;
@@ -341,12 +361,19 @@ export default function TournamentEditPage() {
   }, [handleCanvasMove]);
 
   const handleCanvasTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    // タッチジェスチャーを処理
+    touchGestures.handleTouchMove(e);
+    
     // 複数のタッチポイントがある場合（ピンチ操作）
     if (e.touches.length > 1) {
       // 編集操作中はピンチ操作を無効化
-      if (isDrawing || draggingHandle || draggingMark) {
+      if (editMode.canEdit()) {
         e.preventDefault();
         e.stopPropagation();
+      } else {
+        // パンモードの場合はピンチズームを許可
+        // ピンチズーム中は編集モードを維持しない
+        editMode.resetToPan();
       }
       return;
     }
@@ -356,27 +383,40 @@ export default function TournamentEditPage() {
       e.preventDefault();
       e.stopPropagation();
       setIsTouchDragging(true);
+      editMode.startEdit();
       handleCanvasMove(e);
       return;
     }
     
-    if (!touchStartPos) {
-      return;
+    // ジェスチャーがドラッグの場合
+    if (touchGestures.gesture?.type === "drag") {
+      // オブジェクトが選択されている場合は編集操作
+      if (editMode.isObjectSelected) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsTouchDragging(true);
+        editMode.startEdit();
+        handleCanvasMove(e);
+        return;
+      }
+      // オブジェクトが選択されていない場合はパン操作を許可
+      // preventDefaultしない（パン操作を許可）
     }
     
-    const touch = e.touches[0];
-    const deltaX = Math.abs(touch.clientX - touchStartPos.x);
-    const deltaY = Math.abs(touch.clientY - touchStartPos.y);
-    const SCROLL_THRESHOLD = 10; // px
-    
-    // 編集操作と判定された場合のみpreventDefault
-    if (deltaX > SCROLL_THRESHOLD || deltaY > SCROLL_THRESHOLD) {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsTouchDragging(true);
-      handleCanvasMove(e);
+    // パンモードの場合、従来のスクロール判定を実行
+    if (editMode.canPan() && touchStartPos) {
+      const touch = e.touches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartPos.x);
+      const deltaY = Math.abs(touch.clientY - touchStartPos.y);
+      const SCROLL_THRESHOLD = 10; // px
+      
+      // スクロールと判定された場合は何もしない（パン操作を許可）
+      if (deltaX > SCROLL_THRESHOLD || deltaY > SCROLL_THRESHOLD) {
+        // パン操作を許可するため、preventDefaultしない
+        return;
+      }
     }
-  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove]);
+  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove, touchGestures, editMode]);
 
   // Undo/Redo処理を先に定義（useEffectで使用するため）
   const handleUndo = useCallback(async () => {
@@ -518,14 +558,23 @@ export default function TournamentEditPage() {
     } else if (mode === null && !draggingHandle && !draggingMark) {
       // 編集モードで空白をクリックした場合は選択を解除
       setSelectedMarkId(null);
+      editMode.resetToPan();
     }
   };
 
   const handleCanvasTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
     
-    // 複数のタッチポイントがある場合（ピンチ操作）は編集操作を無効化
+    // タッチジェスチャーを処理
+    touchGestures.handleTouchStart(e);
+    
+    // 複数のタッチポイントがある場合（ピンチ操作）
     if (e.touches.length > 1) {
+      // 編集操作中はピンチ操作を無効化
+      if (isDrawing || draggingHandle || draggingMark) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       return;
     }
     
@@ -541,10 +590,12 @@ export default function TournamentEditPage() {
       setLineStart(coords);
       setLineEnd(coords);
       setSelectedMarkId(null); // 新しい線を描画開始時は選択を解除
+      editMode.startDrawing();
       e.preventDefault(); // スクロールを防止
     } else if (mode === null && !draggingHandle && !draggingMark) {
       // 編集モードで空白をタッチした場合は選択を解除
       setSelectedMarkId(null);
+      editMode.resetToPan();
     }
   };
 
@@ -574,12 +625,14 @@ export default function TournamentEditPage() {
         }
       }
       setDraggingHandle(null);
+      editMode.endEdit();
       return;
     }
 
     // マークのドラッグ終了
     if (draggingMark) {
       await handleMarkDragEnd();
+      editMode.endEdit();
       return;
     }
 
@@ -617,6 +670,8 @@ export default function TournamentEditPage() {
       setLineEnd(null);
       setMode(null);
       setSelectedMarkId(markId); // 作成した線を選択状態にする
+      editMode.endDrawing();
+      editMode.selectObject(markId);
     }
   };
 
@@ -662,14 +717,57 @@ export default function TournamentEditPage() {
   const handleCanvasTouchEnd = async (e: React.TouchEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
 
+    // タッチジェスチャーを処理
+    touchGestures.handleTouchEnd(e);
+    
     // タッチ開始位置をリセット
     setTouchStartPos(null);
 
-    // ドラッグ操作でない場合（タップのみ）はスコア追加を処理
+    // タップジェスチャーの場合
+    if (touchGestures.gesture?.type === "tap") {
+      // スコア追加モードの場合
+      if (mode === "score" && !draggingMark && !draggingHandle) {
+        if (!scoreValue.trim()) {
+          showError("スコアを入力してください");
+          setMode(null);
+          editMode.endDrawing();
+          return;
+        }
+        const coords = getRelativeCoordinates(e);
+        const markData = {
+          type: "score" as const,
+          pageNumber: DEFAULT_PAGE_NUMBER,
+          x: coords.x,
+          y: coords.y,
+          value: scoreValue,
+          fontSize: DEFAULT_SCORE_FONT_SIZE,
+          color: DEFAULT_LINE_COLOR,
+        };
+        const markId = await addMark(tournamentId, markData);
+        // 履歴に追加（マーク情報も保存）
+        addAction({
+          type: "add",
+          markId,
+          mark: {
+            ...markData,
+            createdAt: Timestamp.now(),
+          } as Mark,
+        });
+        setScoreValue("");
+        setMode(null);
+        editMode.endDrawing();
+        setIsTouchDragging(false);
+        touchGestures.clearGesture();
+        return;
+      }
+    }
+
+    // ドラッグ操作でない場合（タップのみ）はスコア追加を処理（フォールバック）
     if (!isTouchDragging && !draggingMark && !draggingHandle && mode === "score") {
       if (!scoreValue.trim()) {
         showError("スコアを入力してください");
         setMode(null);
+        editMode.endDrawing();
         return;
       }
       const coords = getRelativeCoordinates(e);
@@ -694,7 +792,9 @@ export default function TournamentEditPage() {
       });
       setScoreValue("");
       setMode(null);
+      editMode.endDrawing();
       setIsTouchDragging(false);
+      touchGestures.clearGesture();
       return;
     }
 
@@ -722,6 +822,8 @@ export default function TournamentEditPage() {
       }
       setDraggingHandle(null);
       setIsTouchDragging(false);
+      editMode.endEdit();
+      touchGestures.clearGesture();
       return;
     }
 
@@ -729,6 +831,8 @@ export default function TournamentEditPage() {
     if (draggingMark) {
       await handleMarkDragEnd();
       setIsTouchDragging(false);
+      editMode.endEdit();
+      touchGestures.clearGesture();
       return;
     }
 
@@ -740,6 +844,8 @@ export default function TournamentEditPage() {
         setLineStart(null);
         setLineEnd(null);
         setIsTouchDragging(false);
+        editMode.endDrawing();
+        touchGestures.clearGesture();
         return;
       }
 
@@ -768,6 +874,8 @@ export default function TournamentEditPage() {
       setMode(null);
       setSelectedMarkId(markId); // 作成した線を選択状態にする
       setIsTouchDragging(false);
+      editMode.endDrawing();
+      touchGestures.clearGesture();
     }
   };
 
@@ -839,7 +947,13 @@ export default function TournamentEditPage() {
                 <div className="border-l border-gray-300 h-6 mx-1"></div>
                 <button
                   onClick={() => {
-                    setMode(mode === "line" ? null : "line");
+                    if (mode === "line") {
+                      setMode(null);
+                      editMode.endDrawing();
+                    } else {
+                      setMode("line");
+                      editMode.startDrawing();
+                    }
                     setIsDrawing(false);
                     setLineStart(null);
                     setLineEnd(null);
@@ -858,12 +972,19 @@ export default function TournamentEditPage() {
                 </button>
                 <button
                   onClick={() => {
-                    setMode(mode === "score" ? null : "score");
-                    const value = showPrompt("スコアを入力してください:");
-                    if (value) {
-                      setScoreValue(value);
-                    } else {
+                    if (mode === "score") {
                       setMode(null);
+                      editMode.endDrawing();
+                    } else {
+                      setMode("score");
+                      editMode.startDrawing();
+                      const value = showPrompt("スコアを入力してください:");
+                      if (value) {
+                        setScoreValue(value);
+                      } else {
+                        setMode(null);
+                        editMode.endDrawing();
+                      }
                     }
                   }}
                   className={`p-2 rounded-lg transition flex-shrink-0 ${
@@ -891,6 +1012,7 @@ export default function TournamentEditPage() {
                           mark,
                         });
                         setSelectedMarkId(null);
+                        editMode.resetToPan();
                       }
                     }
                   }}
@@ -943,6 +1065,7 @@ export default function TournamentEditPage() {
                           } as Mark,
                         });
                         setSelectedMarkId(newMarkId);
+                        editMode.selectObject(newMarkId);
                       }
                     }
                   }}
@@ -1007,7 +1130,13 @@ export default function TournamentEditPage() {
                 <div className="border-l border-gray-300 h-6 mx-2"></div>
                 <button
                   onClick={() => {
-                    setMode(mode === "line" ? null : "line");
+                    if (mode === "line") {
+                      setMode(null);
+                      editMode.endDrawing();
+                    } else {
+                      setMode("line");
+                      editMode.startDrawing();
+                    }
                     setIsDrawing(false);
                     setLineStart(null);
                     setLineEnd(null);
@@ -1023,12 +1152,19 @@ export default function TournamentEditPage() {
                 </button>
                 <button
                   onClick={() => {
-                    setMode(mode === "score" ? null : "score");
-                    const value = showPrompt("スコアを入力してください:");
-                    if (value) {
-                      setScoreValue(value);
-                    } else {
+                    if (mode === "score") {
                       setMode(null);
+                      editMode.endDrawing();
+                    } else {
+                      setMode("score");
+                      editMode.startDrawing();
+                      const value = showPrompt("スコアを入力してください:");
+                      if (value) {
+                        setScoreValue(value);
+                      } else {
+                        setMode(null);
+                        editMode.endDrawing();
+                      }
                     }
                   }}
                   className={`px-4 py-2 rounded-lg transition ${
@@ -1062,6 +1198,7 @@ export default function TournamentEditPage() {
                               mark,
                             });
                             setSelectedMarkId(null);
+                            editMode.resetToPan();
                           }
                         }}
                         className="px-3 py-1.5 rounded-lg transition bg-red-50 text-red-600 hover:bg-red-100 text-sm"
@@ -1117,6 +1254,7 @@ export default function TournamentEditPage() {
                                 } as Mark,
                               });
                               setSelectedMarkId(newMarkId);
+                              editMode.selectObject(newMarkId);
                             }
                           }}
                           className="px-3 py-1.5 rounded-lg transition bg-green-50 text-green-600 hover:bg-green-100 text-sm"
@@ -1157,7 +1295,8 @@ export default function TournamentEditPage() {
             onTouchEnd={handleCanvasTouchEnd}
             style={{ 
               aspectRatio: "auto", 
-              touchAction: isDrawing || draggingHandle || draggingMark ? "none" : "pan-x pan-y pinch-zoom",
+              // Canva風: 編集モードに基づいてtouch-actionを動的に制御
+              touchAction: editMode.canEdit() ? "none" : "pan-x pan-y pinch-zoom",
               overscrollBehavior: "none", // スクロールの伝播を防止
               WebkitOverflowScrolling: "auto", // iOSの慣性スクロールを制御
               WebkitTouchCallout: "none", // iOSの長押しメニューを無効化
@@ -1210,6 +1349,7 @@ export default function TournamentEditPage() {
                           const coords = getRelativeCoordinates(e as any);
                           setLocalMarks(marks); // ローカル状態を初期化
                           setSelectedMarkId(mark.id);
+                          editMode.selectObject(mark.id);
                           setDraggingMark({
                             id: mark.id,
                             type: "line",
@@ -1217,6 +1357,7 @@ export default function TournamentEditPage() {
                             startY: coords.y,
                             originalMark: displayMark,
                           });
+                          editMode.startEdit();
                         }
                       }}
                       onTouchStart={(e) => {
@@ -1295,6 +1436,7 @@ export default function TournamentEditPage() {
                               originalMark: displayMark as LineMark & { id: string },
                             });
                             setDraggingMark(null);
+                            editMode.startEdit();
                           }}
                           onTouchStart={(e) => {
                             e.stopPropagation();
@@ -1367,6 +1509,7 @@ export default function TournamentEditPage() {
                               originalMark: displayMark as LineMark & { id: string },
                             });
                             setDraggingMark(null);
+                            editMode.startEdit();
                           }}
                           onTouchStart={(e) => {
                             e.stopPropagation();
@@ -1415,6 +1558,7 @@ export default function TournamentEditPage() {
                       const coords = getRelativeCoordinates(e as any);
                       setLocalMarks(marks); // ローカル状態を初期化
                       setSelectedMarkId(mark.id);
+                      editMode.selectObject(mark.id);
                       setDraggingMark({
                         id: mark.id,
                         type: "score",
@@ -1422,6 +1566,7 @@ export default function TournamentEditPage() {
                         startY: coords.y,
                         originalMark: mark,
                       });
+                      editMode.startEdit();
                     }
                   }}
                   onTouchStart={(e) => {
@@ -1433,6 +1578,7 @@ export default function TournamentEditPage() {
                       const coords = getRelativeCoordinates(e as any);
                       setLocalMarks(marks); // ローカル状態を初期化
                       setSelectedMarkId(mark.id);
+                      editMode.selectObject(mark.id);
                       setDraggingMark({
                         id: mark.id,
                         type: "score",

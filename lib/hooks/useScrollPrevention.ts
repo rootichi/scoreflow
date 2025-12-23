@@ -5,20 +5,29 @@ import { useEffect, useRef } from "react";
  * 
  * 注意: touchstartではpreventDefault()しない
  * Reactのイベントハンドラーが先に動作し、draggingMark/draggingHandleの状態を設定する必要があるため
+ * 
+ * Canva風の実装: 編集モードに基づいてスクロールを制御
  */
 export function useScrollPrevention(
   isDrawing: boolean,
   draggingHandle: boolean,
-  draggingMark: boolean
+  draggingMark: boolean,
+  canEdit?: () => boolean
 ) {
   const isEditingRef = useRef(false);
 
   useEffect(() => {
-    isEditingRef.current = isDrawing || draggingHandle || draggingMark;
-  }, [isDrawing, draggingHandle, draggingMark]);
+    // Canva風: 編集モードに基づいて判定
+    if (canEdit) {
+      isEditingRef.current = canEdit();
+    } else {
+      isEditingRef.current = isDrawing || draggingHandle || draggingMark;
+    }
+  }, [isDrawing, draggingHandle, draggingMark, canEdit]);
 
   useEffect(() => {
-    const isEditing = isDrawing || draggingHandle || draggingMark;
+    // Canva風: 編集モードに基づいて判定
+    const isEditing = canEdit ? canEdit() : (isDrawing || draggingHandle || draggingMark);
 
     if (isEditing) {
       // スクロールを無効化
@@ -83,5 +92,5 @@ export function useScrollPrevention(
       document.body.style.width = "";
       document.body.style.height = "";
     }
-  }, [isDrawing, draggingHandle, draggingMark]);
+  }, [isDrawing, draggingHandle, draggingMark, canEdit]);
 }
