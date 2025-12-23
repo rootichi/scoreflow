@@ -395,6 +395,11 @@ export default function TournamentEditPage() {
   }, [handleCanvasMove]);
 
   const handleCanvasTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    // 複数のタッチポイントがある場合（ピンチ操作）は編集操作を無効化
+    if (e.touches.length > 1) {
+      return;
+    }
+    
     if (!touchStartPos) {
       // タッチ開始位置がない場合でも、編集操作中は処理を続行
       if (isDrawing || draggingHandle || draggingMark) {
@@ -634,6 +639,11 @@ export default function TournamentEditPage() {
 
   const handleCanvasTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
+    
+    // 複数のタッチポイントがある場合（ピンチ操作）は編集操作を無効化
+    if (e.touches.length > 1) {
+      return;
+    }
     
     // タッチ開始位置を記録（スクロール判定用）
     const touch = e.touches[0];
@@ -1311,7 +1321,10 @@ export default function TournamentEditPage() {
             onTouchStart={handleCanvasTouchStart}
             onTouchMove={handleCanvasTouchMove}
             onTouchEnd={handleCanvasTouchEnd}
-            style={{ aspectRatio: "auto", touchAction: "pan-x pan-y pinch-zoom" }}
+            style={{ 
+              aspectRatio: "auto", 
+              touchAction: isDrawing || draggingHandle || draggingMark ? "none" : "pan-x pan-y pinch-zoom" 
+            }}
           >
             <div ref={imageContainerRef} className="relative">
               <img
