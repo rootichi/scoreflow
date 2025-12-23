@@ -64,6 +64,8 @@ export default function TournamentEditPage() {
   const [snapGuide, setSnapGuide] = useState<{ x?: number; y?: number; visible: boolean } | null>(null); // スナップガイドライン（x: 垂直線、y: 水平線）
   const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null); // タッチ開始位置（スクロール判定用）
   const [isTouchDragging, setIsTouchDragging] = useState(false); // タッチドラッグ中かどうか
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const [imageScale, setImageScale] = useState(1);
 
   useEffect(() => {
     if (!user || !tournamentId) return;
@@ -867,7 +869,7 @@ export default function TournamentEditPage() {
     <div className="min-h-screen bg-gray-50">
       {/* 統合ヘッダー */}
       <div className="fixed top-0 left-0 right-0 z-40 bg-white shadow-sm border-b border-gray-200">
-        {/* 1段目: 大会名とナビゲーション */}
+        {/* 1段目: ロゴとナビゲーション */}
         <nav className="border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
@@ -891,7 +893,6 @@ export default function TournamentEditPage() {
                   </div>
                   <span className="text-xl font-bold text-gray-900">ScoreFlow</span>
                 </a>
-                <h1 className="text-xl font-bold ml-4">{tournament.name}</h1>
               </div>
               <div className="flex gap-4 items-center">
                 <button
@@ -921,6 +922,15 @@ export default function TournamentEditPage() {
             </div>
           </div>
         </nav>
+
+        {/* 2段目: 大会名 */}
+        <div className="border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center h-12">
+              <h1 className="text-lg font-bold text-gray-900">{tournament.name}</h1>
+            </div>
+          </div>
+        </div>
 
         {/* 2段目: 編集ツールバー */}
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
@@ -1086,28 +1096,6 @@ export default function TournamentEditPage() {
                     )}
                   </>
                 )}
-                <div className="border-l border-gray-300 h-6 mx-1"></div>
-                <button
-                  onClick={async () => {
-                    if (showConfirm("この大会を完全に削除しますか？この操作は取り消せません。")) {
-                      try {
-                        await deleteTournament(tournamentId);
-                        showSuccess("大会を削除しました");
-                        router.push("/");
-                      } catch (error) {
-                        console.error("Failed to delete tournament:", error);
-                        showError("大会の削除に失敗しました");
-                      }
-                    }
-                  }}
-                  className="p-2 rounded-lg transition bg-red-50 text-red-600 hover:bg-red-100 flex-shrink-0"
-                  title="大会削除"
-                  type="button"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
               </div>
               {/* ステータス表示（スマホ版） */}
               {(mode === "line" && isDrawing) && (
@@ -1290,39 +1278,13 @@ export default function TournamentEditPage() {
                 )}
               </div>
 
-              {/* 右側: 大会削除ボタン（分離） */}
-              <div className="flex items-center">
-                <div className="border-l border-gray-300 h-6 mx-2"></div>
-                <button
-                  onClick={async () => {
-                    if (showConfirm("この大会を完全に削除しますか？この操作は取り消せません。")) {
-                      try {
-                        await deleteTournament(tournamentId);
-                        showSuccess("大会を削除しました");
-                        router.push("/");
-                      } catch (error) {
-                        console.error("Failed to delete tournament:", error);
-                        showError("大会の削除に失敗しました");
-                      }
-                    }
-                  }}
-                  className="px-4 py-2 rounded-lg transition bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 flex items-center gap-2"
-                  title="大会削除"
-                  type="button"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  <span className="text-sm font-medium">大会削除</span>
-                </button>
-              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* メインコンテンツ */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pt-[calc(4rem+3.5rem+1rem)] pt-[calc(4rem+3rem+1rem)]">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pt-[calc(4rem+3rem+3.5rem+1rem)] pt-[calc(4rem+3rem+3rem+1rem)]">
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div
@@ -1337,11 +1299,12 @@ export default function TournamentEditPage() {
             onTouchEnd={handleCanvasTouchEnd}
             style={{ aspectRatio: "auto", touchAction: "none" }}
           >
-            <img
-              src={tournament.pdfPageImage}
-              alt="Tournament bracket"
-              className="w-full h-auto"
-            />
+            <div ref={imageContainerRef} className="relative">
+              <img
+                src={tournament.pdfPageImage}
+                alt="Tournament bracket"
+                className="w-full h-auto"
+              />
             {/* マークを描画（ドラッグ可能） */}
             {/* すべてのラインを1つのSVGにまとめる */}
             <svg
@@ -1511,7 +1474,7 @@ export default function TournamentEditPage() {
                     left: `${mark.x * 100}%`,
                     top: `${mark.y * 100}%`,
                     transform: "translate(-50%, -50%)",
-                    fontSize: `${mark.fontSize}px`,
+                    fontSize: `${mark.fontSize * imageScale}px`,
                     color: selectedMarkId === mark.id && mode === null ? SELECTED_COLOR : mark.color,
                     fontWeight: "bold",
                     zIndex: 10,
@@ -1641,9 +1604,33 @@ export default function TournamentEditPage() {
                 )}
               </svg>
             )}
+            </div>
           </div>
         </div>
       </main>
+
+      {/* 大会削除ボタン（画面右下固定） */}
+      <button
+        onClick={async () => {
+          if (showConfirm("この大会を完全に削除しますか？この操作は取り消せません。")) {
+            try {
+              await deleteTournament(tournamentId);
+              showSuccess("大会を削除しました");
+              router.push("/");
+            } catch (error) {
+              console.error("Failed to delete tournament:", error);
+              showError("大会の削除に失敗しました");
+            }
+          }
+        }}
+        className="fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-lg transition bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 flex items-center justify-center"
+        title="大会削除"
+        type="button"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </button>
     </div>
   );
 }
