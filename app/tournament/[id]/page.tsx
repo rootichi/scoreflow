@@ -134,14 +134,50 @@ export default function TournamentEditPage() {
 
   // 編集操作中は画面スクロールを無効化（スマホ版）
   useEffect(() => {
-    if (isDrawing || draggingHandle || draggingMark) {
+    const isEditing = isDrawing || draggingHandle || draggingMark;
+    
+    if (isEditing) {
+      // スクロールを無効化
       document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.height = '100%';
+      
+      // タッチイベントを直接制御（passive: falseでpreventDefaultを確実に実行）
+      const preventScroll = (e: TouchEvent) => {
+        if (isEditing) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      };
+      
+      const preventWheel = (e: WheelEvent) => {
+        if (isEditing) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      };
+      
+      // キャプチャフェーズでイベントを捕捉
+      document.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
+      document.addEventListener('touchstart', preventScroll, { passive: false, capture: true });
+      document.addEventListener('wheel', preventWheel, { passive: false, capture: true });
+      
+      return () => {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.height = '';
+        document.removeEventListener('touchmove', preventScroll, { capture: true } as any);
+        document.removeEventListener('touchstart', preventScroll, { capture: true } as any);
+        document.removeEventListener('wheel', preventWheel, { capture: true } as any);
+      };
     } else {
       document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
   }, [isDrawing, draggingHandle, draggingMark]);
 
   const getRelativeCoordinates = useCallback((
@@ -1354,7 +1390,10 @@ export default function TournamentEditPage() {
             style={{ 
               aspectRatio: "auto", 
               touchAction: isDrawing || draggingHandle || draggingMark ? "none" : "pan-x pan-y pinch-zoom",
-              overscrollBehavior: "none" // スクロールの伝播を防止
+              overscrollBehavior: "none", // スクロールの伝播を防止
+              WebkitOverflowScrolling: "auto", // iOSの慣性スクロールを制御
+              WebkitTouchCallout: "none", // iOSの長押しメニューを無効化
+              userSelect: "none" // テキスト選択を無効化
             }}
           >
             <div ref={imageContainerRef} className="relative">
