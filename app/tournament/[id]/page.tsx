@@ -923,9 +923,212 @@ export default function TournamentEditPage() {
         </nav>
 
         {/* 2段目: 編集ツールバー */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
           <div className="bg-white border-b border-gray-200">
-            <div className="flex justify-between items-center flex-wrap py-3">
+            {/* スマホ版: コンパクトなアイコンボタン */}
+            <div className="md:hidden overflow-x-auto">
+              <div className="flex items-center gap-2 py-2 min-w-max">
+                <button
+                  onClick={handleUndo}
+                  disabled={!canUndo}
+                  className={`p-2 rounded-lg transition flex-shrink-0 ${
+                    canUndo
+                      ? "bg-gray-600 text-white hover:bg-gray-700"
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+                  title="元に戻す"
+                  type="button"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  </svg>
+                </button>
+                <button
+                  onClick={handleRedo}
+                  disabled={!canRedo}
+                  className={`p-2 rounded-lg transition flex-shrink-0 ${
+                    canRedo
+                      ? "bg-gray-600 text-white hover:bg-gray-700"
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+                  title="やり直す"
+                  type="button"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
+                  </svg>
+                </button>
+                <div className="border-l border-gray-300 h-6 mx-1"></div>
+                <button
+                  onClick={() => {
+                    setMode(mode === "line" ? null : "line");
+                    setIsDrawing(false);
+                    setLineStart(null);
+                    setLineEnd(null);
+                  }}
+                  className={`p-2 rounded-lg transition flex-shrink-0 ${
+                    mode === "line"
+                      ? "bg-red-600 text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
+                  title="ライン追加"
+                  type="button"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12h16M4 12l4-4m-4 4l4 4" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => {
+                    setMode(mode === "score" ? null : "score");
+                    const value = showPrompt("スコアを入力してください:");
+                    if (value) {
+                      setScoreValue(value);
+                    } else {
+                      setMode(null);
+                    }
+                  }}
+                  className={`p-2 rounded-lg transition flex-shrink-0 ${
+                    mode === "score"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
+                  title="スコア追加"
+                  type="button"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                  </svg>
+                </button>
+                {selectedMarkId && mode === null && (
+                  <>
+                    <div className="border-l border-gray-300 h-6 mx-1"></div>
+                    <button
+                      onClick={async () => {
+                        const mark = marks.find((m) => m.id === selectedMarkId);
+                        if (mark) {
+                          await deleteMark(tournamentId, selectedMarkId);
+                          addAction({
+                            type: "delete",
+                            markId: selectedMarkId,
+                            mark,
+                          });
+                          setSelectedMarkId(null);
+                        }
+                      }}
+                      className="p-2 rounded-lg transition bg-red-50 text-red-600 hover:bg-red-100 flex-shrink-0"
+                      type="button"
+                      title="削除"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => {
+                        const mark = marks.find((m) => m.id === selectedMarkId);
+                        if (mark) {
+                          setCopiedMark(mark);
+                          showSuccess("コピーしました");
+                        }
+                      }}
+                      className="p-2 rounded-lg transition bg-blue-50 text-blue-600 hover:bg-blue-100 flex-shrink-0"
+                      type="button"
+                      title="コピー"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                    {copiedMark && (
+                      <button
+                        onClick={async () => {
+                          if (copiedMark && selectedMarkId) {
+                            const markData = {
+                              type: copiedMark.type,
+                              pageNumber: copiedMark.pageNumber,
+                              ...(copiedMark.type === "line"
+                                ? {
+                                    x1: (copiedMark as LineMark).x1 + COPY_OFFSET,
+                                    y1: (copiedMark as LineMark).y1 + COPY_OFFSET,
+                                    x2: (copiedMark as LineMark).x2 + COPY_OFFSET,
+                                    y2: (copiedMark as LineMark).y2 + COPY_OFFSET,
+                                    color: copiedMark.color,
+                                  }
+                                : {
+                                    x: (copiedMark as ScoreMark).x + COPY_OFFSET,
+                                    y: (copiedMark as ScoreMark).y + COPY_OFFSET,
+                                    value: (copiedMark as ScoreMark).value,
+                                    fontSize: (copiedMark as ScoreMark).fontSize,
+                                    color: copiedMark.color,
+                                  }),
+                            };
+                            const newMarkId = await addMark(tournamentId, markData);
+                            addAction({
+                              type: "add",
+                              markId: newMarkId,
+                              mark: {
+                                ...markData,
+                                createdAt: Timestamp.now(),
+                              } as Mark,
+                            });
+                            setSelectedMarkId(newMarkId);
+                          }
+                        }}
+                        className="p-2 rounded-lg transition bg-green-50 text-green-600 hover:bg-green-100 flex-shrink-0"
+                        type="button"
+                        title="ペースト"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                      </button>
+                    )}
+                  </>
+                )}
+                <div className="border-l border-gray-300 h-6 mx-1"></div>
+                <button
+                  onClick={async () => {
+                    if (showConfirm("この大会を完全に削除しますか？この操作は取り消せません。")) {
+                      try {
+                        await deleteTournament(tournamentId);
+                        showSuccess("大会を削除しました");
+                        router.push("/");
+                      } catch (error) {
+                        console.error("Failed to delete tournament:", error);
+                        showError("大会の削除に失敗しました");
+                      }
+                    }
+                  }}
+                  className="p-2 rounded-lg transition bg-red-50 text-red-600 hover:bg-red-100 flex-shrink-0"
+                  title="大会削除"
+                  type="button"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+              {/* ステータス表示（スマホ版） */}
+              {(mode === "line" && isDrawing) && (
+                <div className="px-2 pb-2">
+                  <span className="text-xs text-gray-600">ドラッグして線を描画</span>
+                </div>
+              )}
+              {selectedMarkId && mode === null && (
+                <div className="px-2 pb-2">
+                  <span className="text-xs text-gray-500">マーク選択中</span>
+                </div>
+              )}
+              {mode === "score" && scoreValue && (
+                <div className="px-2 pb-2">
+                  <span className="text-xs text-gray-600">スコア: {scoreValue} - 配置位置をタップ</span>
+                </div>
+              )}
+            </div>
+
+            {/* PC版: 従来のレイアウト */}
+            <div className="hidden md:flex justify-between items-center flex-wrap py-3">
               {/* 左側: 編集ツール */}
               <div className="flex gap-4 items-center flex-wrap">
                 <span className="text-sm font-medium">編集モード:</span>
@@ -1119,7 +1322,7 @@ export default function TournamentEditPage() {
       </div>
 
       {/* メインコンテンツ */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" style={{ paddingTop: 'calc(4rem + 3.5rem + 1rem)' }}>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pt-[calc(4rem+3.5rem+1rem)] pt-[calc(4rem+3rem+1rem)]">
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div
