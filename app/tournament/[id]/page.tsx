@@ -132,6 +132,18 @@ export default function TournamentEditPage() {
     };
   }, [tournament, calculateImageScale]);
 
+  // 編集操作中は画面スクロールを無効化（スマホ版）
+  useEffect(() => {
+    if (isDrawing || draggingHandle || draggingMark) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isDrawing, draggingHandle, draggingMark]);
+
   const getRelativeCoordinates = useCallback((
     e: React.MouseEvent<HTMLDivElement> | MouseEvent | React.TouchEvent<HTMLDivElement> | TouchEvent
   ): { x: number; y: number } => {

@@ -1041,10 +1041,37 @@ export default function Home() {
             </div>
           </div>
         )}
+        {/* 検索結果が0件の場合も検索欄を表示（スマホ版のみ） */}
+        {sortedTournaments.length === 0 && searchQuery.trim() && (
+          <div className="max-w-7xl mx-auto px-6 md:hidden">
+            <div className="bg-gray-50 border-b border-gray-200">
+              <div className="flex items-center gap-4 px-4 py-2">
+                <div className="text-xs font-medium text-gray-700">名称</div>
+                {/* 検索バー（スマホ版のみ） */}
+                <div className="flex-1">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                      <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="検索"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="block w-full pl-8 pr-2 py-1.5 border border-gray-300 rounded-md bg-white text-xs text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* メインコンテンツ */}
-      <main className="max-w-7xl mx-auto px-6 py-8" style={{ paddingTop: sortedTournaments.length > 0 ? 'calc(3.5rem + 2.5rem)' : '3.5rem' }}>
+      <main className="max-w-7xl mx-auto px-6 py-8" style={{ paddingTop: (sortedTournaments.length > 0 || (sortedTournaments.length === 0 && searchQuery.trim())) ? 'calc(3.5rem + 2.5rem)' : '3.5rem' }}>
         {/* 大会一覧 */}
         {sortedTournaments.length === 0 ? (
           <div className="text-center py-12">
