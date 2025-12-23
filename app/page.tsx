@@ -33,6 +33,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState(""); // 入力中の検索クエリ
   const [animationStep, setAnimationStep] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -62,6 +63,15 @@ export default function Home() {
 
     return () => unsubscribe();
   }, []);
+
+  // 検索入力のデバウンス処理
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 300); // 300ms待機
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   // アニメーション制御（未ログイン時のみ）
   useEffect(() => {
@@ -990,13 +1000,13 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </div>
-                  <input
-                    type="text"
-                    placeholder="検索"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                    <input
+                      type="text"
+                      placeholder="検索"
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
                 </div>
               </div>
 
@@ -1031,8 +1041,8 @@ export default function Home() {
                     <input
                       type="text"
                       placeholder="検索"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
                       className="block w-full pl-8 pr-2 py-1.5 border border-gray-300 rounded-md bg-white text-xs text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -1058,8 +1068,8 @@ export default function Home() {
                     <input
                       type="text"
                       placeholder="検索"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
                       className="block w-full pl-8 pr-2 py-1.5 border border-gray-300 rounded-md bg-white text-xs text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -1071,7 +1081,7 @@ export default function Home() {
       </div>
 
       {/* メインコンテンツ */}
-      <main className="max-w-7xl mx-auto px-6 py-8" style={{ paddingTop: (sortedTournaments.length > 0 || (sortedTournaments.length === 0 && searchQuery.trim())) ? 'calc(3.5rem + 2.5rem)' : '3.5rem' }}>
+      <main className="max-w-7xl mx-auto px-6 py-8 md:pt-8 pt-4" style={{ paddingTop: (sortedTournaments.length > 0 || (sortedTournaments.length === 0 && searchQuery.trim())) ? 'calc(3.5rem + 2.5rem + 0.5rem)' : 'calc(3.5rem + 0.5rem)' }}>
         {/* 大会一覧 */}
         {sortedTournaments.length === 0 ? (
           <div className="text-center py-12">

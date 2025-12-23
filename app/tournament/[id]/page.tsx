@@ -407,8 +407,13 @@ export default function TournamentEditPage() {
   }, [handleCanvasMove]);
 
   const handleCanvasTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    // 複数のタッチポイントがある場合（ピンチ操作）は編集操作を無効化
+    // 複数のタッチポイントがある場合（ピンチ操作）
     if (e.touches.length > 1) {
+      // 編集操作中はピンチ操作を無効化
+      if (isDrawing || draggingHandle || draggingMark) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       return;
     }
     
@@ -416,6 +421,7 @@ export default function TournamentEditPage() {
       // タッチ開始位置がない場合でも、編集操作中は処理を続行
       if (isDrawing || draggingHandle || draggingMark) {
         e.preventDefault();
+        e.stopPropagation();
         handleCanvasMove(e);
       }
       return;
@@ -429,6 +435,7 @@ export default function TournamentEditPage() {
     // 編集操作と判定された場合のみpreventDefault
     if (isDrawing || draggingHandle || draggingMark || deltaX > SCROLL_THRESHOLD || deltaY > SCROLL_THRESHOLD) {
       e.preventDefault();
+      e.stopPropagation();
       setIsTouchDragging(true);
       handleCanvasMove(e);
     }
@@ -912,7 +919,18 @@ export default function TournamentEditPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <style jsx global>{`
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.7;
+          }
+        }
+      `}</style>
+      <div className="min-h-screen bg-gray-50">
       {/* 統合ヘッダー */}
       <div className="fixed top-0 left-0 right-0 z-40 bg-white shadow-sm border-b border-gray-200">
         {/* 1段目: ロゴとナビゲーション */}
@@ -1335,7 +1353,8 @@ export default function TournamentEditPage() {
             onTouchEnd={handleCanvasTouchEnd}
             style={{ 
               aspectRatio: "auto", 
-              touchAction: isDrawing || draggingHandle || draggingMark ? "none" : "pan-x pan-y pinch-zoom" 
+              touchAction: isDrawing || draggingHandle || draggingMark ? "none" : "pan-x pan-y pinch-zoom",
+              overscrollBehavior: "none" // スクロールの伝播を防止
             }}
           >
             <div ref={imageContainerRef} className="relative">
@@ -1421,7 +1440,7 @@ export default function TournamentEditPage() {
                         <circle
                           cx={displayMark.x1 * 100}
                           cy={displayMark.y1 * 100}
-                          r="1.5"
+                          r="4.0"
                           fill="transparent"
                           stroke="transparent"
                           className="md:hidden"
@@ -1447,13 +1466,16 @@ export default function TournamentEditPage() {
                         <circle
                           cx={displayMark.x1 * 100}
                           cy={displayMark.y1 * 100}
-                          r="0.8"
+                          r="2.0"
                           fill={SELECTED_COLOR}
-                          fillOpacity="0.2"
+                          fillOpacity="0.5"
                           stroke={SELECTED_COLOR}
-                          strokeWidth="0.4"
-                          style={{ cursor: "pointer" }}
-                          className="md:r-[0.4] md:stroke-[0.2]"
+                          strokeWidth="0.6"
+                          style={{ 
+                            cursor: "pointer",
+                            animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite"
+                          }}
+                          className="md:r-[0.4] md:fill-opacity-[0.2] md:stroke-[0.2] md:animate-none"
                           onMouseDown={(e) => {
                             e.stopPropagation();
                             const coords = getRelativeCoordinates(e as any);
@@ -1490,7 +1512,7 @@ export default function TournamentEditPage() {
                         <circle
                           cx={displayMark.x2 * 100}
                           cy={displayMark.y2 * 100}
-                          r="1.5"
+                          r="4.0"
                           fill="transparent"
                           stroke="transparent"
                           className="md:hidden"
@@ -1516,13 +1538,16 @@ export default function TournamentEditPage() {
                         <circle
                           cx={displayMark.x2 * 100}
                           cy={displayMark.y2 * 100}
-                          r="0.8"
+                          r="2.0"
                           fill={SELECTED_COLOR}
-                          fillOpacity="0.2"
+                          fillOpacity="0.5"
                           stroke={SELECTED_COLOR}
-                          strokeWidth="0.4"
-                          style={{ cursor: "pointer" }}
-                          className="md:r-[0.4] md:stroke-[0.2]"
+                          strokeWidth="0.6"
+                          style={{ 
+                            cursor: "pointer",
+                            animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite"
+                          }}
+                          className="md:r-[0.4] md:fill-opacity-[0.2] md:stroke-[0.2] md:animate-none"
                           onMouseDown={(e) => {
                             e.stopPropagation();
                             const coords = getRelativeCoordinates(e as any);
@@ -1728,7 +1753,8 @@ export default function TournamentEditPage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
         </svg>
       </button>
-    </div>
+      </div>
+    </>
   );
 }
 
