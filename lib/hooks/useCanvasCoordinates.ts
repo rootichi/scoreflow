@@ -5,8 +5,7 @@ import { useCallback, RefObject } from "react";
  * SVG内のイベントも正しく処理できるように改善
  */
 export function useCanvasCoordinates(
-  canvasRef: RefObject<HTMLDivElement | null>,
-  svgRef?: RefObject<SVGSVGElement | null>
+  canvasRef: RefObject<HTMLDivElement | null>
 ) {
   const getRelativeCoordinates = useCallback(
     (
@@ -74,7 +73,7 @@ export function useCanvasCoordinates(
 
       return { x: 0, y: 0 };
     },
-    [canvasRef, svgRef]
+    [canvasRef]
   );
 
   return { getRelativeCoordinates };
