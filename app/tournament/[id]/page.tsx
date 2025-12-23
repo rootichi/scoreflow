@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import Image from "next/image";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase/auth";
 import { getTournament, addMark, deleteMark, updateMark, subscribeMarks, deleteTournament } from "@/lib/firebase/tournaments";
@@ -25,11 +24,9 @@ import {
   handleScoreDragSnap,
 } from "@/lib/utils/snapUtils";
 import { createMarkUpdateData, updateMarkSafely, updateMarkCoordinates } from "@/lib/utils/markUtils";
-import { getPublicUrl, copyToClipboard } from "@/lib/utils/url";
 import { showError, showSuccess, showPrompt, showConfirm } from "@/lib/utils/notification";
 import {
   DEFAULT_LINE_COLOR,
-  DEFAULT_SCORE_COLOR,
   DEFAULT_SCORE_FONT_SIZE,
   DEFAULT_PAGE_NUMBER,
   MIN_LINE_LENGTH,
@@ -38,9 +35,13 @@ import {
   SNAP_GUIDE_COLOR,
   SNAP_GUIDE_STROKE_WIDTH,
   SNAP_GUIDE_OPACITY,
-  HANDLE_RADIUS,
-  HANDLE_STROKE_WIDTH,
 } from "@/lib/constants";
+import { useImageScale } from "@/lib/hooks/useImageScale";
+import { useScrollPrevention } from "@/lib/hooks/useScrollPrevention";
+import { useCanvasCoordinates } from "@/lib/hooks/useCanvasCoordinates";
+import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
+import type { DraggingMark, DraggingHandle, SnapGuide, EditMode } from "@/lib/types/canvas";
+import { TournamentHeader } from "@/components/tournament/TournamentHeader";
 
 export default function TournamentEditPage() {
   const router = useRouter();
@@ -49,23 +50,26 @@ export default function TournamentEditPage() {
   const [user, loading] = useAuthState(auth!);
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [marks, setMarks] = useState<Array<Mark & { id: string }>>([]);
-  const [mode, setMode] = useState<"line" | "score" | null>(null);
+  const [mode, setMode] = useState<EditMode>(null);
   const [scoreValue, setScoreValue] = useState("");
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [lineStart, setLineStart] = useState<{ x: number; y: number } | null>(null);
   const [lineEnd, setLineEnd] = useState<{ x: number; y: number } | null>(null);
   const { addAction, undo, redo, canUndo, canRedo, reset } = useHistoryStore();
-  const [draggingMark, setDraggingMark] = useState<{ id: string; type: "line" | "score"; startX: number; startY: number; originalMark: Mark & { id: string } } | null>(null);
+  const [draggingMark, setDraggingMark] = useState<DraggingMark | null>(null);
   const [localMarks, setLocalMarks] = useState<Array<Mark & { id: string }>>([]);
   const [selectedMarkId, setSelectedMarkId] = useState<string | null>(null);
-  const [draggingHandle, setDraggingHandle] = useState<{ markId: string; handle: "start" | "end"; startX: number; startY: number; originalMark: LineMark & { id: string } } | null>(null);
+  const [draggingHandle, setDraggingHandle] = useState<DraggingHandle | null>(null);
   const [copiedMark, setCopiedMark] = useState<Mark & { id: string } | null>(null);
-  const [snapGuide, setSnapGuide] = useState<{ x?: number; y?: number; visible: boolean } | null>(null); // スナップガイドライン（x: 垂直線、y: 水平線）
+  const [snapGuide, setSnapGuide] = useState<SnapGuide | null>(null); // スナップガイドライン（x: 垂直線、y: 水平線）
   const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null); // タッチ開始位置（スクロール判定用）
   const [isTouchDragging, setIsTouchDragging] = useState(false); // タッチドラッグ中かどうか
-  const imageContainerRef = useRef<HTMLDivElement>(null);
-  const [imageScale, setImageScale] = useState(1);
+  
+  // カスタムフック
+  const { imageContainerRef, imageScale } = useImageScale();
+  useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark);
+  const { getRelativeCoordinates } = useCanvasCoordinates(canvasRef);
 
   useEffect(() => {
     if (!user || !tournamentId) return;
@@ -108,112 +112,6 @@ export default function TournamentEditPage() {
     return () => unsubscribe();
   }, [tournamentId, reset]);
 
-  // 画像スケール計算
-  const calculateImageScale = useCallback(() => {
-    if (imageContainerRef.current) {
-      const imgElement = imageContainerRef.current.querySelector('img');
-      if (imgElement && imgElement.naturalWidth && imgElement.offsetWidth) {
-        setImageScale(imgElement.offsetWidth / imgElement.naturalWidth);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (tournament) {
-      calculateImageScale();
-      window.addEventListener('resize', calculateImageScale);
-      const imgElement = imageContainerRef.current?.querySelector('img');
-      if (imgElement) {
-        imgElement.onload = calculateImageScale;
-      }
-    }
-    return () => {
-      window.removeEventListener('resize', calculateImageScale);
-    };
-  }, [tournament, calculateImageScale]);
-
-  // 編集操作中は画面スクロールを無効化（スマホ版）
-  useEffect(() => {
-    const isEditing = isDrawing || draggingHandle || draggingMark;
-    
-    if (isEditing) {
-      // スクロールを無効化
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
-      document.body.style.height = '100%';
-      
-      // タッチイベントを直接制御（passive: falseでpreventDefaultを確実に実行）
-      const preventScroll = (e: TouchEvent) => {
-        if (isEditing) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      };
-      
-      const preventWheel = (e: WheelEvent) => {
-        if (isEditing) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      };
-      
-      // キャプチャフェーズでイベントを捕捉
-      document.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
-      document.addEventListener('touchstart', preventScroll, { passive: false, capture: true });
-      document.addEventListener('wheel', preventWheel, { passive: false, capture: true });
-      
-      return () => {
-        document.body.style.overflow = '';
-        document.body.style.position = '';
-        document.body.style.width = '';
-        document.body.style.height = '';
-        document.removeEventListener('touchmove', preventScroll, { capture: true } as any);
-        document.removeEventListener('touchstart', preventScroll, { capture: true } as any);
-        document.removeEventListener('wheel', preventWheel, { capture: true } as any);
-      };
-    } else {
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-      document.body.style.height = '';
-    }
-  }, [isDrawing, draggingHandle, draggingMark]);
-
-  const getRelativeCoordinates = useCallback((
-    e: React.MouseEvent<HTMLDivElement> | MouseEvent | React.TouchEvent<HTMLDivElement> | TouchEvent
-  ): { x: number; y: number } => {
-    if (!canvasRef.current) return { x: 0, y: 0 };
-    const rect = canvasRef.current.getBoundingClientRect();
-    
-    // タッチイベントの場合
-    if ('touches' in e && e.touches.length > 0) {
-      const touch = e.touches[0];
-      return {
-        x: (touch.clientX - rect.left) / rect.width,
-        y: (touch.clientY - rect.top) / rect.height,
-      };
-    }
-    
-    // タッチ終了イベントの場合（changedTouchesから取得）
-    if ('changedTouches' in e && e.changedTouches.length > 0) {
-      const touch = e.changedTouches[0];
-      return {
-        x: (touch.clientX - rect.left) / rect.width,
-        y: (touch.clientY - rect.top) / rect.height,
-      };
-    }
-    
-    // マウスイベントの場合
-    if ('clientX' in e && 'clientY' in e) {
-      return {
-        x: (e.clientX - rect.left) / rect.width,
-        y: (e.clientY - rect.top) / rect.height,
-      };
-    }
-    
-    return { x: 0, y: 0 };
-  }, []);
 
 
 
@@ -453,13 +351,16 @@ export default function TournamentEditPage() {
       return;
     }
     
+    // 編集操作中は常にpreventDefaultして処理を続行
+    if (isDrawing || draggingHandle || draggingMark) {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsTouchDragging(true);
+      handleCanvasMove(e);
+      return;
+    }
+    
     if (!touchStartPos) {
-      // タッチ開始位置がない場合でも、編集操作中は処理を続行
-      if (isDrawing || draggingHandle || draggingMark) {
-        e.preventDefault();
-        e.stopPropagation();
-        handleCanvasMove(e);
-      }
       return;
     }
     
@@ -469,7 +370,7 @@ export default function TournamentEditPage() {
     const SCROLL_THRESHOLD = 10; // px
     
     // 編集操作と判定された場合のみpreventDefault
-    if (isDrawing || draggingHandle || draggingMark || deltaX > SCROLL_THRESHOLD || deltaY > SCROLL_THRESHOLD) {
+    if (deltaX > SCROLL_THRESHOLD || deltaY > SCROLL_THRESHOLD) {
       e.preventDefault();
       e.stopPropagation();
       setIsTouchDragging(true);
@@ -555,90 +456,18 @@ export default function TournamentEditPage() {
     }
   }, [marks, tournamentId, redo, addAction]);
 
-  // キーボードイベント処理
-  useEffect(() => {
-    const handleKeyDown = async (e: KeyboardEvent) => {
-      // Ctrl/Cmd + Zで元に戻す（選択状態に関係なく動作）
-      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        await handleUndo();
-        return;
-      }
-
-      // Ctrl/Cmd + Shift + Z または Ctrl/Cmd + Yでやり直す（選択状態に関係なく動作）
-      if (((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "z") || ((e.ctrlKey || e.metaKey) && e.key === "y")) {
-        e.preventDefault();
-        await handleRedo();
-        return;
-      }
-
-      // 以下は選択中のマークがある場合のみ動作
-      if (!selectedMarkId) return;
-
-      // Delete/Backspaceキーで削除
-      if (e.key === "Delete" || e.key === "Backspace") {
-        e.preventDefault();
-        const mark = marks.find((m) => m.id === selectedMarkId);
-        if (mark) {
-          await deleteMark(tournamentId, selectedMarkId);
-          addAction({
-            type: "delete",
-            markId: selectedMarkId,
-            mark,
-          });
-          setSelectedMarkId(null);
-        }
-      }
-
-      // Ctrl/Cmd + Cでコピー
-      if ((e.ctrlKey || e.metaKey) && e.key === "c") {
-        e.preventDefault();
-        const mark = marks.find((m) => m.id === selectedMarkId);
-        if (mark) {
-          setCopiedMark(mark);
-        }
-      }
-
-      // Ctrl/Cmd + Vで貼り付け
-      if ((e.ctrlKey || e.metaKey) && e.key === "v") {
-        e.preventDefault();
-        if (copiedMark && selectedMarkId) {
-          const markData = {
-            type: copiedMark.type,
-            pageNumber: copiedMark.pageNumber,
-            ...(copiedMark.type === "line"
-              ? {
-                  x1: (copiedMark as LineMark).x1 + COPY_OFFSET,
-                  y1: (copiedMark as LineMark).y1 + COPY_OFFSET,
-                  x2: (copiedMark as LineMark).x2 + COPY_OFFSET,
-                  y2: (copiedMark as LineMark).y2 + COPY_OFFSET,
-                  color: copiedMark.color,
-                }
-              : {
-                  x: (copiedMark as ScoreMark).x + COPY_OFFSET,
-                  y: (copiedMark as ScoreMark).y + COPY_OFFSET,
-                  value: (copiedMark as ScoreMark).value,
-                  fontSize: (copiedMark as ScoreMark).fontSize,
-                  color: copiedMark.color,
-                }),
-          };
-          const newMarkId = await addMark(tournamentId, markData);
-          addAction({
-            type: "add",
-            markId: newMarkId,
-            mark: {
-              ...markData,
-              createdAt: Timestamp.now(),
-            } as Mark,
-          });
-          setSelectedMarkId(newMarkId);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedMarkId, marks, tournamentId, copiedMark, addAction, handleUndo, handleRedo]);
+  // キーボードショートカット
+  useKeyboardShortcuts({
+    selectedMarkId,
+    marks,
+    tournamentId,
+    copiedMark,
+    setCopiedMark,
+    setSelectedMarkId,
+    addAction,
+    handleUndo,
+    handleRedo,
+  });
 
   const handleMarkDragEnd = async () => {
     if (!draggingMark) return;
@@ -966,74 +795,13 @@ export default function TournamentEditPage() {
           }
         }
       `}</style>
-      <div className="min-h-screen bg-gray-50">
       {/* 統合ヘッダー */}
-      <div className="fixed top-0 left-0 right-0 z-40 bg-white shadow-sm border-b border-gray-200">
-        {/* 1段目: ロゴとナビゲーション */}
-        <nav className="border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center gap-3">
-                <a
-                  href="https://scoreflow-eight.vercel.app/"
-                  className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-                >
-                  <div className="relative h-6 w-6">
-                    <Image 
-                      src="/logo.png" 
-                      alt="ScoreFlow" 
-                      fill
-                      className="object-contain"
-                      unoptimized
-                      onError={(e) => {
-                        // 画像が読み込めない場合は非表示にする
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  </div>
-                  <span className="text-xl font-bold text-gray-900">ScoreFlow</span>
-                </a>
-              </div>
-              <div className="flex gap-4 items-center">
-                <button
-                  onClick={async () => {
-                    try {
-                      const url = getPublicUrl(tournament.publicUrlId);
-                      await copyToClipboard(url);
-                      showSuccess("公開URLをコピーしました");
-                    } catch (error) {
-                      console.error("Failed to copy URL:", error);
-                      showError("URLのコピーに失敗しました");
-                    }
-                  }}
-                  className="text-sm text-blue-600 hover:text-blue-700"
-                  type="button"
-                >
-                  公開URL
-                </button>
-                <button
-                  onClick={() => router.push("/")}
-                  className="text-sm text-gray-600 hover:text-gray-900"
-                  type="button"
-                >
-                  戻る
-                </button>
-              </div>
-            </div>
-          </div>
-        </nav>
+      <TournamentHeader tournament={tournament} />
+      
+      <div className="min-h-screen bg-gray-50">
 
-        {/* 2段目: 大会名 */}
-        <div className="border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center h-12">
-              <h1 className="text-lg font-bold text-gray-900">{tournament.name}</h1>
-            </div>
-          </div>
-        </div>
-
-        {/* 2段目: 編集ツールバー */}
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+      {/* 2段目: 編集ツールバー */}
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
           <div className="bg-white border-b border-gray-200">
             {/* スマホ版: コンパクトなアイコンボタン */}
             <div className="md:hidden overflow-x-auto">
@@ -1371,7 +1139,6 @@ export default function TournamentEditPage() {
             </div>
           </div>
         </div>
-      </div>
 
       {/* メインコンテンツ */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pt-[calc(4rem+3rem+3.5rem+1rem)] pt-[calc(4rem+3rem+3rem+1rem)]">
@@ -1379,6 +1146,7 @@ export default function TournamentEditPage() {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div
             ref={canvasRef}
+            data-canvas-container
             className={`relative ${mode === "line" ? "cursor-crosshair" : ""}`}
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleCanvasMouseMove}
@@ -1396,7 +1164,7 @@ export default function TournamentEditPage() {
               userSelect: "none" // テキスト選択を無効化
             }}
           >
-            <div ref={imageContainerRef} className="relative">
+            <div ref={imageContainerRef} className="relative" data-canvas-container>
               <img
                 src={tournament.pdfPageImage}
                 alt="Tournament bracket"
@@ -1765,9 +1533,9 @@ export default function TournamentEditPage() {
                 )}
               </svg>
             )}
-            </div>
           </div>
         </div>
+      </div>
       </main>
 
       {/* 大会削除ボタン（画面右下固定） */}

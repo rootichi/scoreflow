@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { getTournamentByPublicUrlId, subscribeMarks } from "@/lib/firebase/tournaments";
 import { Tournament, Mark } from "@/lib/firebase/types";
+import { useImageScale } from "@/lib/hooks/useImageScale";
 
 export default function PublicTournamentPage() {
   const params = useParams();
@@ -14,8 +15,7 @@ export default function PublicTournamentPage() {
   const [marks, setMarks] = useState<Array<Mark & { id: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const imageContainerRef = useRef<HTMLDivElement>(null);
-  const [imageScale, setImageScale] = useState(1);
+  const { imageContainerRef, imageScale } = useImageScale();
 
   useEffect(() => {
     const loadTournament = async () => {
@@ -50,43 +50,6 @@ export default function PublicTournamentPage() {
     return () => unsubscribe();
   }, [tournament]);
 
-  // 画像のスケールを計算（レスポンシブ対応）
-  useEffect(() => {
-    const updateImageScale = () => {
-      if (!imageContainerRef.current) return;
-      const container = imageContainerRef.current;
-      const img = container.querySelector('img');
-      if (!img) return;
-      
-      // 画像の実際の表示幅を取得
-      const displayWidth = img.offsetWidth;
-      // 画像の元の幅（naturalWidth）を取得
-      const naturalWidth = img.naturalWidth;
-      
-      if (naturalWidth > 0) {
-        // スケール比を計算
-        const scale = displayWidth / naturalWidth;
-        setImageScale(scale);
-      }
-    };
-
-    // 初回計算
-    updateImageScale();
-
-    // リサイズ時に再計算
-    window.addEventListener('resize', updateImageScale);
-    const img = imageContainerRef.current?.querySelector('img');
-    if (img) {
-      img.addEventListener('load', updateImageScale);
-    }
-
-    return () => {
-      window.removeEventListener('resize', updateImageScale);
-      if (img) {
-        img.removeEventListener('load', updateImageScale);
-      }
-    };
-  }, [tournament]);
 
   if (loading) {
     return (
