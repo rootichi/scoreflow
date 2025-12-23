@@ -819,7 +819,7 @@ export default function Home() {
         setSearchInput={setSearchInput}
         onSignOut={handleSignOut}
         hasTournaments={sortedTournaments.length > 0}
-        hasSearchQuery={!!searchQuery.trim()}
+        hasSearchQuery={!!searchInput.trim()}
       />
 
       {/* メインコンテンツ */}

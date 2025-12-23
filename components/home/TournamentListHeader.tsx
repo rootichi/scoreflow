@@ -76,10 +76,15 @@ export function TournamentListHeader({
                     </svg>
                   </div>
                   <input
+                    key="mobile-search-input"
                     type="text"
                     placeholder="検索"
                     value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
+                    onChange={(e) => {
+                      setSearchInput(e.target.value);
+                      // モバイルでキーボードが閉じるのを防ぐため、フォーカスを維持
+                      e.target.focus();
+                    }}
                     className="block w-full pl-8 pr-2 py-1.5 border border-gray-300 rounded-md bg-white text-xs text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -103,10 +108,15 @@ export function TournamentListHeader({
                     </svg>
                   </div>
                   <input
+                    key="mobile-search-input"
                     type="text"
                     placeholder="検索"
                     value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
+                    onChange={(e) => {
+                      setSearchInput(e.target.value);
+                      // モバイルでキーボードが閉じるのを防ぐため、フォーカスを維持
+                      e.target.focus();
+                    }}
                     className="block w-full pl-8 pr-2 py-1.5 border border-gray-300 rounded-md bg-white text-xs text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
