@@ -32,8 +32,6 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchInput, setSearchInput] = useState(""); // 入力中の検索クエリ
   const [animationStep, setAnimationStep] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -63,15 +61,6 @@ export default function Home() {
 
     return () => unsubscribe();
   }, []);
-
-  // 検索入力のデバウンス処理
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearchQuery(searchInput);
-    }, 300); // 300ms待機
-
-    return () => clearTimeout(timer);
-  }, [searchInput]);
 
   // アニメーション制御（未ログイン時のみ）
   useEffect(() => {
@@ -198,23 +187,15 @@ export default function Home() {
     }
   }, []);
 
-  // 検索とソートを最適化
+  // ソートを最適化
   const sortedTournaments = useMemo(() => {
-    // 検索フィルタリング
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-    const filtered = normalizedQuery
-      ? tournaments.filter((tournament) =>
-          tournament.name.toLowerCase().includes(normalizedQuery)
-        )
-      : tournaments;
-
     // 作成時間でソート（新しいものが上）
-    return [...filtered].sort((a, b) => {
+    return [...tournaments].sort((a, b) => {
       const dateA = a.createdAt?.toDate()?.getTime() || 0;
       const dateB = b.createdAt?.toDate()?.getTime() || 0;
       return dateB - dateA;
     });
-  }, [tournaments, searchQuery]);
+  }, [tournaments]);
 
   // URLをコピー
   const handleCopyUrl = useCallback(async (publicUrlId: string) => {
@@ -815,16 +796,13 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white">
       <TournamentListHeader
-        searchInput={searchInput}
-        setSearchInput={setSearchInput}
         onSignOut={handleSignOut}
         hasTournaments={sortedTournaments.length > 0}
-        hasSearchQuery={!!searchInput.trim()}
       />
 
       {/* メインコンテンツ */}
-      <main className="max-w-7xl mx-auto px-6 py-8 md:pt-8 pt-4" style={{ paddingTop: (sortedTournaments.length > 0 || (sortedTournaments.length === 0 && searchQuery.trim())) ? 'calc(3.5rem + 2.5rem + 0.5rem)' : 'calc(3.5rem + 0.5rem)' }}>
-        <TournamentList tournaments={sortedTournaments} searchQuery={searchQuery} />
+      <main className="max-w-7xl mx-auto px-6 py-8 md:pt-8 pt-4" style={{ paddingTop: sortedTournaments.length > 0 ? 'calc(3.5rem + 2.5rem + 0.5rem)' : 'calc(3.5rem + 0.5rem)' }}>
+        <TournamentList tournaments={sortedTournaments} />
       </main>
 
       {/* 右下固定の新規作成ボタン */}

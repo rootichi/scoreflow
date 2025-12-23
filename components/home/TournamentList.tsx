@@ -5,21 +5,18 @@ import { Tournament } from "@/lib/firebase/types";
 
 interface TournamentListProps {
   tournaments: Tournament[];
-  searchQuery: string;
 }
 
 /**
  * トーナメント一覧コンポーネント
  */
-export function TournamentList({ tournaments, searchQuery }: TournamentListProps) {
+export function TournamentList({ tournaments }: TournamentListProps) {
   const router = useRouter();
 
   if (tournaments.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">
-          {searchQuery.trim() ? "検索結果が見つかりませんでした" : "大会がありません"}
-        </p>
+        <p className="text-gray-500">大会がありません</p>
       </div>
     );
   }
