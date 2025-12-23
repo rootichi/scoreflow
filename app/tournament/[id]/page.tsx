@@ -108,6 +108,30 @@ export default function TournamentEditPage() {
     return () => unsubscribe();
   }, [tournamentId, reset]);
 
+  // 画像スケール計算
+  const calculateImageScale = useCallback(() => {
+    if (imageContainerRef.current) {
+      const imgElement = imageContainerRef.current.querySelector('img');
+      if (imgElement && imgElement.naturalWidth && imgElement.offsetWidth) {
+        setImageScale(imgElement.offsetWidth / imgElement.naturalWidth);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tournament) {
+      calculateImageScale();
+      window.addEventListener('resize', calculateImageScale);
+      const imgElement = imageContainerRef.current?.querySelector('img');
+      if (imgElement) {
+        imgElement.onload = calculateImageScale;
+      }
+    }
+    return () => {
+      window.removeEventListener('resize', calculateImageScale);
+    };
+  }, [tournament, calculateImageScale]);
+
   const getRelativeCoordinates = useCallback((
     e: React.MouseEvent<HTMLDivElement> | MouseEvent | React.TouchEvent<HTMLDivElement> | TouchEvent
   ): { x: number; y: number } => {
@@ -1010,102 +1034,93 @@ export default function TournamentEditPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
                   </svg>
                 </button>
-                {selectedMarkId && mode === null && (
-                  <>
-                    <div className="border-l border-gray-300 h-6 mx-1"></div>
-                    <button
-                      onClick={async () => {
-                        const mark = marks.find((m) => m.id === selectedMarkId);
-                        if (mark) {
-                          await deleteMark(tournamentId, selectedMarkId);
-                          addAction({
-                            type: "delete",
-                            markId: selectedMarkId,
-                            mark,
-                          });
-                          setSelectedMarkId(null);
-                        }
-                      }}
-                      className="p-2 rounded-lg transition bg-red-50 text-red-600 hover:bg-red-100 flex-shrink-0"
-                      type="button"
-                      title="削除"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => {
-                        const mark = marks.find((m) => m.id === selectedMarkId);
-                        if (mark) {
-                          setCopiedMark(mark);
-                          showSuccess("コピーしました");
-                        }
-                      }}
-                      className="p-2 rounded-lg transition bg-blue-50 text-blue-600 hover:bg-blue-100 flex-shrink-0"
-                      type="button"
-                      title="コピー"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                    </button>
-                    {copiedMark && (
-                      <button
-                        onClick={async () => {
-                          if (copiedMark && selectedMarkId) {
-                            const markData = {
-                              type: copiedMark.type,
-                              pageNumber: copiedMark.pageNumber,
-                              ...(copiedMark.type === "line"
-                                ? {
-                                    x1: (copiedMark as LineMark).x1 + COPY_OFFSET,
-                                    y1: (copiedMark as LineMark).y1 + COPY_OFFSET,
-                                    x2: (copiedMark as LineMark).x2 + COPY_OFFSET,
-                                    y2: (copiedMark as LineMark).y2 + COPY_OFFSET,
-                                    color: copiedMark.color,
-                                  }
-                                : {
-                                    x: (copiedMark as ScoreMark).x + COPY_OFFSET,
-                                    y: (copiedMark as ScoreMark).y + COPY_OFFSET,
-                                    value: (copiedMark as ScoreMark).value,
-                                    fontSize: (copiedMark as ScoreMark).fontSize,
-                                    color: copiedMark.color,
-                                  }),
-                            };
-                            const newMarkId = await addMark(tournamentId, markData);
-                            addAction({
-                              type: "add",
-                              markId: newMarkId,
-                              mark: {
-                                ...markData,
-                                createdAt: Timestamp.now(),
-                              } as Mark,
-                            });
-                            setSelectedMarkId(newMarkId);
-                          }
-                        }}
-                        className="p-2 rounded-lg transition bg-green-50 text-green-600 hover:bg-green-100 flex-shrink-0"
-                        type="button"
-                        title="ペースト"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                      </button>
-                    )}
-                  </>
-                )}
+                <div className="border-l border-gray-300 h-6 mx-1"></div>
+                <button
+                  onClick={async () => {
+                    if (selectedMarkId) {
+                      const mark = marks.find((m) => m.id === selectedMarkId);
+                      if (mark) {
+                        await deleteMark(tournamentId, selectedMarkId);
+                        addAction({
+                          type: "delete",
+                          markId: selectedMarkId,
+                          mark,
+                        });
+                        setSelectedMarkId(null);
+                      }
+                    }
+                  }}
+                  disabled={!selectedMarkId}
+                  className={`p-2 rounded-lg transition flex-shrink-0 ${
+                    selectedMarkId
+                      ? "bg-red-50 text-red-600 hover:bg-red-100"
+                      : "bg-red-50/30 text-red-600/30"
+                  }`}
+                  type="button"
+                  title="削除"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+                <button
+                  onClick={async () => {
+                    if (selectedMarkId) {
+                      const mark = marks.find((m) => m.id === selectedMarkId);
+                      if (mark) {
+                        setCopiedMark(mark);
+                        // コピーと同時に貼り付けも実行
+                        const markData = {
+                          type: mark.type,
+                          pageNumber: mark.pageNumber,
+                          ...(mark.type === "line"
+                            ? {
+                                x1: (mark as LineMark).x1 + COPY_OFFSET,
+                                y1: (mark as LineMark).y1 + COPY_OFFSET,
+                                x2: (mark as LineMark).x2 + COPY_OFFSET,
+                                y2: (mark as LineMark).y2 + COPY_OFFSET,
+                                color: mark.color,
+                              }
+                            : {
+                                x: (mark as ScoreMark).x + COPY_OFFSET,
+                                y: (mark as ScoreMark).y + COPY_OFFSET,
+                                value: (mark as ScoreMark).value,
+                                fontSize: (mark as ScoreMark).fontSize,
+                                color: mark.color,
+                              }),
+                        };
+                        const newMarkId = await addMark(tournamentId, markData);
+                        addAction({
+                          type: "add",
+                          markId: newMarkId,
+                          mark: {
+                            ...markData,
+                            createdAt: Timestamp.now(),
+                          } as Mark,
+                        });
+                        setSelectedMarkId(newMarkId);
+                        showSuccess("コピーして貼り付けました");
+                      }
+                    }
+                  }}
+                  disabled={!selectedMarkId}
+                  className={`p-2 rounded-lg transition flex-shrink-0 ${
+                    selectedMarkId
+                      ? "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                      : "bg-blue-50/30 text-blue-600/30"
+                  }`}
+                  type="button"
+                  title="コピー&貼り付け"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
               </div>
               {/* ステータス表示（スマホ版） */}
               {(mode === "line" && isDrawing) && (
                 <div className="px-2 pb-2">
                   <span className="text-xs text-gray-600">ドラッグして線を描画</span>
-                </div>
-              )}
-              {selectedMarkId && mode === null && (
-                <div className="px-2 pb-2">
-                  <span className="text-xs text-gray-500">マーク選択中</span>
                 </div>
               )}
               {mode === "score" && scoreValue && (
@@ -1297,7 +1312,7 @@ export default function TournamentEditPage() {
             onTouchStart={handleCanvasTouchStart}
             onTouchMove={handleCanvasTouchMove}
             onTouchEnd={handleCanvasTouchEnd}
-            style={{ aspectRatio: "auto", touchAction: "none" }}
+            style={{ aspectRatio: "auto", touchAction: "pan-x pan-y pinch-zoom" }}
           >
             <div ref={imageContainerRef} className="relative">
               <img
