@@ -1386,11 +1386,11 @@ export default function TournamentEditPage() {
                     {selectedMarkId === mark.id && mode === null && !draggingHandle && (
                       <>
                         {/* 開始点のハンドル */}
-                        {/* Canva風: 大きなタッチターゲット（スマホ版） */}
+                        {/* タッチターゲット用の大きな透明な円（スマホ版用） */}
                         <circle
                           cx={displayMark.x1 * 100}
                           cy={displayMark.y1 * 100}
-                          r="10.0"
+                          r="4.0"
                           fill="transparent"
                           stroke="transparent"
                           className="md:hidden"
@@ -1413,14 +1413,20 @@ export default function TournamentEditPage() {
                             e.preventDefault(); // スクロールを防止
                           }}
                         />
-                        {/* Canva風: PC版用の大きなタッチターゲット */}
+                        {/* 見た目のハンドル */}
                         <circle
                           cx={displayMark.x1 * 100}
                           cy={displayMark.y1 * 100}
-                          r="6.0"
-                          fill="transparent"
-                          stroke="transparent"
-                          className="hidden md:block"
+                          r="2.0"
+                          fill={SELECTED_COLOR}
+                          fillOpacity="0.5"
+                          stroke={SELECTED_COLOR}
+                          strokeWidth="0.6"
+                          style={{ 
+                            cursor: "pointer",
+                            animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite"
+                          }}
+                          className="md:r-[0.4] md:fill-opacity-[0.2] md:stroke-[0.2] md:animate-none"
                           onMouseDown={(e) => {
                             e.stopPropagation();
                             const coords = getRelativeCoordinates(e as any);
@@ -1435,43 +1441,31 @@ export default function TournamentEditPage() {
                             setDraggingMark(null);
                             editMode.startEdit();
                           }}
-                        />
-                        {/* Canva風: 外側のリング（視認性向上） */}
-                        <circle
-                          cx={displayMark.x1 * 100}
-                          cy={displayMark.y1 * 100}
-                          r="4.0"
-                          fill="white"
-                          fillOpacity="1.0"
-                          stroke={SELECTED_COLOR}
-                          strokeWidth="1.2"
-                          style={{ 
-                            cursor: "pointer",
-                            pointerEvents: "none"
+                          onTouchStart={(e) => {
+                            e.stopPropagation();
+                            const touch = e.touches[0];
+                            setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+                            setIsTouchDragging(false);
+                            const coords = getRelativeCoordinates(e as any);
+                            setLocalMarks(marks); // ローカル状態を初期化
+                            setDraggingHandle({
+                              markId: mark.id,
+                              handle: "start",
+                              startX: coords.x,
+                              startY: coords.y,
+                              originalMark: displayMark as LineMark & { id: string },
+                            });
+                            setDraggingMark(null);
+                            editMode.startEdit();
+                            e.preventDefault(); // スクロールを防止
                           }}
-                          className="md:r-[2.0] md:stroke-[0.8]"
-                        />
-                        {/* Canva風: 内側のハンドル（目立つ） */}
-                        <circle
-                          cx={displayMark.x1 * 100}
-                          cy={displayMark.y1 * 100}
-                          r="3.0"
-                          fill={SELECTED_COLOR}
-                          fillOpacity="1.0"
-                          stroke="white"
-                          strokeWidth="0.8"
-                          style={{ 
-                            cursor: "pointer",
-                            pointerEvents: "none"
-                          }}
-                          className="md:r-[1.2] md:stroke-[0.4]"
                         />
                         {/* 終了点のハンドル */}
-                        {/* Canva風: 大きなタッチターゲット（スマホ版） */}
+                        {/* タッチターゲット用の大きな透明な円（スマホ版用） */}
                         <circle
                           cx={displayMark.x2 * 100}
                           cy={displayMark.y2 * 100}
-                          r="10.0"
+                          r="4.0"
                           fill="transparent"
                           stroke="transparent"
                           className="md:hidden"
@@ -1494,14 +1488,20 @@ export default function TournamentEditPage() {
                             e.preventDefault(); // スクロールを防止
                           }}
                         />
-                        {/* Canva風: PC版用の大きなタッチターゲット */}
+                        {/* 見た目のハンドル */}
                         <circle
                           cx={displayMark.x2 * 100}
                           cy={displayMark.y2 * 100}
-                          r="6.0"
-                          fill="transparent"
-                          stroke="transparent"
-                          className="hidden md:block"
+                          r="2.0"
+                          fill={SELECTED_COLOR}
+                          fillOpacity="0.5"
+                          stroke={SELECTED_COLOR}
+                          strokeWidth="0.6"
+                          style={{ 
+                            cursor: "pointer",
+                            animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite"
+                          }}
+                          className="md:r-[0.4] md:fill-opacity-[0.2] md:stroke-[0.2] md:animate-none"
                           onMouseDown={(e) => {
                             e.stopPropagation();
                             const coords = getRelativeCoordinates(e as any);
@@ -1516,36 +1516,24 @@ export default function TournamentEditPage() {
                             setDraggingMark(null);
                             editMode.startEdit();
                           }}
-                        />
-                        {/* Canva風: 外側のリング（視認性向上） */}
-                        <circle
-                          cx={displayMark.x2 * 100}
-                          cy={displayMark.y2 * 100}
-                          r="4.0"
-                          fill="white"
-                          fillOpacity="1.0"
-                          stroke={SELECTED_COLOR}
-                          strokeWidth="1.2"
-                          style={{ 
-                            cursor: "pointer",
-                            pointerEvents: "none"
+                          onTouchStart={(e) => {
+                            e.stopPropagation();
+                            const touch = e.touches[0];
+                            setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+                            setIsTouchDragging(false);
+                            const coords = getRelativeCoordinates(e as any);
+                            setLocalMarks(marks); // ローカル状態を初期化
+                            setDraggingHandle({
+                              markId: mark.id,
+                              handle: "end",
+                              startX: coords.x,
+                              startY: coords.y,
+                              originalMark: displayMark as LineMark & { id: string },
+                            });
+                            setDraggingMark(null);
+                            editMode.startEdit();
+                            e.preventDefault(); // スクロールを防止
                           }}
-                          className="md:r-[2.0] md:stroke-[0.8]"
-                        />
-                        {/* Canva風: 内側のハンドル（目立つ） */}
-                        <circle
-                          cx={displayMark.x2 * 100}
-                          cy={displayMark.y2 * 100}
-                          r="3.0"
-                          fill={SELECTED_COLOR}
-                          fillOpacity="1.0"
-                          stroke="white"
-                          strokeWidth="0.8"
-                          style={{ 
-                            cursor: "pointer",
-                            pointerEvents: "none"
-                          }}
-                          className="md:r-[1.2] md:stroke-[0.4]"
                         />
                       </>
                     )}
