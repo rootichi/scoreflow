@@ -940,7 +940,7 @@ export default function TournamentEditPage() {
                   className="text-sm text-gray-600 hover:text-gray-900"
                   type="button"
                 >
-                  ホーム
+                  戻る
                 </button>
               </div>
             </div>
@@ -1099,7 +1099,6 @@ export default function TournamentEditPage() {
                           } as Mark,
                         });
                         setSelectedMarkId(newMarkId);
-                        showSuccess("コピーして貼り付けました");
                       }
                     }
                   }}
