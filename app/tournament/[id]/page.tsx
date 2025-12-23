@@ -909,7 +909,7 @@ export default function TournamentEditPage() {
               // Canva風: ピンチアウトは常に許可（画像コンテナ内でのみ有効）
               // 編集操作中はhandleCanvasTouchMoveでpreventDefault()を呼ぶことで制御
               touchAction: "pan-x pan-y pinch-zoom",
-              overscrollBehavior: "none", // スクロールの伝播を防止
+              overscrollBehavior: "contain", // スクロールの伝播を制御（noneからcontainに変更）
               WebkitOverflowScrolling: "auto", // iOSの慣性スクロールを制御
               WebkitTouchCallout: "none", // iOSの長押しメニューを無効化
               userSelect: "none" // テキスト選択を無効化

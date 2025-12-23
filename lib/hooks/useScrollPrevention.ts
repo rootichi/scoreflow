@@ -62,9 +62,20 @@ export function useScrollPrevention(
       };
 
       const preventWheel = (e: WheelEvent) => {
+        // 編集操作中の場合のみpreventDefault
+        // パンモードではスクロールや拡大を許可
         if (isEditingRef.current) {
-          e.preventDefault();
-          e.stopPropagation();
+          // キャンバス要素内のイベントかどうかをチェック
+          const target = e.target as HTMLElement;
+          const canvasElement = target.closest('[data-canvas-container]');
+          const isInCanvas = canvasElement !== null;
+          
+          // キャンバス要素内のイベントのみpreventDefault
+          // キャンバス要素外（ページ全体）のスクロールや拡大は許可
+          if (isInCanvas) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
         }
       };
 
