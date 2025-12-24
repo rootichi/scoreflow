@@ -863,7 +863,7 @@ export default function TournamentEditPage() {
       {/* 統合ヘッダー */}
       <TournamentHeader tournament={tournament} />
       
-      <div className="min-h-screen bg-gray-50" style={{ touchAction: "auto" }}>
+      <div className="min-h-screen bg-gray-50" style={{ touchAction: "pan-x pan-y manipulation" }}>
 
       {/* 2段目: 編集ツールバー */}
       <EditToolbar
@@ -892,9 +892,9 @@ export default function TournamentEditPage() {
       />
 
       {/* メインコンテンツ */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pt-[calc(4rem+3rem+3.5rem+1rem)] pt-[calc(4rem+3rem+3rem+1rem)]">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pt-[calc(4rem+3rem+3.5rem+1rem)] pt-[calc(4rem+3rem+3rem+1rem)]" style={{ touchAction: "pan-x pan-y manipulation" }}>
 
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-hidden" style={{ touchAction: "pan-x pan-y manipulation" }}>
           {/* Canva方式: 画像コンテナを独立したスクロール領域として実装 */}
           <div
             ref={imageContainerRef}

@@ -175,7 +175,7 @@ export function EditToolbar({
   }`;
 
   return (
-    <div className="fixed top-[calc(4rem+3rem)] left-0 right-0 z-30 bg-white border-b border-gray-200" style={{ touchAction: "pan-x pan-y" }}>
+    <div className="fixed top-[calc(4rem+3rem)] left-0 right-0 z-30 bg-white border-b border-gray-200" style={{ touchAction: "pan-x pan-y manipulation" }}>
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         <div className="bg-white">
           {/* スマホ版 */}
