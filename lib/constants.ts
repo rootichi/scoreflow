@@ -19,5 +19,8 @@ export const SNAP_GUIDE_OPACITY = "0.6";
 export const HANDLE_RADIUS = "0.4";
 export const HANDLE_STROKE_WIDTH = "0.2";
 
+// アプリケーション情報
+export const APP_VERSION = "0.1.0"; // package.jsonのversionと同期してください
+
 
 

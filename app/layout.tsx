@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { VersionBadge } from "@/components/common/VersionBadge";
 
 export const metadata: Metadata = {
   title: "ScoreFlow - 大会進行状況リアルタイム発信",
@@ -17,7 +18,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja" style={{ touchAction: "manipulation" }}>
-      <body style={{ touchAction: "manipulation" }}>{children}</body>
+      <body style={{ touchAction: "manipulation" }}>
+        {children}
+        <VersionBadge />
+      </body>
     </html>
   );
 }
