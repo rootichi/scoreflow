@@ -21,15 +21,28 @@ export function usePinchZoom(
         return translate;
       }
 
+      // ビューポートのサイズを取得（CanvasViewportのサイズ）
+      const viewportRect = imageContainerRef.current.getBoundingClientRect();
+      const viewportWidth = viewportRect.width;
+      const viewportHeight = viewportRect.height;
+
       const initialWidth = initialImageSizeRef.current.width;
       const initialHeight = initialImageSizeRef.current.height;
 
+      // スケール後の画像サイズ
       const scaledWidth = initialWidth * scale;
       const scaledHeight = initialHeight * scale;
 
-      const maxTranslateX = (scaledWidth - initialWidth) / 2;
-      const maxTranslateY = (scaledHeight - initialHeight) / 2;
+      // transform-origin: center centerを考慮した移動範囲の計算
+      // 拡大縮小は中心を基準に行われるため、移動範囲は以下のように計算される
+      // 左方向の最大移動: (scaledWidth - viewportWidth) / 2
+      // 右方向の最大移動: (scaledWidth - viewportWidth) / 2
+      // 上方向の最大移動: (scaledHeight - viewportHeight) / 2
+      // 下方向の最大移動: (scaledHeight - viewportHeight) / 2
+      const maxTranslateX = Math.max(0, (scaledWidth - viewportWidth) / 2);
+      const maxTranslateY = Math.max(0, (scaledHeight - viewportHeight) / 2);
 
+      // 移動範囲を制限（初期画像の境界を超えないように）
       const clampedX = Math.max(-maxTranslateX, Math.min(maxTranslateX, translate.x));
       const clampedY = Math.max(-maxTranslateY, Math.min(maxTranslateY, translate.y));
 
