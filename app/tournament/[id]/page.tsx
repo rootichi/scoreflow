@@ -72,8 +72,11 @@ export default function TournamentEditPage() {
   
   // カスタムピンチズーム用のstate
   const [canvasScale, setCanvasScale] = useState(1); // キャンバスのスケール
+  const [canvasTranslate, setCanvasTranslate] = useState({ x: 0, y: 0 }); // キャンバスの移動量
   const pinchStartDistanceRef = useRef<number | null>(null); // ピンチ開始時の距離
   const pinchStartScaleRef = useRef<number>(1); // ピンチ開始時のスケール
+  const pinchStartCenterRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の中心点
+  const pinchStartTranslateRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 }); // ピンチ開始時の移動量
   const canvasZoomLayerRef = useRef<HTMLDivElement>(null); // CanvasZoomLayerのref
   
   // Canva風の編集モード管理
@@ -382,7 +385,7 @@ export default function TournamentEditPage() {
       e.preventDefault();
       e.stopPropagation();
       
-      if (pinchStartDistanceRef.current === null) {
+      if (pinchStartDistanceRef.current === null || pinchStartCenterRef.current === null) {
         return;
       }
       
@@ -393,10 +396,37 @@ export default function TournamentEditPage() {
         Math.pow(touch2.clientY - touch1.clientY, 2)
       );
       
-      // スケールを計算（最小0.5倍、最大5倍）
-      const scaleChange = currentDistance / pinchStartDistanceRef.current;
-      const newScale = Math.max(0.5, Math.min(5, pinchStartScaleRef.current * scaleChange));
-      setCanvasScale(newScale);
+      // 現在のピンチの中心点を計算
+      const currentCenterX = (touch1.clientX + touch2.clientX) / 2;
+      const currentCenterY = (touch1.clientY + touch2.clientY) / 2;
+      
+      // CanvasViewportの位置を取得
+      if (imageContainerRef.current) {
+        const viewportRect = imageContainerRef.current.getBoundingClientRect();
+        const viewportCenterX = viewportRect.left + viewportRect.width / 2;
+        const viewportCenterY = viewportRect.top + viewportRect.height / 2;
+        
+        // 現在のピンチ中心点をビューポート座標系に変換
+        const currentRelativeCenterX = currentCenterX - viewportCenterX;
+        const currentRelativeCenterY = currentCenterY - viewportCenterY;
+        
+        // スケールを計算（最小0.5倍、最大5倍）
+        const scaleChange = currentDistance / pinchStartDistanceRef.current;
+        const newScale = Math.max(0.5, Math.min(5, pinchStartScaleRef.current * scaleChange));
+        
+        // パンを計算（中心点の移動を反映）
+        // ピンチの中心点の移動を直接translateに反映
+        const centerDeltaX = currentRelativeCenterX - pinchStartCenterRef.current.x;
+        const centerDeltaY = currentRelativeCenterY - pinchStartCenterRef.current.y;
+        
+        // スケール変更を考慮してパンを計算
+        // スケールが大きくなると、同じ移動量でも見た目の移動が小さくなるため、スケールで割る
+        const newTranslateX = pinchStartTranslateRef.current.x + centerDeltaX;
+        const newTranslateY = pinchStartTranslateRef.current.y + centerDeltaY;
+        
+        setCanvasScale(newScale);
+        setCanvasTranslate({ x: newTranslateX, y: newTranslateY });
+      }
       
       return;
     }
@@ -637,8 +667,28 @@ export default function TournamentEditPage() {
         Math.pow(touch2.clientY - touch1.clientY, 2)
       );
       
+      // ピンチの中心点を計算
+      const centerX = (touch1.clientX + touch2.clientX) / 2;
+      const centerY = (touch1.clientY + touch2.clientY) / 2;
+      
+      // CanvasViewportの位置を取得
+      if (imageContainerRef.current) {
+        const viewportRect = imageContainerRef.current.getBoundingClientRect();
+        const viewportCenterX = viewportRect.left + viewportRect.width / 2;
+        const viewportCenterY = viewportRect.top + viewportRect.height / 2;
+        
+        // ピンチ中心点をビューポート座標系に変換
+        const relativeCenterX = centerX - viewportCenterX;
+        const relativeCenterY = centerY - viewportCenterY;
+        
+        pinchStartCenterRef.current = { x: relativeCenterX, y: relativeCenterY };
+      } else {
+        pinchStartCenterRef.current = { x: centerX, y: centerY };
+      }
+      
       pinchStartDistanceRef.current = distance;
       pinchStartScaleRef.current = canvasScale;
+      pinchStartTranslateRef.current = { ...canvasTranslate };
       
       return;
     }
@@ -770,6 +820,7 @@ export default function TournamentEditPage() {
     // ピンチ操作が終了した場合、リセット
     if (e.touches.length < 2) {
       pinchStartDistanceRef.current = null;
+      pinchStartCenterRef.current = null;
     }
 
     // タッチジェスチャーを処理
@@ -938,7 +989,7 @@ export default function TournamentEditPage() {
       {/* メインコンテンツ */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pt-[calc(4rem+3rem+3.5rem+1rem)] pt-[calc(4rem+3rem+3rem+1rem)]" style={{ touchAction: "pan-x pan-y manipulation" }}>
 
-        <div className="bg-white rounded-lg shadow overflow-hidden" style={{ touchAction: "pan-x pan-y manipulation" }}>
+        <div style={{ touchAction: "pan-x pan-y manipulation" }}>
           {/* Canva方式: 画像コンテナを独立したスクロール領域として実装 */}
           <div
             ref={imageContainerRef}
@@ -978,7 +1029,7 @@ export default function TournamentEditPage() {
               <div
                 ref={canvasZoomLayerRef}
                 style={{
-                  transform: `scale(${canvasScale})`,
+                  transform: `translate(${canvasTranslate.x}px, ${canvasTranslate.y}px) scale(${canvasScale})`,
                   transformOrigin: "center center",
                   width: "100%",
                   height: "100%",
