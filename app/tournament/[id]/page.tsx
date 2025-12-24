@@ -1040,8 +1040,7 @@ export default function TournamentEditPage() {
                   data-canvas-container
                   className="relative"
                   style={{
-                    minWidth: "100%",
-                    minHeight: "100%",
+                    width: "100%",
                     display: "inline-block", // コンテンツサイズに合わせる
                   }}
                 >
