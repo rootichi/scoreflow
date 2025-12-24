@@ -49,6 +49,7 @@ export function useCanvasCoordinates(
       if ("touches" in e && e.touches.length > 0) {
         const touch = e.touches[0];
         // getBoundingClientRect()はビューポート座標系を返すので、そのまま使用
+        // transform: scale()が適用されていても、getBoundingClientRect()は正しい座標を返す
         return {
           x: (touch.clientX - rect.left) / rect.width,
           y: (touch.clientY - rect.top) / rect.height,

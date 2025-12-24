@@ -70,6 +70,12 @@ export default function TournamentEditPage() {
   const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null); // タッチ開始位置（スクロール判定用）
   const [isTouchDragging, setIsTouchDragging] = useState(false); // タッチドラッグ中かどうか
   
+  // カスタムピンチズーム用のstate
+  const [canvasScale, setCanvasScale] = useState(1); // キャンバスのスケール
+  const pinchStartDistanceRef = useRef<number | null>(null); // ピンチ開始時の距離
+  const pinchStartScaleRef = useRef<number>(1); // ピンチ開始時のスケール
+  const canvasZoomLayerRef = useRef<HTMLDivElement>(null); // CanvasZoomLayerのref
+  
   // Canva風の編集モード管理
   const editMode = useEditMode();
   const touchGestures = useTouchGestures();
@@ -363,9 +369,6 @@ export default function TournamentEditPage() {
   }, [handleCanvasMove]);
 
   const handleCanvasTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    // Canva方式: パンモードではネイティブ処理に完全に委譲
-    // 編集モード時のみ、カスタム処理を実行
-    
     // 複数のタッチポイントがある場合（ピンチ操作）
     if (e.touches.length > 1) {
       // 編集操作中はピンチ操作を無効化
@@ -374,8 +377,33 @@ export default function TournamentEditPage() {
         e.stopPropagation();
         return;
       }
-      // パンモードではネイティブピンチズームを許可（何も処理しない）
+      
+      // カスタムピンチズームを処理
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (pinchStartDistanceRef.current === null) {
+        return;
+      }
+      
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const currentDistance = Math.sqrt(
+        Math.pow(touch2.clientX - touch1.clientX, 2) +
+        Math.pow(touch2.clientY - touch1.clientY, 2)
+      );
+      
+      // スケールを計算（最小0.5倍、最大5倍）
+      const scaleChange = currentDistance / pinchStartDistanceRef.current;
+      const newScale = Math.max(0.5, Math.min(5, pinchStartScaleRef.current * scaleChange));
+      setCanvasScale(newScale);
+      
       return;
+    }
+    
+    // ピンチ操作が終了した場合、リセット
+    if (pinchStartDistanceRef.current !== null) {
+      pinchStartDistanceRef.current = null;
     }
     
     // パンモードで、編集操作中でない場合は、ネイティブ処理に委譲
@@ -411,7 +439,7 @@ export default function TournamentEditPage() {
       // オブジェクトが選択されていない場合はパン操作を許可
       // preventDefaultしない（パン操作を許可）
     }
-  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove, touchGestures, editMode]);
+  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove, touchGestures, editMode, canvasScale]);
 
   // スコア追加の共通処理
   const handleAddScore = useCallback(async (coords: { x: number; y: number }) => {
@@ -589,9 +617,6 @@ export default function TournamentEditPage() {
   const handleCanvasTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
     
-    // Canva方式: パンモードではネイティブ処理に完全に委譲
-    // 編集モード時のみ、カスタム処理を実行
-    
     // 複数のタッチポイントがある場合（ピンチ操作）
     if (e.touches.length > 1) {
       // 編集操作中はピンチ操作を無効化
@@ -600,7 +625,21 @@ export default function TournamentEditPage() {
         e.stopPropagation();
         return;
       }
-      // パンモードではネイティブピンチズームを許可（何も処理しない）
+      
+      // カスタムピンチズームを開始
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.sqrt(
+        Math.pow(touch2.clientX - touch1.clientX, 2) +
+        Math.pow(touch2.clientY - touch1.clientY, 2)
+      );
+      
+      pinchStartDistanceRef.current = distance;
+      pinchStartScaleRef.current = canvasScale;
+      
       return;
     }
     
@@ -727,6 +766,11 @@ export default function TournamentEditPage() {
 
   const handleCanvasTouchEnd = async (e: React.TouchEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
+
+    // ピンチ操作が終了した場合、リセット
+    if (e.touches.length < 2) {
+      pinchStartDistanceRef.current = null;
+    }
 
     // タッチジェスチャーを処理
     touchGestures.handleTouchEnd(e);
@@ -905,8 +949,8 @@ export default function TournamentEditPage() {
               width: "100%",
               // ヘッダー(4rem) + ツールバー(3rem) + mainの上下パディング(2rem) = 9rem
               height: "calc(100vh - 9rem)",
-              overflow: "auto", // 独立したスクロール領域
-              touchAction: "pan-x pan-y pinch-zoom", // ピンチズームを許可
+              overflow: "hidden", // CanvasViewportで制御するため、ここではhidden
+              touchAction: "pan-x pan-y", // ネイティブピンチズームを無効化（カスタム実装を使用）
               overscrollBehavior: "contain", // スクロールの伝播を制御
               WebkitOverflowScrolling: "touch", // iOSの慣性スクロールを有効化
               WebkitTouchCallout: "none", // iOSの長押しメニューを無効化
@@ -921,18 +965,38 @@ export default function TournamentEditPage() {
             onTouchMove={handleCanvasTouchMove}
             onTouchEnd={handleCanvasTouchEnd}
           >
-            {/* キャンバス要素（画像とSVGを含む） */}
+            {/* CanvasViewport: 表示領域（固定サイズ） */}
             <div
-              ref={canvasRef}
-              data-canvas-container
-              className="relative"
               style={{
-                minWidth: "100%",
-                minHeight: "100%",
-                display: "inline-block", // コンテンツサイズに合わせる
+                width: "100%",
+                height: "100%",
+                position: "relative",
+                overflow: "hidden", // 拡大したコンテンツがはみ出さないように
               }}
             >
-              <img
+              {/* CanvasZoomLayer: ここだけを拡大縮小 */}
+              <div
+                ref={canvasZoomLayerRef}
+                style={{
+                  transform: `scale(${canvasScale})`,
+                  transformOrigin: "center center",
+                  width: "100%",
+                  height: "100%",
+                  position: "relative",
+                }}
+              >
+                {/* キャンバス要素（画像とSVGを含む） */}
+                <div
+                  ref={canvasRef}
+                  data-canvas-container
+                  className="relative"
+                  style={{
+                    minWidth: "100%",
+                    minHeight: "100%",
+                    display: "inline-block", // コンテンツサイズに合わせる
+                  }}
+                >
+                  <img
                 src={tournament.pdfPageImage}
                 alt="Tournament bracket"
                 className="w-full h-auto block"
@@ -1313,6 +1377,8 @@ export default function TournamentEditPage() {
                 )}
               </svg>
             )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
