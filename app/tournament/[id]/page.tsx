@@ -148,7 +148,7 @@ export default function TournamentEditPage() {
   // 初期画像サイズと位置を記録（canvasScale=1.0の状態）
   useEffect(() => {
     const recordInitialImageSize = () => {
-      if (!imageContainerRef.current || !canvasRef.current || !tournament) return;
+      if (!imageContainerRef.current || !canvasRef.current || !canvasZoomLayerRef.current || !tournament) return;
       
       const imgElement = imageContainerRef.current.querySelector("img");
       if (!imgElement || !imgElement.naturalWidth || !imgElement.naturalHeight) return;
@@ -158,13 +158,19 @@ export default function TournamentEditPage() {
       const imageDisplayHeight = imgElement.offsetHeight;
       
       if (imageDisplayWidth > 0 && imageDisplayHeight > 0) {
-        // CanvasViewportのサイズと位置を取得
-        const viewportRect = imageContainerRef.current.getBoundingClientRect();
+        // CanvasZoomLayerのサイズを取得
+        const zoomLayerRect = canvasZoomLayerRef.current.getBoundingClientRect();
+        const zoomLayerWidth = zoomLayerRect.width;
+        const zoomLayerHeight = zoomLayerRect.height;
         
-        // 画像の位置を取得（CanvasViewport内での相対位置）
+        // 画像の実際の位置を取得（CanvasZoomLayer内での相対位置）
         const imageRect = imgElement.getBoundingClientRect();
-        const imageLeft = imageRect.left - viewportRect.left;
-        const imageTop = imageRect.top - viewportRect.top;
+        const zoomLayerLeft = zoomLayerRect.left;
+        const zoomLayerTop = zoomLayerRect.top;
+        
+        // 画像の位置（CanvasZoomLayer内での相対位置）
+        const imageLeft = imageRect.left - zoomLayerLeft;
+        const imageTop = imageRect.top - zoomLayerTop;
         const imageRight = imageLeft + imageDisplayWidth;
         const imageBottom = imageTop + imageDisplayHeight;
         
@@ -191,16 +197,16 @@ export default function TournamentEditPage() {
 
   // 移動範囲を制限する関数
   const clampTranslate = useCallback((translate: { x: number; y: number }, scale: number) => {
-    if (!initialImageSizeRef.current || !initialImagePositionRef.current || !imageContainerRef.current) {
+    if (!initialImageSizeRef.current || !initialImagePositionRef.current || !canvasZoomLayerRef.current) {
       return translate;
     }
     
-    // CanvasViewportのサイズを取得
-    const viewportRect = imageContainerRef.current.getBoundingClientRect();
-    const viewportWidth = viewportRect.width;
-    const viewportHeight = viewportRect.height;
+    // CanvasZoomLayerのサイズを取得
+    const zoomLayerRect = canvasZoomLayerRef.current.getBoundingClientRect();
+    const zoomLayerWidth = zoomLayerRect.width;
+    const zoomLayerHeight = zoomLayerRect.height;
     
-    // 初期画像サイズと位置
+    // 初期画像サイズと位置（CanvasZoomLayerの中心を基準）
     const initialWidth = initialImageSizeRef.current.width;
     const initialHeight = initialImageSizeRef.current.height;
     const initialLeft = initialImagePositionRef.current.left;
@@ -212,14 +218,14 @@ export default function TournamentEditPage() {
     const scaledWidth = initialWidth * scale;
     const scaledHeight = initialHeight * scale;
     
-    // transform-origin: center center なので、拡大は中心から行われる
-    // 初期画像の中心位置を計算
-    const initialCenterX = initialLeft + initialWidth / 2;
-    const initialCenterY = initialTop + initialHeight / 2;
+    // transform-origin: center center なので、拡大はCanvasZoomLayerの中心から行われる
+    // CanvasZoomLayerの中心位置
+    const zoomLayerCenterX = zoomLayerWidth / 2;
+    const zoomLayerCenterY = zoomLayerHeight / 2;
     
-    // 拡大後の画像の左上位置を計算（中心から拡大）
-    const scaledLeft = initialCenterX - scaledWidth / 2;
-    const scaledTop = initialCenterY - scaledHeight / 2;
+    // 拡大後の画像の左上位置を計算（CanvasZoomLayerの中心から拡大）
+    const scaledLeft = zoomLayerCenterX - scaledWidth / 2;
+    const scaledTop = zoomLayerCenterY - scaledHeight / 2;
     
     // 移動可能な範囲を計算
     // 拡大後の画像が初期画像の境界を超えないように制限
