@@ -410,9 +410,10 @@ export default function TournamentEditPage() {
         const currentRelativeCenterX = currentCenterX - viewportCenterX;
         const currentRelativeCenterY = currentCenterY - viewportCenterY;
         
-        // スケールを計算（最小0.5倍、最大5倍）
+        // スケールを計算（最小1.0倍=初期画面サイズ、最大5倍）
+        // 初期画面の大きさから拡大はできるが、初期画面の大きさ以上に縮小はできない
         const scaleChange = currentDistance / pinchStartDistanceRef.current;
-        const newScale = Math.max(0.5, Math.min(5, pinchStartScaleRef.current * scaleChange));
+        const newScale = Math.max(1.0, Math.min(5, pinchStartScaleRef.current * scaleChange));
         
         // パンを計算（中心点の移動を反映）
         // ピンチの中心点の移動を直接translateに反映
