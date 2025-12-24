@@ -80,6 +80,7 @@ export default function TournamentEditPage() {
   const pinchStartCenterRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の中心点
   const pinchStartTranslateRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 }); // ピンチ開始時の移動量
   const canvasZoomLayerRef = useRef<HTMLDivElement>(null); // CanvasZoomLayerのref
+  const canvasViewportRef = useRef<HTMLDivElement>(null); // CanvasViewportのref
   
   // Canva風の編集モード管理
   const editMode = useEditMode();
@@ -148,13 +149,13 @@ export default function TournamentEditPage() {
   // 最小スケールと最大スケールを計算
   useEffect(() => {
     const calculateScales = () => {
-      if (!imageContainerRef.current || !tournament) return;
+      if (!canvasViewportRef.current || !tournament) return;
       
-      const imgElement = imageContainerRef.current.querySelector("img");
+      const imgElement = canvasViewportRef.current.querySelector("img");
       if (!imgElement || !imgElement.naturalWidth || !imgElement.naturalHeight) return;
       
-      // CanvasViewportのサイズを取得（imageContainerRefはCanvasViewportの親要素）
-      const viewportRect = imageContainerRef.current.getBoundingClientRect();
+      // CanvasViewportのサイズを取得
+      const viewportRect = canvasViewportRef.current.getBoundingClientRect();
       const viewportWidth = viewportRect.width;
       const viewportHeight = viewportRect.height;
       
@@ -199,19 +200,12 @@ export default function TournamentEditPage() {
         finalMaxScale = Math.max(finalMinScale, calculatedMaxScale);
       }
       setMaxScale(finalMaxScale);
-      
-      // 現在のスケールが範囲外の場合は調整
-      if (canvasScale < finalMinScale) {
-        setCanvasScale(finalMinScale);
-      } else if (canvasScale > finalMaxScale) {
-        setCanvasScale(finalMaxScale);
-      }
     };
     
     // 少し遅延させて実行（DOMが完全にレンダリングされた後）
     const timeoutId = setTimeout(calculateScales, 100);
     window.addEventListener("resize", calculateScales);
-    const imgElement = imageContainerRef.current?.querySelector("img");
+    const imgElement = canvasViewportRef.current?.querySelector("img");
     if (imgElement) {
       imgElement.onload = calculateScales;
     }
@@ -220,7 +214,19 @@ export default function TournamentEditPage() {
       clearTimeout(timeoutId);
       window.removeEventListener("resize", calculateScales);
     };
-  }, [tournament, imageScale, canvasScale]);
+  }, [tournament, imageScale]); // canvasScaleを依存配列から削除（無限ループを防ぐ）
+  
+  // 現在のスケールが範囲外の場合は調整（別のuseEffectで処理）
+  useEffect(() => {
+    setCanvasScale((currentScale) => {
+      if (currentScale < minScale) {
+        return minScale;
+      } else if (currentScale > maxScale) {
+        return maxScale;
+      }
+      return currentScale;
+    });
+  }, [minScale, maxScale]); // canvasScaleを依存配列から削除（無限ループを防ぐ）
 
   const handleCanvasMove = useCallback((e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     const coords = getRelativeCoordinates(e);
@@ -1094,6 +1100,7 @@ export default function TournamentEditPage() {
           >
             {/* CanvasViewport: 表示領域（固定サイズ） */}
             <div
+              ref={canvasViewportRef}
               style={{
                 width: "100%",
                 height: "100%",
