@@ -85,10 +85,11 @@ export default function TournamentEditPage() {
   const {
     canvasScale,
     canvasTranslate,
+    transformOrigin,
     handlePinchStart,
     handlePinchMove,
     handlePinchEnd,
-  } = usePinchZoom(imageContainerRef, initialImageSizeRef);
+  } = usePinchZoom(imageContainerRef, initialImageSizeRef, canvasRef);
   
   // 編集モードと選択状態を同期
   useEffect(() => {
@@ -1028,7 +1029,7 @@ export default function TournamentEditPage() {
                 ref={canvasZoomLayerRef}
                 style={{
                   transform: `translate(${canvasTranslate.x}px, ${canvasTranslate.y}px) scale(${canvasScale})`,
-                  transformOrigin: "center center",
+                  transformOrigin: transformOrigin,
                   width: "100%",
                   height: "100%",
                   position: "relative",
