@@ -3,10 +3,8 @@ import { useEffect, useRef } from "react";
 /**
  * 編集操作中にスクロールを無効化するカスタムフック
  * 
- * 注意: touchstartではpreventDefault()しない
- * Reactのイベントハンドラーが先に動作し、draggingMark/draggingHandleの状態を設定する必要があるため
- * 
- * Canva風の実装: 編集モードに基づいてスクロールを制御
+ * Canva方式: 画像コンテナが独立したスクロール領域として実装されているため、
+ * パンモードでは一切の制御を行わず、編集モード時のみページ全体のスクロールを防止
  */
 export function useScrollPrevention(
   isDrawing: boolean,
@@ -30,79 +28,22 @@ export function useScrollPrevention(
     const isEditing = canEdit ? canEdit() : (isDrawing || draggingHandle || draggingMark);
 
     if (isEditing) {
-      // スクロールを無効化
+      // 編集モード時のみ、ページ全体のスクロールを無効化
+      // 画像コンテナ内のスクロールは許可（独立したスクロール領域として動作）
       document.body.style.overflow = "hidden";
       document.body.style.position = "fixed";
       document.body.style.width = "100%";
       document.body.style.height = "100%";
-
-      // touchmoveのみを制御（touchstartではpreventDefaultしない）
-      // Reactのイベントハンドラーが先に動作する必要があるため
-      const preventScroll = (e: TouchEvent) => {
-        // ピンチ操作（複数タッチ）の場合は常に許可
-        if (e.touches.length > 1) {
-          return; // ピンチ操作は許可
-        }
-        
-        // 編集操作中の場合のみpreventDefault
-        // ただし、キャンバス要素内のイベントは許可（Reactのハンドラーが処理する）
-        if (isEditingRef.current) {
-          // キャンバス要素内のイベントかどうかをチェック
-          const target = e.target as HTMLElement;
-          const canvasElement = target.closest('[data-canvas-container]');
-          const isInCanvas = canvasElement !== null;
-          
-          if (!isInCanvas) {
-            // キャンバス要素外のイベントのみpreventDefault
-            e.preventDefault();
-            e.stopPropagation();
-          }
-          // キャンバス要素内のイベントはpreventDefaultしない（Reactのハンドラーが処理する）
-        }
-      };
-
-      const preventWheel = (e: WheelEvent) => {
-        // 編集操作中の場合のみpreventDefault
-        // パンモードではスクロールや拡大を許可
-        if (isEditingRef.current) {
-          // キャンバス要素内のイベントかどうかをチェック
-          const target = e.target as HTMLElement;
-          const canvasElement = target.closest('[data-canvas-container]');
-          const isInCanvas = canvasElement !== null;
-          
-          // キャンバス要素内のイベントのみpreventDefault
-          // キャンバス要素外（ページ全体）のスクロールや拡大は許可
-          if (isInCanvas) {
-            e.preventDefault();
-            e.stopPropagation();
-          }
-        }
-      };
-
-      // touchmoveをバブリングフェーズで捕捉（キャプチャフェーズではなく）
-      // これにより、Reactのイベントハンドラーが先に動作する
-      document.addEventListener("touchmove", preventScroll, {
-        passive: false,
-        capture: false, // バブリングフェーズで捕捉
-      });
-      document.addEventListener("wheel", preventWheel, {
-        passive: false,
-        capture: true,
-      });
 
       return () => {
         document.body.style.overflow = "";
         document.body.style.position = "";
         document.body.style.width = "";
         document.body.style.height = "";
-        document.removeEventListener("touchmove", preventScroll, {
-          capture: false,
-        } as any);
-        document.removeEventListener("wheel", preventWheel, {
-          capture: true,
-        } as any);
       };
     } else {
+      // パンモードでは一切の制御を行わない
+      // 画像コンテナ内のネイティブピンチズームとスクロールを完全に許可
       document.body.style.overflow = "";
       document.body.style.position = "";
       document.body.style.width = "";

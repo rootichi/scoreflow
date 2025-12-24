@@ -48,6 +48,7 @@ export function useCanvasCoordinates(
       // タッチイベントの場合
       if ("touches" in e && e.touches.length > 0) {
         const touch = e.touches[0];
+        // getBoundingClientRect()はビューポート座標系を返すので、そのまま使用
         return {
           x: (touch.clientX - rect.left) / rect.width,
           y: (touch.clientY - rect.top) / rect.height,
@@ -57,6 +58,7 @@ export function useCanvasCoordinates(
       // タッチ終了イベントの場合（changedTouchesから取得）
       if ("changedTouches" in e && e.changedTouches.length > 0) {
         const touch = e.changedTouches[0];
+        // getBoundingClientRect()はビューポート座標系を返すので、そのまま使用
         return {
           x: (touch.clientX - rect.left) / rect.width,
           y: (touch.clientY - rect.top) / rect.height,
@@ -65,6 +67,7 @@ export function useCanvasCoordinates(
 
       // マウスイベントの場合
       if ("clientX" in e && "clientY" in e) {
+        // getBoundingClientRect()はビューポート座標系を返すので、そのまま使用
         return {
           x: (e.clientX - rect.left) / rect.width,
           y: (e.clientY - rect.top) / rect.height,

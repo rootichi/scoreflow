@@ -363,17 +363,24 @@ export default function TournamentEditPage() {
   }, [handleCanvasMove]);
 
   const handleCanvasTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    // Canva方式: パンモードではネイティブ処理に完全に委譲
+    // 編集モード時のみ、カスタム処理を実行
+    
     // 複数のタッチポイントがある場合（ピンチ操作）
-    // ピンチ操作の場合は、ジェスチャー処理をスキップしてネイティブピンチズームを許可
     if (e.touches.length > 1) {
-      // 編集操作中はピンチ操作を無効化（preventDefaultで制御）
+      // 編集操作中はピンチ操作を無効化
       if (isDrawing || draggingHandle || draggingMark) {
         e.preventDefault();
         e.stopPropagation();
         return;
       }
-      // パンモードの場合はピンチズームを許可（preventDefaultしない）
-      // ネイティブピンチズームを許可するため、何も処理しない（resetToPanは不要）
+      // パンモードではネイティブピンチズームを許可（何も処理しない）
+      return;
+    }
+    
+    // パンモードで、編集操作中でない場合は、ネイティブ処理に委譲
+    if (editMode.canPan() && !isDrawing && !draggingHandle && !draggingMark && !editMode.isObjectSelected) {
+      // ネイティブスクロールを許可（何も処理しない）
       return;
     }
     
@@ -403,20 +410,6 @@ export default function TournamentEditPage() {
       }
       // オブジェクトが選択されていない場合はパン操作を許可
       // preventDefaultしない（パン操作を許可）
-    }
-    
-    // パンモードの場合、従来のスクロール判定を実行
-    if (editMode.canPan() && touchStartPos) {
-      const touch = e.touches[0];
-      const deltaX = Math.abs(touch.clientX - touchStartPos.x);
-      const deltaY = Math.abs(touch.clientY - touchStartPos.y);
-      const SCROLL_THRESHOLD = 10; // px
-      
-      // スクロールと判定された場合は何もしない（パン操作を許可）
-      if (deltaX > SCROLL_THRESHOLD || deltaY > SCROLL_THRESHOLD) {
-        // パン操作を許可するため、preventDefaultしない
-        return;
-      }
     }
   }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove, touchGestures, editMode]);
 
@@ -596,15 +589,24 @@ export default function TournamentEditPage() {
   const handleCanvasTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
     
+    // Canva方式: パンモードではネイティブ処理に完全に委譲
+    // 編集モード時のみ、カスタム処理を実行
+    
     // 複数のタッチポイントがある場合（ピンチ操作）
-    // ピンチ操作の場合は、ジェスチャー処理をスキップしてネイティブピンチズームを許可
     if (e.touches.length > 1) {
       // 編集操作中はピンチ操作を無効化
       if (isDrawing || draggingHandle || draggingMark) {
         e.preventDefault();
         e.stopPropagation();
+        return;
       }
-      // ネイティブピンチズームを許可するため、何も処理しない
+      // パンモードではネイティブピンチズームを許可（何も処理しない）
+      return;
+    }
+    
+    // パンモードで、ライン追加モードでもない場合は、ネイティブ処理に委譲
+    if (editMode.canPan() && mode !== "line" && !isDrawing && !draggingHandle && !draggingMark) {
+      // ネイティブスクロールを許可（何も処理しない）
       return;
     }
     
@@ -861,7 +863,7 @@ export default function TournamentEditPage() {
       {/* 統合ヘッダー */}
       <TournamentHeader tournament={tournament} />
       
-      <div className="min-h-screen bg-gray-50" style={{ touchAction: "pan-x pan-y" }}>
+      <div className="min-h-screen bg-gray-50" style={{ touchAction: "auto" }}>
 
       {/* 2段目: 編集ツールバー */}
       <EditToolbar
@@ -893,10 +895,24 @@ export default function TournamentEditPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pt-[calc(4rem+3rem+3.5rem+1rem)] pt-[calc(4rem+3rem+3rem+1rem)]">
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
+          {/* Canva方式: 画像コンテナを独立したスクロール領域として実装 */}
           <div
-            ref={canvasRef}
+            ref={imageContainerRef}
             data-canvas-container
             className={`relative ${mode === "line" ? "cursor-crosshair" : ""}`}
+            style={{
+              // 画面サイズに合わせた固定サイズ（ヘッダーとツールバーを除く）
+              width: "100%",
+              // ヘッダー(4rem) + ツールバー(3rem) + mainの上下パディング(2rem) = 9rem
+              height: "calc(100vh - 9rem)",
+              overflow: "auto", // 独立したスクロール領域
+              touchAction: "pan-x pan-y pinch-zoom", // ピンチズームを許可
+              overscrollBehavior: "contain", // スクロールの伝播を制御
+              WebkitOverflowScrolling: "touch", // iOSの慣性スクロールを有効化
+              WebkitTouchCallout: "none", // iOSの長押しメニューを無効化
+              userSelect: "none", // テキスト選択を無効化
+              position: "relative", // 相対位置指定
+            }}
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
@@ -904,22 +920,23 @@ export default function TournamentEditPage() {
             onTouchStart={handleCanvasTouchStart}
             onTouchMove={handleCanvasTouchMove}
             onTouchEnd={handleCanvasTouchEnd}
-            style={{ 
-              aspectRatio: "auto", 
-              // Canva風: ピンチアウトは常に許可（画像コンテナ内でのみ有効）
-              // 編集操作中はhandleCanvasTouchMoveでpreventDefault()を呼ぶことで制御
-              touchAction: "pan-x pan-y pinch-zoom",
-              overscrollBehavior: "contain", // スクロールの伝播を制御（noneからcontainに変更）
-              WebkitOverflowScrolling: "auto", // iOSの慣性スクロールを制御
-              WebkitTouchCallout: "none", // iOSの長押しメニューを無効化
-              userSelect: "none" // テキスト選択を無効化
-            }}
           >
-            <div ref={imageContainerRef} className="relative" data-canvas-container style={{ touchAction: "pan-x pan-y pinch-zoom" }}>
+            {/* キャンバス要素（画像とSVGを含む） */}
+            <div
+              ref={canvasRef}
+              data-canvas-container
+              className="relative"
+              style={{
+                minWidth: "100%",
+                minHeight: "100%",
+                display: "inline-block", // コンテンツサイズに合わせる
+              }}
+            >
               <img
                 src={tournament.pdfPageImage}
                 alt="Tournament bracket"
-                className="w-full h-auto"
+                className="w-full h-auto block"
+                style={{ display: "block" }}
               />
             {/* マークを描画（ドラッグ可能） */}
             {/* すべてのラインを1つのSVGにまとめる */}
@@ -1296,9 +1313,9 @@ export default function TournamentEditPage() {
                 )}
               </svg>
             )}
+            </div>
           </div>
         </div>
-      </div>
       </main>
 
       {/* 大会削除ボタン（画面右下固定） */}
