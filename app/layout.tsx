@@ -16,8 +16,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
-      <body>{children}</body>
+    <html lang="ja" style={{ touchAction: "manipulation" }}>
+      <body style={{ touchAction: "manipulation" }}>{children}</body>
     </html>
   );
 }

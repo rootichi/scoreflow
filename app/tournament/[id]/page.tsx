@@ -863,7 +863,7 @@ export default function TournamentEditPage() {
       {/* 統合ヘッダー */}
       <TournamentHeader tournament={tournament} />
       
-      <div className="min-h-screen bg-gray-50" style={{ touchAction: "pan-x pan-y manipulation" }}>
+      <div className="min-h-screen bg-gray-50" style={{ touchAction: "manipulation" }}>
 
       {/* 2段目: 編集ツールバー */}
       <EditToolbar

@@ -200,7 +200,7 @@ export default function Home() {
   // URLをコピー
   const handleCopyUrl = useCallback(async (publicUrlId: string) => {
     try {
-      const url = getPublicUrl(publicUrlId);
+    const url = getPublicUrl(publicUrlId);
       await copyToClipboard(url);
                       showSuccess("公開URLをコピーしました");
                     } catch (error) {
@@ -245,7 +245,7 @@ export default function Home() {
               結果記入の往復の必要なし、専門知識不要。<br className="sm:hidden" />
               入力した瞬間に全員へ反映される、<br />
               大会進行状況可視化SaaSです。
-            </p>
+          </p>
             <button
               onClick={handleSignIn}
               className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 sm:py-4 px-6 sm:px-8 rounded-lg shadow-lg transition-all duration-200 text-base sm:text-lg flex items-center gap-2 mx-auto hover:shadow-xl hover:scale-105"
@@ -254,7 +254,7 @@ export default function Home() {
               Googleで無料で始める
               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
-          </div>
+        </div>
           
           {/* UIモック風のグラフィック - リアルなトーナメント表 + アニメーション */}
           <div className="max-w-5xl mx-auto mt-8 sm:mt-16 px-2 sm:px-4">
@@ -491,7 +491,7 @@ export default function Home() {
                     </g>
                   )}
                 </svg>
-              </div>
+      </div>
             </div>
           </div>
         </section>
@@ -745,9 +745,9 @@ export default function Home() {
                   トーナメント表をPDF/画像形式で<br className="sm:hidden" />
                   ダウンロード可能（実装予定）。
                 </p>
-              </div>
             </div>
           </div>
+        </div>
         </section>
 
         {/* Closing CTA Section */}
@@ -806,16 +806,16 @@ export default function Home() {
       </main>
 
       {/* 右下固定の新規作成ボタン */}
-      <button
+                      <button
         onClick={() => router.push("/create")}
         className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg shadow-lg transition-all duration-200 flex items-center gap-2 z-50 hover:shadow-xl hover:scale-105"
-        type="button"
-      >
+                        type="button"
+                      >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
         <span>新規作成</span>
-      </button>
+                      </button>
     </div>
   );
 }
