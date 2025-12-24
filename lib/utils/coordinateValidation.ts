@@ -38,6 +38,8 @@ export function isValidCoordinate(
   const canvasHeight = canvasRect.height;
 
   // 正規化座標をピクセル座標に変換（ビューポート座標系）
+  // 注意: canvasRefの高さが画像の高さより大きい場合、coords.yが1に近い値でも
+  // 画像の高さを超えた位置になる可能性がある
   const pixelX = canvasRect.left + coords.x * canvasWidth;
   const pixelY = canvasRect.top + coords.y * canvasHeight;
 
@@ -46,12 +48,15 @@ export function isValidCoordinate(
   // 下限：画像の rect.bottom
   // 左限：画像の rect.left
   // 右限：画像の rect.right
-  return (
+  // 厳密に画像の矩形内にあるかを確認（境界を含む）
+  const isWithinImageBounds = (
     pixelX >= imageLeft &&
     pixelX <= imageRight &&
     pixelY >= imageTop &&
     pixelY <= imageBottom
   );
+
+  return isWithinImageBounds;
 }
 
 /**
