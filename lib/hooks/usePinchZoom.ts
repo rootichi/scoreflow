@@ -6,7 +6,8 @@ import { useState, useRef, useCallback, useEffect } from "react";
 export function usePinchZoom(
   imageContainerRef: React.RefObject<HTMLDivElement | null>,
   initialImageSizeRef: React.MutableRefObject<{ width: number; height: number } | null>,
-  canvasRef?: React.RefObject<HTMLDivElement | null>
+  canvasRef?: React.RefObject<HTMLDivElement | null>,
+  canvasZoomLayerRef?: React.RefObject<HTMLDivElement | null>
 ) {
   const [canvasScale, setCanvasScale] = useState(1);
   const [canvasTranslate, setCanvasTranslate] = useState({ x: 0, y: 0 });
@@ -16,6 +17,7 @@ export function usePinchZoom(
   const pinchStartCenterRef = useRef<{ x: number; y: number } | null>(null);
   const pinchStartTranslateRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const pinchStartImagePointRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の画像内の位置（画像要素の左上を基準、px単位）
+  const pinchStartImageRectRef = useRef<DOMRect | null>(null); // ピンチ開始時の画像要素の位置（スケール前）
 
   // 移動範囲を制限する関数
   const clampTranslate = useCallback(
@@ -123,34 +125,56 @@ export function usePinchZoom(
       }
 
       // 画像要素のDOM実寸を取得（getBoundingClientRect）
+      // 注意: 既にtransformが適用されているため、スケール後の座標が返される
       const imageRect = imgElement.getBoundingClientRect();
       const viewportRect = imageContainerRef.current.getBoundingClientRect();
       
-      console.log("[PinchStart] Image rect:", {
+      // CanvasZoomLayerの位置を取得（transform-originの基準となる）
+      const zoomLayerRect = canvasZoomLayerRef?.current?.getBoundingClientRect() || viewportRect;
+      
+      console.log("[PinchStart] Image rect (scaled):", {
         left: imageRect.left,
         top: imageRect.top,
         width: imageRect.width,
         height: imageRect.height,
       });
       
-      // 2点の中点を画像要素の座標系に変換（画像要素の左上を基準、px単位）
-      const imagePointX = centerX - imageRect.left;
-      const imagePointY = centerY - imageRect.top;
-      
-      console.log("[PinchStart] Center point (image coordinates):", {
-        x: imagePointX,
-        y: imagePointY,
+      console.log("[PinchStart] ZoomLayer rect:", {
+        left: zoomLayerRect.left,
+        top: zoomLayerRect.top,
+        width: zoomLayerRect.width,
+        height: zoomLayerRect.height,
       });
       
-      // transform-originを設定（画像要素の左上からの相対位置、px単位）
-      const originX = imagePointX;
-      const originY = imagePointY;
+      // 2点の中点をCanvasZoomLayerの座標系に変換（CanvasZoomLayerの左上を基準、px単位）
+      // transform-originはCanvasZoomLayerに適用されるため、CanvasZoomLayerの座標系で指定する必要がある
+      const zoomLayerPointX = centerX - zoomLayerRect.left;
+      const zoomLayerPointY = centerY - zoomLayerRect.top;
+      
+      console.log("[PinchStart] Center point (zoomLayer coordinates):", {
+        x: zoomLayerPointX,
+        y: zoomLayerPointY,
+      });
+      
+      // transform-originを設定（CanvasZoomLayerの左上からの相対位置、px単位）
+      const originX = zoomLayerPointX;
+      const originY = zoomLayerPointY;
       setTransformOrigin(`${originX}px ${originY}px`);
       
       console.log("[PinchStart] Transform origin:", `${originX}px ${originY}px`);
       
-      // ピンチ開始時の画像内の位置を記録
-      pinchStartImagePointRef.current = { x: originX, y: originY };
+      // ピンチ開始時の画像内の位置を記録（画像要素の座標系、スケール前の座標）
+      // スケール前の画像要素の位置を計算
+      const unscaledImageWidth = imageRect.width / canvasScale;
+      const unscaledImageHeight = imageRect.height / canvasScale;
+      const unscaledImageLeft = zoomLayerRect.left + zoomLayerRect.width / 2 - (unscaledImageWidth / 2) - canvasTranslate.x;
+      const unscaledImageTop = zoomLayerRect.top + zoomLayerRect.height / 2 - (unscaledImageHeight / 2) - canvasTranslate.y;
+      
+      const imagePointX = centerX - unscaledImageLeft;
+      const imagePointY = centerY - unscaledImageTop;
+      
+      pinchStartImagePointRef.current = { x: imagePointX, y: imagePointY };
+      pinchStartImageRectRef.current = new DOMRect(unscaledImageLeft, unscaledImageTop, unscaledImageWidth, unscaledImageHeight);
       
       // ビューポート中心を基準とした相対位置も記録（パン用）
       const viewportCenterX = viewportRect.left + viewportRect.width / 2;
@@ -163,7 +187,7 @@ export function usePinchZoom(
       pinchStartScaleRef.current = canvasScale;
       pinchStartTranslateRef.current = { ...canvasTranslate };
     },
-    [canvasScale, canvasTranslate, imageContainerRef, canvasRef]
+    [canvasScale, canvasTranslate, imageContainerRef, canvasRef, canvasZoomLayerRef, initialImageSizeRef]
   );
 
   /**
@@ -211,79 +235,74 @@ export function usePinchZoom(
         return;
       }
 
-      // 画像要素のDOM実寸を取得（getBoundingClientRect）
-      const imageRect = imgElement.getBoundingClientRect();
+      // CanvasZoomLayerの位置を取得（transform-originの基準となる）
+      const zoomLayerRect = canvasZoomLayerRef?.current?.getBoundingClientRect() || viewportRect;
       
-      console.log("[PinchMove] Image rect:", {
-        left: imageRect.left,
-        top: imageRect.top,
-        width: imageRect.width,
-        height: imageRect.height,
+      console.log("[PinchMove] ZoomLayer rect:", {
+        left: zoomLayerRect.left,
+        top: zoomLayerRect.top,
+        width: zoomLayerRect.width,
+        height: zoomLayerRect.height,
       });
       
-      // 現在の2点の中点を画像要素の座標系に変換（画像要素の左上を基準、px単位）
-      const currentImagePointX = currentCenterX - imageRect.left;
-      const currentImagePointY = currentCenterY - imageRect.top;
+      // 現在の2点の中点をCanvasZoomLayerの座標系に変換（CanvasZoomLayerの左上を基準、px単位）
+      const currentZoomLayerPointX = currentCenterX - zoomLayerRect.left;
+      const currentZoomLayerPointY = currentCenterY - zoomLayerRect.top;
       
-      console.log("[PinchMove] Center point (image coordinates):", {
-        x: currentImagePointX,
-        y: currentImagePointY,
+      console.log("[PinchMove] Center point (zoomLayer coordinates):", {
+        x: currentZoomLayerPointX,
+        y: currentZoomLayerPointY,
       });
       
       // transform-originを設定（現在の位置を基準にズーム）
       // ピンチ操作中は、現在の位置を基準にズームする
-      const originX = currentImagePointX;
-      const originY = currentImagePointY;
+      const originX = currentZoomLayerPointX;
+      const originY = currentZoomLayerPointY;
       setTransformOrigin(`${originX}px ${originY}px`);
       
       console.log("[PinchMove] Transform origin:", `${originX}px ${originY}px`);
       
-      // ピンチ開始時の位置（画像要素の座標系）
-      const startImagePointX = pinchStartImagePointRef.current.x;
-      const startImagePointY = pinchStartImagePointRef.current.y;
-      
-      // ピンチ開始時の位置（ビューポート座標系）
-      // 開始時の画像要素の位置を考慮
-      const startViewportX = imageRect.left + startImagePointX;
-      const startViewportY = imageRect.top + startImagePointY;
-      
-      // 現在の位置（ビューポート座標系）
-      const currentViewportX = imageRect.left + currentImagePointX;
-      const currentViewportY = imageRect.top + currentImagePointY;
-      
-      // ビューポート中心を基準とした座標系で計算
-      const viewportCenterX = viewportRect.left + viewportRect.width / 2;
-      const viewportCenterY = viewportRect.top + viewportRect.height / 2;
-      
-      // スケール変更による位置の変化を計算
-      // 現在の位置を基準にズームするため、その位置が画面上で固定されるようにtranslateを調整
-      const scaleRatio = newScale / pinchStartScaleRef.current;
-      
-      // 開始時の位置を基準にしたスケール後の位置
-      const scaledStartViewportX = viewportCenterX + (startViewportX - viewportCenterX) * scaleRatio;
-      const scaledStartViewportY = viewportCenterY + (startViewportY - viewportCenterY) * scaleRatio;
-      
-      // 現在の位置を基準にしたスケール後の位置
-      const scaledCurrentViewportX = viewportCenterX + (currentViewportX - viewportCenterX) * scaleRatio;
-      const scaledCurrentViewportY = viewportCenterY + (currentViewportY - viewportCenterY) * scaleRatio;
+      // ピンチ開始時の位置（CanvasZoomLayerの座標系）
+      const startZoomLayerPointX = pinchStartImageRectRef.current 
+        ? (pinchStartImageRectRef.current.left + pinchStartImagePointRef.current.x) - zoomLayerRect.left
+        : originX;
+      const startZoomLayerPointY = pinchStartImageRectRef.current
+        ? (pinchStartImageRectRef.current.top + pinchStartImagePointRef.current.y) - zoomLayerRect.top
+        : originY;
       
       // 現在の位置が画面上で固定されるようにtranslateを計算
-      // 開始時の位置の移動分を考慮
-      const startDeltaX = scaledStartViewportX - startViewportX;
-      const startDeltaY = scaledStartViewportY - startViewportY;
+      // transform-originを基準にした場合、スケール後の位置は以下のように計算される
+      // スケール前の位置: currentZoomLayerPointX, currentZoomLayerPointY
+      // スケール後の位置: originX + (currentZoomLayerPointX - originX) * scaleRatio
+      const scaleRatio = newScale / pinchStartScaleRef.current;
       
-      // 現在の位置の移動分
-      const currentDeltaX = scaledCurrentViewportX - currentViewportX;
-      const currentDeltaY = scaledCurrentViewportY - currentViewportY;
+      // 現在の位置を基準にしたスケール後の位置
+      const scaledCurrentZoomLayerPointX = originX + (currentZoomLayerPointX - originX) * scaleRatio;
+      const scaledCurrentZoomLayerPointY = originY + (currentZoomLayerPointY - originY) * scaleRatio;
+      
+      // 現在の位置が画面上で固定されるようにtranslateを計算
+      // スケール前の位置とスケール後の位置の差を計算
+      const deltaX = currentZoomLayerPointX - scaledCurrentZoomLayerPointX;
+      const deltaY = currentZoomLayerPointY - scaledCurrentZoomLayerPointY;
       
       // translateを計算（現在の位置が画面上で固定されるように）
-      const newTranslateX = pinchStartTranslateRef.current.x + startDeltaX - currentDeltaX;
-      const newTranslateY = pinchStartTranslateRef.current.y + startDeltaY - currentDeltaY;
+      const newTranslateX = pinchStartTranslateRef.current.x + deltaX;
+      const newTranslateY = pinchStartTranslateRef.current.y + deltaY;
       
       console.log("[PinchMove] Translate:", { x: newTranslateX, y: newTranslateY });
       
       // 移動範囲を制限
-      const clampedTranslate = clampTranslate({ x: newTranslateX, y: newTranslateY }, newScale, originX, originY);
+      // clampTranslateには画像要素の座標系でのoriginX, originYを渡す必要がある
+      // スケール前の画像要素の位置を計算
+      const unscaledImageWidth = initialImageSizeRef.current ? initialImageSizeRef.current.width : 0;
+      const unscaledImageHeight = initialImageSizeRef.current ? initialImageSizeRef.current.height : 0;
+      const unscaledImageLeft = zoomLayerRect.left + zoomLayerRect.width / 2 - (unscaledImageWidth / 2) - newTranslateX;
+      const unscaledImageTop = zoomLayerRect.top + zoomLayerRect.height / 2 - (unscaledImageHeight / 2) - newTranslateY;
+      
+      const imageOriginX = currentCenterX - unscaledImageLeft;
+      const imageOriginY = currentCenterY - unscaledImageTop;
+      
+      const clampedTranslate = clampTranslate({ x: newTranslateX, y: newTranslateY }, newScale, imageOriginX, imageOriginY);
       
       setCanvasScale(newScale);
       setCanvasTranslate(clampedTranslate);
@@ -298,6 +317,7 @@ export function usePinchZoom(
     pinchStartDistanceRef.current = null;
     pinchStartCenterRef.current = null;
     pinchStartImagePointRef.current = null;
+    pinchStartImageRectRef.current = null;
   }, []);
 
   return {

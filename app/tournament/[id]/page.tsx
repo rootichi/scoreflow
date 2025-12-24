@@ -89,7 +89,7 @@ export default function TournamentEditPage() {
     handlePinchStart,
     handlePinchMove,
     handlePinchEnd,
-  } = usePinchZoom(imageContainerRef, initialImageSizeRef, canvasRef);
+  } = usePinchZoom(imageContainerRef, initialImageSizeRef, canvasRef, canvasZoomLayerRef);
   
   // 編集モードと選択状態を同期
   useEffect(() => {
