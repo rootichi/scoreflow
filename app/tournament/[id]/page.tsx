@@ -1000,7 +1000,12 @@ export default function TournamentEditPage() {
                 src={tournament.pdfPageImage}
                 alt="Tournament bracket"
                 className="w-full h-auto block"
-                style={{ display: "block" }}
+                style={{ 
+                  display: "block",
+                  border: "2px solid #e5e7eb", // グレーのボーダーで枠を表示
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)", // 影を追加してより見やすく
+                  backgroundColor: "#ffffff", // 白い背景を追加（透明なPDFの場合）
+                }}
               />
             {/* マークを描画（ドラッグ可能） */}
             {/* すべてのラインを1つのSVGにまとめる */}
