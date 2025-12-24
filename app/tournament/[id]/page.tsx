@@ -78,6 +78,7 @@ export default function TournamentEditPage() {
   const pinchStartCenterRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の中心点
   const pinchStartTranslateRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 }); // ピンチ開始時の移動量
   const canvasZoomLayerRef = useRef<HTMLDivElement>(null); // CanvasZoomLayerのref
+  const initialImageSizeRef = useRef<{ width: number; height: number } | null>(null); // 初期画像サイズ（canvasScale=1.0の状態）
   
   // Canva風の編集モード管理
   const editMode = useEditMode();
@@ -143,8 +144,71 @@ export default function TournamentEditPage() {
     return () => unsubscribe();
   }, [tournamentId, reset]);
 
+  // 初期画像サイズを記録（canvasScale=1.0の状態）
+  useEffect(() => {
+    const recordInitialImageSize = () => {
+      if (!imageContainerRef.current || !tournament) return;
+      
+      const imgElement = imageContainerRef.current.querySelector("img");
+      if (!imgElement || !imgElement.naturalWidth || !imgElement.naturalHeight) return;
+      
+      // 初期画像サイズを記録（canvasScale=1.0の状態）
+      const imageDisplayWidth = imgElement.offsetWidth;
+      const imageDisplayHeight = imgElement.offsetHeight;
+      
+      if (imageDisplayWidth > 0 && imageDisplayHeight > 0) {
+        initialImageSizeRef.current = {
+          width: imageDisplayWidth,
+          height: imageDisplayHeight,
+        };
+      }
+    };
+    
+    recordInitialImageSize();
+    const imgElement = imageContainerRef.current?.querySelector("img");
+    if (imgElement) {
+      imgElement.onload = recordInitialImageSize;
+    }
+  }, [tournament]);
 
-
+  // 移動範囲を制限する関数
+  const clampTranslate = useCallback((translate: { x: number; y: number }, scale: number) => {
+    if (!initialImageSizeRef.current || !imageContainerRef.current) {
+      return translate;
+    }
+    
+    // CanvasViewportのサイズを取得
+    const viewportRect = imageContainerRef.current.getBoundingClientRect();
+    const viewportWidth = viewportRect.width;
+    const viewportHeight = viewportRect.height;
+    
+    // 初期画像サイズ
+    const initialWidth = initialImageSizeRef.current.width;
+    const initialHeight = initialImageSizeRef.current.height;
+    
+    // 拡大後の画像サイズ
+    const scaledWidth = initialWidth * scale;
+    const scaledHeight = initialHeight * scale;
+    
+    // 移動可能な範囲を計算
+    // 拡大後の画像が初期画像の境界を超えないように制限
+    // 移動可能な範囲 = (拡大後のサイズ - 初期サイズ) / 2
+    const maxTranslateX = (scaledWidth - initialWidth) / 2;
+    const maxTranslateY = (scaledHeight - initialHeight) / 2;
+    
+    // 移動量を制限
+    const clampedX = Math.max(-maxTranslateX, Math.min(maxTranslateX, translate.x));
+    const clampedY = Math.max(-maxTranslateY, Math.min(maxTranslateY, translate.y));
+    
+    return { x: clampedX, y: clampedY };
+  }, []);
+  
+  // スケール変更時に移動範囲を制限
+  useEffect(() => {
+    setCanvasTranslate((currentTranslate) => {
+      return clampTranslate(currentTranslate, canvasScale);
+    });
+  }, [canvasScale, clampTranslate]);
 
   const handleCanvasMove = useCallback((e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     const coords = getRelativeCoordinates(e);
@@ -425,8 +489,11 @@ export default function TournamentEditPage() {
         const newTranslateX = pinchStartTranslateRef.current.x + centerDeltaX;
         const newTranslateY = pinchStartTranslateRef.current.y + centerDeltaY;
         
+        // 移動範囲を制限（初期画像の境界を超えないように）
+        const clampedTranslate = clampTranslate({ x: newTranslateX, y: newTranslateY }, newScale);
+        
         setCanvasScale(newScale);
-        setCanvasTranslate({ x: newTranslateX, y: newTranslateY });
+        setCanvasTranslate(clampedTranslate);
       }
       
       return;
