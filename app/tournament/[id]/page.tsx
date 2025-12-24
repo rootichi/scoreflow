@@ -25,6 +25,7 @@ import {
 } from "@/lib/utils/snapUtils";
 import { createMarkUpdateData, updateMarkSafely, updateMarkCoordinates } from "@/lib/utils/markUtils";
 import { showError, showSuccess, showPrompt, showConfirm } from "@/lib/utils/notification";
+import { isValidCoordinate, isValidLineCoordinate } from "@/lib/utils/coordinateValidation";
 import {
   DEFAULT_LINE_COLOR,
   DEFAULT_SCORE_FONT_SIZE,
@@ -32,9 +33,6 @@ import {
   MIN_LINE_LENGTH,
   COPY_OFFSET,
   SELECTED_COLOR,
-  SNAP_GUIDE_COLOR,
-  SNAP_GUIDE_STROKE_WIDTH,
-  SNAP_GUIDE_OPACITY,
 } from "@/lib/constants";
 import { useImageScale } from "@/lib/hooks/useImageScale";
 import { useScrollPrevention } from "@/lib/hooks/useScrollPrevention";
@@ -42,9 +40,12 @@ import { useCanvasCoordinates } from "@/lib/hooks/useCanvasCoordinates";
 import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
 import { useEditMode } from "@/lib/hooks/useEditMode";
 import { useTouchGestures } from "@/lib/hooks/useTouchGestures";
+import { usePinchZoom } from "@/lib/hooks/usePinchZoom";
+import { handleErrorWithNotification } from "@/lib/utils/errorHandler";
 import type { DraggingMark, DraggingHandle, SnapGuide, EditMode } from "@/lib/types/canvas";
 import { TournamentHeader } from "@/components/tournament/TournamentHeader";
 import { EditToolbar } from "@/components/tournament/EditToolbar";
+import { SnapGuideLines } from "@/components/tournament/SnapGuideLines";
 
 export default function TournamentEditPage() {
   const router = useRouter();
@@ -70,13 +71,6 @@ export default function TournamentEditPage() {
   const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null); // タッチ開始位置（スクロール判定用）
   const [isTouchDragging, setIsTouchDragging] = useState(false); // タッチドラッグ中かどうか
   
-  // カスタムピンチズーム用のstate
-  const [canvasScale, setCanvasScale] = useState(1); // キャンバスのスケール
-  const [canvasTranslate, setCanvasTranslate] = useState({ x: 0, y: 0 }); // キャンバスの移動量
-  const pinchStartDistanceRef = useRef<number | null>(null); // ピンチ開始時の距離
-  const pinchStartScaleRef = useRef<number>(1); // ピンチ開始時のスケール
-  const pinchStartCenterRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の中心点
-  const pinchStartTranslateRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 }); // ピンチ開始時の移動量
   const canvasZoomLayerRef = useRef<HTMLDivElement>(null); // CanvasZoomLayerのref
   const initialImageSizeRef = useRef<{ width: number; height: number } | null>(null); // 初期画像サイズ（canvasScale=1.0の状態）
   
@@ -88,6 +82,13 @@ export default function TournamentEditPage() {
   const { imageContainerRef, imageScale } = useImageScale();
   useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark, editMode.canEdit);
   const { getRelativeCoordinates } = useCanvasCoordinates(canvasRef);
+  const {
+    canvasScale,
+    canvasTranslate,
+    handlePinchStart,
+    handlePinchMove,
+    handlePinchEnd,
+  } = usePinchZoom(imageContainerRef, initialImageSizeRef);
   
   // 編集モードと選択状態を同期
   useEffect(() => {
@@ -121,7 +122,6 @@ export default function TournamentEditPage() {
       }
       setTournament(data);
       } catch (error) {
-        const { handleErrorWithNotification } = require("@/lib/utils/errorHandler");
         handleErrorWithNotification(error, { operation: "loadTournament", details: { tournamentId } }, "大会の読み込みに失敗しました");
         router.push("/");
       }
@@ -171,44 +171,6 @@ export default function TournamentEditPage() {
     }
   }, [tournament]);
 
-  // 移動範囲を制限する関数
-  const clampTranslate = useCallback((translate: { x: number; y: number }, scale: number) => {
-    if (!initialImageSizeRef.current || !imageContainerRef.current) {
-      return translate;
-    }
-    
-    // CanvasViewportのサイズを取得
-    const viewportRect = imageContainerRef.current.getBoundingClientRect();
-    const viewportWidth = viewportRect.width;
-    const viewportHeight = viewportRect.height;
-    
-    // 初期画像サイズ
-    const initialWidth = initialImageSizeRef.current.width;
-    const initialHeight = initialImageSizeRef.current.height;
-    
-    // 拡大後の画像サイズ
-    const scaledWidth = initialWidth * scale;
-    const scaledHeight = initialHeight * scale;
-    
-    // 移動可能な範囲を計算
-    // 拡大後の画像が初期画像の境界を超えないように制限
-    // 移動可能な範囲 = (拡大後のサイズ - 初期サイズ) / 2
-    const maxTranslateX = (scaledWidth - initialWidth) / 2;
-    const maxTranslateY = (scaledHeight - initialHeight) / 2;
-    
-    // 移動量を制限
-    const clampedX = Math.max(-maxTranslateX, Math.min(maxTranslateX, translate.x));
-    const clampedY = Math.max(-maxTranslateY, Math.min(maxTranslateY, translate.y));
-    
-    return { x: clampedX, y: clampedY };
-  }, []);
-  
-  // スケール変更時に移動範囲を制限
-  useEffect(() => {
-    setCanvasTranslate((currentTranslate) => {
-      return clampTranslate(currentTranslate, canvasScale);
-    });
-  }, [canvasScale, clampTranslate]);
 
   const handleCanvasMove = useCallback((e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     const coords = getRelativeCoordinates(e);
@@ -449,59 +411,11 @@ export default function TournamentEditPage() {
       e.preventDefault();
       e.stopPropagation();
       
-      if (pinchStartDistanceRef.current === null || pinchStartCenterRef.current === null) {
-        return;
-      }
-      
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const currentDistance = Math.sqrt(
-        Math.pow(touch2.clientX - touch1.clientX, 2) +
-        Math.pow(touch2.clientY - touch1.clientY, 2)
-      );
-      
-      // 現在のピンチの中心点を計算
-      const currentCenterX = (touch1.clientX + touch2.clientX) / 2;
-      const currentCenterY = (touch1.clientY + touch2.clientY) / 2;
-      
-      // CanvasViewportの位置を取得
-      if (imageContainerRef.current) {
-        const viewportRect = imageContainerRef.current.getBoundingClientRect();
-        const viewportCenterX = viewportRect.left + viewportRect.width / 2;
-        const viewportCenterY = viewportRect.top + viewportRect.height / 2;
-        
-        // 現在のピンチ中心点をビューポート座標系に変換
-        const currentRelativeCenterX = currentCenterX - viewportCenterX;
-        const currentRelativeCenterY = currentCenterY - viewportCenterY;
-        
-        // スケールを計算（最小1.0倍=初期画面サイズ、最大5倍）
-        // 初期画面の大きさから拡大はできるが、初期画面の大きさ以上に縮小はできない
-        const scaleChange = currentDistance / pinchStartDistanceRef.current;
-        const newScale = Math.max(1.0, Math.min(5, pinchStartScaleRef.current * scaleChange));
-        
-        // パンを計算（中心点の移動を反映）
-        // ピンチの中心点の移動を直接translateに反映
-        const centerDeltaX = currentRelativeCenterX - pinchStartCenterRef.current.x;
-        const centerDeltaY = currentRelativeCenterY - pinchStartCenterRef.current.y;
-        
-        // スケール変更を考慮してパンを計算
-        // スケールが大きくなると、同じ移動量でも見た目の移動が小さくなるため、スケールで割る
-        const newTranslateX = pinchStartTranslateRef.current.x + centerDeltaX;
-        const newTranslateY = pinchStartTranslateRef.current.y + centerDeltaY;
-        
-        // 移動範囲を制限（初期画像の境界を超えないように）
-        const clampedTranslate = clampTranslate({ x: newTranslateX, y: newTranslateY }, newScale);
-        
-        setCanvasScale(newScale);
-        setCanvasTranslate(clampedTranslate);
+      if (e.touches.length >= 2) {
+        handlePinchMove(e.touches[0], e.touches[1]);
       }
       
       return;
-    }
-    
-    // ピンチ操作が終了した場合、リセット
-    if (pinchStartDistanceRef.current !== null) {
-      pinchStartDistanceRef.current = null;
     }
     
     // パンモードで、編集操作中でない場合は、ネイティブ処理に委譲
@@ -537,7 +451,7 @@ export default function TournamentEditPage() {
       // オブジェクトが選択されていない場合はパン操作を許可
       // preventDefaultしない（パン操作を許可）
     }
-  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove, touchGestures, editMode, canvasScale]);
+  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove, touchGestures, editMode, handlePinchMove]);
 
   // スコア追加の共通処理
   const handleAddScore = useCallback(async (coords: { x: number; y: number }) => {
@@ -545,6 +459,13 @@ export default function TournamentEditPage() {
       showError("スコアを入力してください");
       return;
     }
+    
+    // 座標が画像の範囲内にあるかを検証
+    if (!isValidCoordinate(coords, canvasRef)) {
+      showError("スコアは画像の範囲内に配置してください");
+      return;
+    }
+    
     const markData = {
       type: "score" as const,
       pageNumber: DEFAULT_PAGE_NUMBER,
@@ -566,7 +487,7 @@ export default function TournamentEditPage() {
     setScoreValue("");
     setMode(null);
     editMode.endDrawing();
-  }, [scoreValue, tournamentId, addAction, editMode]);
+  }, [scoreValue, tournamentId, addAction, editMode, canvasRef]);
 
   // Undo/Redo処理を先に定義（useEffectで使用するため）
   const handleUndo = useCallback(async () => {
@@ -728,35 +649,9 @@ export default function TournamentEditPage() {
       e.preventDefault();
       e.stopPropagation();
       
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const distance = Math.sqrt(
-        Math.pow(touch2.clientX - touch1.clientX, 2) +
-        Math.pow(touch2.clientY - touch1.clientY, 2)
-      );
-      
-      // ピンチの中心点を計算
-      const centerX = (touch1.clientX + touch2.clientX) / 2;
-      const centerY = (touch1.clientY + touch2.clientY) / 2;
-      
-      // CanvasViewportの位置を取得
-      if (imageContainerRef.current) {
-        const viewportRect = imageContainerRef.current.getBoundingClientRect();
-        const viewportCenterX = viewportRect.left + viewportRect.width / 2;
-        const viewportCenterY = viewportRect.top + viewportRect.height / 2;
-        
-        // ピンチ中心点をビューポート座標系に変換
-        const relativeCenterX = centerX - viewportCenterX;
-        const relativeCenterY = centerY - viewportCenterY;
-        
-        pinchStartCenterRef.current = { x: relativeCenterX, y: relativeCenterY };
-      } else {
-        pinchStartCenterRef.current = { x: centerX, y: centerY };
+      if (e.touches.length >= 2) {
+        handlePinchStart(e.touches[0], e.touches[1]);
       }
-      
-      pinchStartDistanceRef.current = distance;
-      pinchStartScaleRef.current = canvasScale;
-      pinchStartTranslateRef.current = { ...canvasTranslate };
       
       return;
     }
@@ -838,6 +733,23 @@ export default function TournamentEditPage() {
         return;
       }
 
+      // 座標が画像の範囲内にあるかを検証
+      const lineCoords = {
+        x1: lineStart.x,
+        y1: lineStart.y,
+        x2: lineEnd.x,
+        y2: lineEnd.y,
+      };
+      if (!isValidLineCoordinate(lineCoords, canvasRef)) {
+        showError("ラインは画像の範囲内に配置してください");
+        setIsDrawing(false);
+        setLineStart(null);
+        setLineEnd(null);
+        setMode(null);
+        editMode.endDrawing();
+        return;
+      }
+
       const markData = {
         type: "line" as const,
         pageNumber: DEFAULT_PAGE_NUMBER,
@@ -887,8 +799,7 @@ export default function TournamentEditPage() {
 
     // ピンチ操作が終了した場合、リセット
     if (e.touches.length < 2) {
-      pinchStartDistanceRef.current = null;
-      pinchStartCenterRef.current = null;
+      handlePinchEnd();
     }
 
     // タッチジェスチャーを処理
@@ -963,6 +874,25 @@ export default function TournamentEditPage() {
         setIsDrawing(false);
         setLineStart(null);
         setLineEnd(null);
+        setIsTouchDragging(false);
+        editMode.endDrawing();
+        touchGestures.clearGesture();
+        return;
+      }
+
+      // 座標が画像の範囲内にあるかを検証
+      const lineCoords = {
+        x1: lineStart.x,
+        y1: lineStart.y,
+        x2: lineEnd.x,
+        y2: lineEnd.y,
+      };
+      if (!isValidLineCoordinate(lineCoords, canvasRef)) {
+        showError("ラインは画像の範囲内に配置してください");
+        setIsDrawing(false);
+        setLineStart(null);
+        setLineEnd(null);
+        setMode(null);
         setIsTouchDragging(false);
         editMode.endDrawing();
         touchGestures.clearGesture();
@@ -1432,37 +1362,7 @@ export default function TournamentEditPage() {
                   strokeWidth="0.3"
                   opacity={0.5}
                 />
-                {/* スナップガイドライン */}
-                {snapGuide && snapGuide.visible && (
-                  <>
-                    {/* 水平線用のスナップガイドライン（垂直線） */}
-                    {snapGuide.x !== undefined && (
-                      <line
-                        x1={snapGuide.x * 100}
-                        y1="0"
-                        x2={snapGuide.x * 100}
-                        y2="100"
-                        stroke={SNAP_GUIDE_COLOR}
-                        strokeWidth={SNAP_GUIDE_STROKE_WIDTH}
-                        opacity={SNAP_GUIDE_OPACITY}
-                        strokeDasharray="0.5 0.5"
-                      />
-                    )}
-                    {/* 垂直線用のスナップガイドライン（水平線） */}
-                    {snapGuide.y !== undefined && (
-                      <line
-                        x1="0"
-                        y1={snapGuide.y * 100}
-                        x2="100"
-                        y2={snapGuide.y * 100}
-                        stroke={SNAP_GUIDE_COLOR}
-                        strokeWidth={SNAP_GUIDE_STROKE_WIDTH}
-                        opacity={SNAP_GUIDE_OPACITY}
-                        strokeDasharray="0.5 0.5"
-                      />
-                    )}
-                  </>
-                )}
+                <SnapGuideLines snapGuide={snapGuide} variant="drawing" />
               </svg>
             )}
             {/* ドラッグ中のスナップガイドライン */}
@@ -1473,32 +1373,7 @@ export default function TournamentEditPage() {
                 viewBox="0 0 100 100"
                 preserveAspectRatio="none"
               >
-                {/* 水平線用のスナップガイドライン（垂直線） */}
-                {snapGuide.x !== undefined && (
-                  <line
-                    x1={snapGuide.x * 100}
-                    y1="0"
-                    x2={snapGuide.x * 100}
-                    y2="100"
-                    stroke="#3b82f6"
-                    strokeWidth="0.1"
-                    strokeDasharray="0.5 0.5"
-                    opacity="0.6"
-                  />
-                )}
-                {/* 垂直線用のスナップガイドライン（水平線） */}
-                {snapGuide.y !== undefined && (
-                  <line
-                    x1="0"
-                    y1={snapGuide.y * 100}
-                    x2="100"
-                    y2={snapGuide.y * 100}
-                    stroke="#3b82f6"
-                    strokeWidth="0.1"
-                    strokeDasharray="0.5 0.5"
-                    opacity="0.6"
-                  />
-                )}
+                <SnapGuideLines snapGuide={snapGuide} variant="dragging" />
               </svg>
             )}
                 </div>
@@ -1517,7 +1392,6 @@ export default function TournamentEditPage() {
               showSuccess("大会を削除しました");
               router.push("/");
             } catch (error) {
-              const { handleErrorWithNotification } = require("@/lib/utils/errorHandler");
               handleErrorWithNotification(error, { operation: "deleteTournament", details: { tournamentId } }, "大会の削除に失敗しました");
             }
           }
