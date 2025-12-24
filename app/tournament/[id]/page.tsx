@@ -79,6 +79,7 @@ export default function TournamentEditPage() {
   const pinchStartTranslateRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 }); // ピンチ開始時の移動量
   const canvasZoomLayerRef = useRef<HTMLDivElement>(null); // CanvasZoomLayerのref
   const initialImageSizeRef = useRef<{ width: number; height: number } | null>(null); // 初期画像サイズ（canvasScale=1.0の状態）
+  const initialImagePositionRef = useRef<{ left: number; top: number; right: number; bottom: number } | null>(null); // 初期画像の位置（CanvasViewport内での位置）
   
   // Canva風の編集モード管理
   const editMode = useEditMode();
@@ -144,10 +145,10 @@ export default function TournamentEditPage() {
     return () => unsubscribe();
   }, [tournamentId, reset]);
 
-  // 初期画像サイズを記録（canvasScale=1.0の状態）
+  // 初期画像サイズと位置を記録（canvasScale=1.0の状態）
   useEffect(() => {
     const recordInitialImageSize = () => {
-      if (!imageContainerRef.current || !tournament) return;
+      if (!imageContainerRef.current || !canvasRef.current || !tournament) return;
       
       const imgElement = imageContainerRef.current.querySelector("img");
       if (!imgElement || !imgElement.naturalWidth || !imgElement.naturalHeight) return;
@@ -157,9 +158,26 @@ export default function TournamentEditPage() {
       const imageDisplayHeight = imgElement.offsetHeight;
       
       if (imageDisplayWidth > 0 && imageDisplayHeight > 0) {
+        // CanvasViewportのサイズと位置を取得
+        const viewportRect = imageContainerRef.current.getBoundingClientRect();
+        
+        // 画像の位置を取得（CanvasViewport内での相対位置）
+        const imageRect = imgElement.getBoundingClientRect();
+        const imageLeft = imageRect.left - viewportRect.left;
+        const imageTop = imageRect.top - viewportRect.top;
+        const imageRight = imageLeft + imageDisplayWidth;
+        const imageBottom = imageTop + imageDisplayHeight;
+        
         initialImageSizeRef.current = {
           width: imageDisplayWidth,
           height: imageDisplayHeight,
+        };
+        
+        initialImagePositionRef.current = {
+          left: imageLeft,
+          top: imageTop,
+          right: imageRight,
+          bottom: imageBottom,
         };
       }
     };
@@ -173,7 +191,7 @@ export default function TournamentEditPage() {
 
   // 移動範囲を制限する関数
   const clampTranslate = useCallback((translate: { x: number; y: number }, scale: number) => {
-    if (!initialImageSizeRef.current || !imageContainerRef.current) {
+    if (!initialImageSizeRef.current || !initialImagePositionRef.current || !imageContainerRef.current) {
       return translate;
     }
     
@@ -182,25 +200,52 @@ export default function TournamentEditPage() {
     const viewportWidth = viewportRect.width;
     const viewportHeight = viewportRect.height;
     
-    // 初期画像サイズ
+    // 初期画像サイズと位置
     const initialWidth = initialImageSizeRef.current.width;
     const initialHeight = initialImageSizeRef.current.height;
+    const initialLeft = initialImagePositionRef.current.left;
+    const initialTop = initialImagePositionRef.current.top;
+    const initialRight = initialImagePositionRef.current.right;
+    const initialBottom = initialImagePositionRef.current.bottom;
     
     // 拡大後の画像サイズ
     const scaledWidth = initialWidth * scale;
     const scaledHeight = initialHeight * scale;
     
+    // transform-origin: center center なので、拡大は中心から行われる
+    // 初期画像の中心位置を計算
+    const initialCenterX = initialLeft + initialWidth / 2;
+    const initialCenterY = initialTop + initialHeight / 2;
+    
+    // 拡大後の画像の左上位置を計算（中心から拡大）
+    const scaledLeft = initialCenterX - scaledWidth / 2;
+    const scaledTop = initialCenterY - scaledHeight / 2;
+    
     // 移動可能な範囲を計算
     // 拡大後の画像が初期画像の境界を超えないように制限
-    // 移動可能な範囲 = (拡大後のサイズ - 初期サイズ) / 2
-    const maxTranslateX = (scaledWidth - initialWidth) / 2;
-    const maxTranslateY = (scaledHeight - initialHeight) / 2;
+    // 左方向への移動制限: 初期画像の左端まで
+    const maxTranslateXLeft = initialLeft - scaledLeft;
+    // 右方向への移動制限: 初期画像の右端まで
+    const maxTranslateXRight = initialRight - (scaledLeft + scaledWidth);
+    // 上方向への移動制限: 初期画像の上端まで
+    const maxTranslateYTop = initialTop - scaledTop;
+    // 下方向への移動制限: 初期画像の下端まで
+    const maxTranslateYBottom = initialBottom - (scaledTop + scaledHeight);
     
-    // 移動量を制限
-    const clampedX = Math.max(-maxTranslateX, Math.min(maxTranslateX, translate.x));
-    const clampedY = Math.max(-maxTranslateY, Math.min(maxTranslateY, translate.y));
+    // 移動量を制限（より厳しい制限を適用）
+    const clampedX = Math.max(-maxTranslateXLeft, Math.min(maxTranslateXRight, translate.x));
+    const clampedY = Math.max(-maxTranslateYTop, Math.min(maxTranslateYBottom, translate.y));
     
     return { x: clampedX, y: clampedY };
+  }, []);
+  
+  // 座標が画像範囲内かどうかを検証する関数
+  const isValidCoordinate = useCallback((coords: { x: number; y: number }): boolean => {
+    // 座標は0-1の範囲で正規化されているので、その範囲内かチェック
+    if (coords.x < 0 || coords.x > 1 || coords.y < 0 || coords.y > 1) {
+      return false;
+    }
+    return true;
   }, []);
   
   // スケール変更時に移動範囲を制限
@@ -545,11 +590,15 @@ export default function TournamentEditPage() {
       showError("スコアを入力してください");
       return;
     }
+    // 座標が有効範囲内かチェック
+    if (!isValidCoordinate(coords)) {
+      return; // 無効な座標の場合は何もしない
+    }
     const markData = {
       type: "score" as const,
       pageNumber: DEFAULT_PAGE_NUMBER,
-      x: coords.x,
-      y: coords.y,
+      x: clampCoordinate(coords.x),
+      y: clampCoordinate(coords.y),
       value: scoreValue,
       fontSize: DEFAULT_SCORE_FONT_SIZE,
       color: DEFAULT_LINE_COLOR,
@@ -837,14 +886,22 @@ export default function TournamentEditPage() {
         setLineEnd(null);
         return;
       }
+      
+      // 座標が有効範囲内かチェック
+      if (!isValidCoordinate(lineStart) || !isValidCoordinate(lineEnd)) {
+        setIsDrawing(false);
+        setLineStart(null);
+        setLineEnd(null);
+        return;
+      }
 
       const markData = {
         type: "line" as const,
         pageNumber: DEFAULT_PAGE_NUMBER,
-        x1: lineStart.x,
-        y1: lineStart.y,
-        x2: lineEnd.x,
-        y2: lineEnd.y,
+        x1: clampCoordinate(lineStart.x),
+        y1: clampCoordinate(lineStart.y),
+        x2: clampCoordinate(lineEnd.x),
+        y2: clampCoordinate(lineEnd.y),
         color: DEFAULT_LINE_COLOR,
       };
       const markId = await addMark(tournamentId, markData);
@@ -969,13 +1026,21 @@ export default function TournamentEditPage() {
         return;
       }
 
+      // 座標が有効範囲内かチェック
+      if (!isValidCoordinate(lineStart) || !isValidCoordinate(lineEnd)) {
+        setIsDrawing(false);
+        setLineStart(null);
+        setLineEnd(null);
+        return;
+      }
+      
       const markData = {
         type: "line" as const,
         pageNumber: DEFAULT_PAGE_NUMBER,
-        x1: lineStart.x,
-        y1: lineStart.y,
-        x2: lineEnd.x,
-        y2: lineEnd.y,
+        x1: clampCoordinate(lineStart.x),
+        y1: clampCoordinate(lineStart.y),
+        x2: clampCoordinate(lineEnd.x),
+        y2: clampCoordinate(lineEnd.y),
         color: DEFAULT_LINE_COLOR,
       };
       const markId = await addMark(tournamentId, markData);
