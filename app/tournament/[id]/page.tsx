@@ -73,6 +73,7 @@ export default function TournamentEditPage() {
   // カスタムピンチズーム用のstate
   const [canvasScale, setCanvasScale] = useState(1); // キャンバスのスケール
   const [canvasTranslate, setCanvasTranslate] = useState({ x: 0, y: 0 }); // キャンバスの移動量
+  const [minScale, setMinScale] = useState(0.5); // 最小スケール（動的に計算）
   const pinchStartDistanceRef = useRef<number | null>(null); // ピンチ開始時の距離
   const pinchStartScaleRef = useRef<number>(1); // ピンチ開始時のスケール
   const pinchStartCenterRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の中心点
@@ -143,8 +144,53 @@ export default function TournamentEditPage() {
     return () => unsubscribe();
   }, [tournamentId, reset]);
 
-
-
+  // 最小スケールを計算（画像がCanvasViewportより小さくならないように）
+  useEffect(() => {
+    const calculateMinScale = () => {
+      if (!imageContainerRef.current || !tournament) return;
+      
+      const imgElement = imageContainerRef.current.querySelector("img");
+      if (!imgElement || !imgElement.naturalWidth || !imgElement.naturalHeight) return;
+      
+      // CanvasViewportのサイズを取得
+      const viewportRect = imageContainerRef.current.getBoundingClientRect();
+      const viewportWidth = viewportRect.width;
+      const viewportHeight = viewportRect.height;
+      
+      // 画像の表示サイズを取得（imageScaleが適用された後のサイズ）
+      const imageDisplayWidth = imgElement.offsetWidth;
+      const imageDisplayHeight = imgElement.offsetHeight;
+      
+      if (imageDisplayWidth === 0 || imageDisplayHeight === 0) return;
+      
+      // 最小スケールを計算
+      // 画像の横幅・高さの両方がCanvasViewportの横幅・高さ以上となる最小スケール
+      const minScaleX = viewportWidth / imageDisplayWidth;
+      const minScaleY = viewportHeight / imageDisplayHeight;
+      const calculatedMinScale = Math.max(minScaleX, minScaleY);
+      
+      // 最小スケールを設定（1.0以上）
+      // 画像がCanvasViewportより小さい場合は1.0、それ以上は計算値
+      const finalMinScale = Math.max(1.0, calculatedMinScale);
+      setMinScale(finalMinScale);
+      
+      // 現在のスケールが最小スケール未満の場合は調整
+      if (canvasScale < finalMinScale) {
+        setCanvasScale(finalMinScale);
+      }
+    };
+    
+    calculateMinScale();
+    window.addEventListener("resize", calculateMinScale);
+    const imgElement = imageContainerRef.current?.querySelector("img");
+    if (imgElement) {
+      imgElement.onload = calculateMinScale;
+    }
+    
+    return () => {
+      window.removeEventListener("resize", calculateMinScale);
+    };
+  }, [tournament, imageScale, canvasScale]);
 
   const handleCanvasMove = useCallback((e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     const coords = getRelativeCoordinates(e);
@@ -410,9 +456,9 @@ export default function TournamentEditPage() {
         const currentRelativeCenterX = currentCenterX - viewportCenterX;
         const currentRelativeCenterY = currentCenterY - viewportCenterY;
         
-        // スケールを計算（最小0.5倍、最大5倍）
+        // スケールを計算（最小スケール以上、最大5倍）
         const scaleChange = currentDistance / pinchStartDistanceRef.current;
-        const newScale = Math.max(0.5, Math.min(5, pinchStartScaleRef.current * scaleChange));
+        const newScale = Math.max(minScale, Math.min(5, pinchStartScaleRef.current * scaleChange));
         
         // パンを計算（中心点の移動を反映）
         // ピンチの中心点の移動を直接translateに反映
@@ -469,7 +515,7 @@ export default function TournamentEditPage() {
       // オブジェクトが選択されていない場合はパン操作を許可
       // preventDefaultしない（パン操作を許可）
     }
-  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove, touchGestures, editMode, canvasScale]);
+  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove, touchGestures, editMode, canvasScale, minScale]);
 
   // スコア追加の共通処理
   const handleAddScore = useCallback(async (coords: { x: number; y: number }) => {
