@@ -130,14 +130,14 @@ export const createTournament = async (
     // Step 4: 公開URL IDを生成（短いランダム文字列）
     const publicUrlId = await generatePublicUrlId();
 
-    const tournamentData = {
-      name,
-      createdBy: userId,
-      createdAt: serverTimestamp(),
-      expiresAt: getExpiresAt(),
+  const tournamentData = {
+    name,
+    createdBy: userId,
+    createdAt: serverTimestamp(),
+    expiresAt: getExpiresAt(),
       publicUrlId,
-      pdfPageImage,
-    };
+    pdfPageImage,
+  };
 
     console.log("Firestoreに大会データを保存します...");
     const dataSize = JSON.stringify(tournamentData).length;
@@ -242,7 +242,7 @@ export const createTournament = async (
         console.log("保存にかかった時間:", elapsedTime, "ms");
         console.log("=== 大会作成完了 ===");
         
-        return docRef.id;
+  return docRef.id;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         
@@ -373,21 +373,21 @@ export const getUserTournaments = async (userId: string): Promise<Tournament[]> 
   
   try {
     console.log("ユーザーの大会一覧を取得します...", { userId });
-    const q = query(
-      collection(db, TOURNAMENTS_COLLECTION),
-      where("createdBy", "==", userId)
-    );
-    const querySnapshot = await getDocs(q);
+  const q = query(
+    collection(db, TOURNAMENTS_COLLECTION),
+    where("createdBy", "==", userId)
+  );
+  const querySnapshot = await getDocs(q);
     
     console.log("大会一覧取得完了:", {
       count: querySnapshot.docs.length,
       docIds: querySnapshot.docs.map(doc => doc.id),
     });
 
-    return querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Tournament[];
+  return querySnapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as Tournament[];
   } catch (error) {
     console.error("大会一覧取得エラー:", error);
     if (error instanceof Error) {

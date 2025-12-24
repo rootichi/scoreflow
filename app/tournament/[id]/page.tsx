@@ -181,8 +181,8 @@ export default function TournamentEditPage() {
       const dx = Math.abs(coords.x - lineStart.x);
       const dy = Math.abs(coords.y - lineStart.y);
       
-      if (canvasRef.current) {
-        const rect = canvasRef.current.getBoundingClientRect();
+        if (canvasRef.current) {
+          const rect = canvasRef.current.getBoundingClientRect();
         
         if (dx > dy) {
           // 水平線：スナップ処理
@@ -200,9 +200,9 @@ export default function TournamentEditPage() {
             setSnapGuide({ x: snapTargetX, visible: true });
           } else {
             setSnapGuide(null);
-          }
-        } else {
-          // 垂直線：スナップ処理
+        }
+      } else {
+        // 垂直線：スナップ処理
           const { snappedY, snapTargetY } = findSnapPositionVertical(
             coords.x,
             coords.y,
@@ -1044,10 +1044,10 @@ export default function TournamentEditPage() {
                     width: "100%",
                     display: "inline-block", // コンテンツサイズに合わせる
                   }}
-                >
-                  <img
-                src={tournament.pdfPageImage}
-                alt="Tournament bracket"
+          >
+            <img
+              src={tournament.pdfPageImage}
+              alt="Tournament bracket"
                 className="w-full h-auto block"
                 style={{ 
                   display: "block",
@@ -1055,7 +1055,7 @@ export default function TournamentEditPage() {
                   boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)", // 影を追加してより見やすく
                   backgroundColor: "#ffffff", // 白い背景を追加（透明なPDFの場合）
                 }}
-              />
+            />
             {/* マークを描画（ドラッグ可能） */}
             {/* すべてのラインを1つのSVGにまとめる */}
             <svg
@@ -1404,7 +1404,7 @@ export default function TournamentEditPage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
         </svg>
       </button>
-      </div>
+    </div>
     </>
   );
 }
