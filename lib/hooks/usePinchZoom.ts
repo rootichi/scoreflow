@@ -270,11 +270,24 @@ export function usePinchZoom(
         ? (pinchStartImageRectRef.current.top + pinchStartImagePointRef.current.y) - zoomLayerRect.top
         : originY;
       
+      console.log("[PinchMove] Start point (zoomLayer coordinates):", {
+        x: startZoomLayerPointX,
+        y: startZoomLayerPointY,
+      });
+      
       // 現在の位置が画面上で固定されるようにtranslateを計算
       // transform-originを基準にした場合、スケール後の位置は以下のように計算される
       // スケール前の位置: currentZoomLayerPointX, currentZoomLayerPointY
       // スケール後の位置: originX + (currentZoomLayerPointX - originX) * scaleRatio
       const scaleRatio = newScale / pinchStartScaleRef.current;
+      
+      // 現在の位置が画面上で固定されるようにtranslateを計算
+      // transform-originを基準にスケールする場合、その位置が画面上で固定されるようにtranslateを調整する必要がある
+      // スケール前の位置: currentZoomLayerPointX, currentZoomLayerPointY
+      // スケール後の位置: originX + (currentZoomLayerPointX - originX) * scaleRatio
+      // 位置の差: currentZoomLayerPointX - (originX + (currentZoomLayerPointX - originX) * scaleRatio)
+      // = currentZoomLayerPointX - originX - (currentZoomLayerPointX - originX) * scaleRatio
+      // = (currentZoomLayerPointX - originX) * (1 - scaleRatio)
       
       // 現在の位置を基準にしたスケール後の位置
       const scaledCurrentZoomLayerPointX = originX + (currentZoomLayerPointX - originX) * scaleRatio;
@@ -282,12 +295,33 @@ export function usePinchZoom(
       
       // 現在の位置が画面上で固定されるようにtranslateを計算
       // スケール前の位置とスケール後の位置の差を計算
-      const deltaX = currentZoomLayerPointX - scaledCurrentZoomLayerPointX;
-      const deltaY = currentZoomLayerPointY - scaledCurrentZoomLayerPointY;
+      const currentDeltaX = currentZoomLayerPointX - scaledCurrentZoomLayerPointX;
+      const currentDeltaY = currentZoomLayerPointY - scaledCurrentZoomLayerPointY;
+      
+      // 開始時の位置を基準にしたスケール後の位置（開始時のtransform-originを基準に計算）
+      const startOriginX = startZoomLayerPointX;
+      const startOriginY = startZoomLayerPointY;
+      const scaledStartZoomLayerPointX = startOriginX + (startZoomLayerPointX - startOriginX) * scaleRatio;
+      const scaledStartZoomLayerPointY = startOriginY + (startZoomLayerPointY - startOriginY) * scaleRatio;
+      
+      // 開始時の位置の移動分
+      const startDeltaX = startZoomLayerPointX - scaledStartZoomLayerPointX;
+      const startDeltaY = startZoomLayerPointY - scaledStartZoomLayerPointY;
+      
+      console.log("[PinchMove] Scaled positions:", {
+        start: { x: scaledStartZoomLayerPointX, y: scaledStartZoomLayerPointY },
+        current: { x: scaledCurrentZoomLayerPointX, y: scaledCurrentZoomLayerPointY },
+      });
+      
+      console.log("[PinchMove] Deltas:", {
+        start: { x: startDeltaX, y: startDeltaY },
+        current: { x: currentDeltaX, y: currentDeltaY },
+      });
       
       // translateを計算（現在の位置が画面上で固定されるように）
-      const newTranslateX = pinchStartTranslateRef.current.x + deltaX;
-      const newTranslateY = pinchStartTranslateRef.current.y + deltaY;
+      // 開始時の位置の移動分から現在の位置の移動分を引く
+      const newTranslateX = pinchStartTranslateRef.current.x + startDeltaX - currentDeltaX;
+      const newTranslateY = pinchStartTranslateRef.current.y + startDeltaY - currentDeltaY;
       
       console.log("[PinchMove] Translate:", { x: newTranslateX, y: newTranslateY });
       
