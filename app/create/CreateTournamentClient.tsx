@@ -83,7 +83,7 @@ export default function CreateTournamentClient() {
       // 編集ページに遷移
       router.push(`/tournament/${tournamentId}`);
     } catch (err) {
-      const { handleError } = require("@/lib/utils/errorHandler");
+      const { handleError } = await import("@/lib/utils/errorHandler");
       const errorMessage = handleError(err, {
         operation: "createTournament",
         details: { name, pdfFileName: pdfFile?.name },

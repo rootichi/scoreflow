@@ -29,7 +29,7 @@ export default function PublicTournamentPage() {
         setTournament(data);
         setLoading(false);
       } catch (err) {
-        const { handleError } = require("@/lib/utils/errorHandler");
+        const { handleError } = await import("@/lib/utils/errorHandler");
         const errorMessage = handleError(err, { operation: "loadPublicTournament", details: { publicUrlId } });
         setError(errorMessage || "大会の読み込みに失敗しました");
         setLoading(false);

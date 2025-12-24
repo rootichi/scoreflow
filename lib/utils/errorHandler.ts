@@ -62,14 +62,14 @@ export function handleError(error: unknown, context?: ErrorContext): string {
 /**
  * エラーを処理し、通知を表示する
  */
-export function handleErrorWithNotification(
+export async function handleErrorWithNotification(
   error: unknown,
   context?: ErrorContext,
   defaultMessage?: string
-): void {
+): Promise<void> {
   const message = handleError(error, context);
-  // showErrorは後でインポート（循環参照を避けるため）
-  const { showError } = require("./notification");
+  // showErrorは動的インポート（循環参照を避けるため）
+  const { showError } = await import("./notification");
   showError(defaultMessage || message);
 }
 

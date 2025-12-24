@@ -171,8 +171,8 @@ export default function Home() {
       await signInWithGoogle();
       showSuccess("ログインしました");
     } catch (error) {
-      const { handleErrorWithNotification } = require("@/lib/utils/errorHandler");
-      handleErrorWithNotification(error, { operation: "signIn" }, "ログインに失敗しました");
+      const { handleErrorWithNotification } = await import("@/lib/utils/errorHandler");
+      await handleErrorWithNotification(error, { operation: "signIn" }, "ログインに失敗しました");
     }
   }, []);
 
@@ -182,8 +182,8 @@ export default function Home() {
       setTournaments([]);
       showSuccess("ログアウトしました");
     } catch (error) {
-      const { handleErrorWithNotification } = require("@/lib/utils/errorHandler");
-      handleErrorWithNotification(error, { operation: "signOut" }, "ログアウトに失敗しました");
+      const { handleErrorWithNotification } = await import("@/lib/utils/errorHandler");
+      await handleErrorWithNotification(error, { operation: "signOut" }, "ログアウトに失敗しました");
     }
   }, []);
 
@@ -204,8 +204,8 @@ export default function Home() {
       await copyToClipboard(url);
                       showSuccess("公開URLをコピーしました");
                     } catch (error) {
-                      const { handleErrorWithNotification } = require("@/lib/utils/errorHandler");
-                      handleErrorWithNotification(error, { operation: "copyUrl" }, "URLのコピーに失敗しました");
+                      const { handleErrorWithNotification } = await import("@/lib/utils/errorHandler");
+                      await handleErrorWithNotification(error, { operation: "copyUrl" }, "URLのコピーに失敗しました");
                     }
   }, []);
 
