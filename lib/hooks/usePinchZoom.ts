@@ -1,7 +1,8 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 
 /**
  * ピンチズーム用のカスタムフック
+ * transformを行列（matrix）として管理する方式
  */
 export function usePinchZoom(
   imageContainerRef: React.RefObject<HTMLDivElement | null>,
@@ -9,80 +10,22 @@ export function usePinchZoom(
   canvasRef?: React.RefObject<HTMLDivElement | null>,
   canvasZoomLayerRef?: React.RefObject<HTMLDivElement | null>
 ) {
-  const [canvasScale, setCanvasScale] = useState(1);
-  const [canvasTranslate, setCanvasTranslate] = useState({ x: 0, y: 0 });
-  const [transformOrigin, setTransformOrigin] = useState<string>("center center"); // 動的に設定
+  // transformを行列として管理
+  // 初期状態: 単位行列（scale=1, translate=0,0）
+  const [transformMatrix, setTransformMatrix] = useState<DOMMatrix>(new DOMMatrix());
+  
+  // transform-originは常に0 0（左上）に固定
+  const transformOrigin = "0 0";
+  
   const pinchStartDistanceRef = useRef<number | null>(null);
-  const pinchStartScaleRef = useRef<number>(1);
-  const pinchStartTranslateRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const pinchStartMatrixRef = useRef<DOMMatrix | null>(null); // ピンチ開始時の行列
   const pinchStartCenterLocalRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の中心位置（CanvasZoomLayerローカル座標）
-
-  // 移動範囲を制限する関数
-  const clampTranslate = useCallback(
-    (translate: { x: number; y: number }, scale: number, originX: number, originY: number) => {
-      if (!initialImageSizeRef.current || !imageContainerRef.current) {
-        return translate;
-      }
-
-      // ビューポートのサイズを取得（CanvasViewportのサイズ）
-      const viewportRect = imageContainerRef.current.getBoundingClientRect();
-      const viewportWidth = viewportRect.width;
-      const viewportHeight = viewportRect.height;
-
-      const initialWidth = initialImageSizeRef.current.width;
-      const initialHeight = initialImageSizeRef.current.height;
-
-      // スケール後の画像サイズ
-      const scaledWidth = initialWidth * scale;
-      const scaledHeight = initialHeight * scale;
-
-      // transform-originを考慮した移動範囲の計算
-      // originX, originYは画像要素の左上からの相対位置（px単位）
-      // スケール後の画像の左上の位置を計算
-      const scaledOriginX = originX * scale;
-      const scaledOriginY = originY * scale;
-      
-      // スケール後の画像の左上の位置（ビューポート座標系）
-      const scaledImageLeft = viewportRect.left + viewportRect.width / 2 - scaledOriginX;
-      const scaledImageTop = viewportRect.top + viewportRect.height / 2 - scaledOriginY;
-      
-      // 初期画像の位置（ビューポート座標系、scale=1.0の状態）
-      const initialImageLeft = viewportRect.left + viewportRect.width / 2 - originX;
-      const initialImageTop = viewportRect.top + viewportRect.height / 2 - originY;
-      const initialImageRight = initialImageLeft + initialWidth;
-      const initialImageBottom = initialImageTop + initialHeight;
-      
-      // スケール後の画像の位置（ビューポート座標系）
-      const scaledImageRight = scaledImageLeft + scaledWidth;
-      const scaledImageBottom = scaledImageTop + scaledHeight;
-      
-      // 移動範囲を制限（初期画像の境界を超えないように）
-      // 左方向の最大移動: 初期画像の左端 - スケール後の画像の左端
-      const maxTranslateXLeft = initialImageLeft - scaledImageLeft;
-      // 右方向の最大移動: 初期画像の右端 - スケール後の画像の右端
-      const maxTranslateXRight = initialImageRight - scaledImageRight;
-      // 上方向の最大移動: 初期画像の上端 - スケール後の画像の上端
-      const maxTranslateYTop = initialImageTop - scaledImageTop;
-      // 下方向の最大移動: 初期画像の下端 - スケール後の画像の下端
-      const maxTranslateYBottom = initialImageBottom - scaledImageBottom;
-      
-      // 移動範囲を制限
-      const clampedX = Math.max(maxTranslateXLeft, Math.min(maxTranslateXRight, translate.x));
-      const clampedY = Math.max(maxTranslateYTop, Math.min(maxTranslateYBottom, translate.y));
-
-      return { x: clampedX, y: clampedY };
-    },
-    [imageContainerRef, initialImageSizeRef]
-  );
-
-  // ピンチ操作終了時にtransform-originをリセット
-  // 注意: refの変更は検知できないため、handlePinchEndで直接リセットする
 
   /**
    * ピンチ開始
    * 
    * ピンチ中心をCanvasZoomLayerのローカル座標に変換し、
-   * transform-originとして設定する
+   * 現在のtransform行列を記録する
    */
   const handlePinchStart = useCallback(
     (touch1: React.Touch, touch2: React.Touch) => {
@@ -111,7 +54,6 @@ export function usePinchZoom(
       const zoomLayerRect = canvasZoomLayerRef.current.getBoundingClientRect();
       
       // ピンチ中心をCanvasZoomLayerのローカル座標に変換
-      // ローカル座標 = viewport座標 - CanvasZoomLayerの左上の位置
       const centerXLocal = centerXViewport - zoomLayerRect.left;
       const centerYLocal = centerYViewport - zoomLayerRect.top;
 
@@ -122,36 +64,36 @@ export function usePinchZoom(
         width: zoomLayerRect.width,
         height: zoomLayerRect.height,
       });
-      console.log("[PinchStart] Current scale:", canvasScale);
-      console.log("[PinchStart] Current translate:", canvasTranslate);
-      console.log("[PinchStart] Current transform-origin:", transformOrigin);
 
-      // ピンチ開始時の状態を記録
+      // 現在のtransform行列を記録
+      const currentMatrix = transformMatrix;
+      pinchStartMatrixRef.current = new DOMMatrix(currentMatrix);
       pinchStartDistanceRef.current = distance;
-      pinchStartScaleRef.current = canvasScale;
-      pinchStartTranslateRef.current = { ...canvasTranslate };
       pinchStartCenterLocalRef.current = { x: centerXLocal, y: centerYLocal };
 
-      // transform-originをピンチ中心のローカル座標に設定
-      const newTransformOrigin = `${centerXLocal}px ${centerYLocal}px`;
-      setTransformOrigin(newTransformOrigin);
-      
-      console.log("[PinchStart] New transform-origin:", newTransformOrigin);
+      console.log("[PinchStart] Current transform matrix:", {
+        a: currentMatrix.a,
+        b: currentMatrix.b,
+        c: currentMatrix.c,
+        d: currentMatrix.d,
+        e: currentMatrix.e,
+        f: currentMatrix.f,
+      });
       console.log("[PinchStart] =====================");
     },
-    [canvasScale, canvasTranslate, transformOrigin, canvasZoomLayerRef]
+    [transformMatrix, canvasZoomLayerRef]
   );
 
   /**
    * ピンチ移動
    * 
-   * transform-originをピンチ中心に設定しているため、
-   * scaleのみを変更すれば、ピンチ中心を基準にズームされる。
-   * translate補正は極力行わない。
+   * ピンチ中心を基準にしたズーム行列を合成
+   * T(cx, cy) → S(scale) → T(-cx, -cy)
+   * これを既存の行列に乗算
    */
   const handlePinchMove = useCallback(
     (touch1: React.Touch, touch2: React.Touch) => {
-      if (pinchStartDistanceRef.current === null || pinchStartCenterLocalRef.current === null) {
+      if (pinchStartDistanceRef.current === null || pinchStartCenterLocalRef.current === null || pinchStartMatrixRef.current === null) {
         return;
       }
 
@@ -175,12 +117,14 @@ export function usePinchZoom(
 
       // スケール変更を計算
       const scaleChange = currentDistance / pinchStartDistanceRef.current;
-      const newScale = Math.max(1.0, Math.min(5, pinchStartScaleRef.current * scaleChange));
+      
+      // ピンチ開始時の行列から現在のスケールを取得
+      const startScale = Math.sqrt(pinchStartMatrixRef.current.a * pinchStartMatrixRef.current.a + pinchStartMatrixRef.current.b * pinchStartMatrixRef.current.b);
+      const newScale = Math.max(1.0, Math.min(5, startScale * scaleChange));
       
       console.log("[PinchMove] Scale change:", scaleChange);
+      console.log("[PinchMove] Start scale:", startScale);
       console.log("[PinchMove] New scale:", newScale);
-      console.log("[PinchMove] Start scale:", pinchStartScaleRef.current);
-      console.log("[PinchMove] Current transform-origin:", transformOrigin);
 
       if (!canvasZoomLayerRef?.current) {
         return;
@@ -192,151 +136,94 @@ export function usePinchZoom(
       const currentCenterYLocal = currentCenterYViewport - zoomLayerRect.top;
       
       console.log("[PinchMove] Current center point (local):", { x: currentCenterXLocal, y: currentCenterYLocal });
-      console.log("[PinchMove] ZoomLayer rect:", {
-        left: zoomLayerRect.left,
-        top: zoomLayerRect.top,
-        width: zoomLayerRect.width,
-        height: zoomLayerRect.height,
-      });
 
-      // scaleのみを変更（translateは基本的に変更しない）
-      // transform-originがピンチ中心に設定されているため、
-      // scaleを変更するだけでピンチ中心を基準にズームされる
-      setCanvasScale(newScale);
+      // ピンチ中心を基準にしたズーム行列を合成
+      // T(cx, cy) → S(scale) → T(-cx, -cy)
+      // 
+      // DOMMatrixのmultiplyは右から左に適用される
+      // A.multiply(B) は B * A を意味する
+      // 
+      // 欲しい変換: T(cx, cy) * S(scale) * T(-cx, -cy) * startMatrix
+      // これを実現するには:
+      // startMatrix.multiply(translateToOrigin).multiply(scaleMatrix).multiply(translateBack)
       
-      // translateはピンチ開始時の値を維持（極力変更しない）
-      // ただし、clamp処理は必要に応じて適用
-      // ここでは、translate補正は行わない（transform-origin方式のため）
+      const cx = pinchStartCenterLocalRef.current.x;
+      const cy = pinchStartCenterLocalRef.current.y;
       
-      console.log("[PinchMove] Applied scale:", newScale);
-      console.log("[PinchMove] Translate (unchanged):", canvasTranslate);
-      console.log("[PinchMove] Transform-origin:", transformOrigin);
+      // 1. ピンチ中心を原点に移動: T(-cx, -cy)
+      const translateToOrigin = new DOMMatrix().translate(-cx, -cy);
+      
+      // 2. スケール: S(scale)
+      const scale = newScale / startScale; // 相対スケール
+      const scaleMatrix = new DOMMatrix().scale(scale, scale);
+      
+      // 3. 元の位置に戻す: T(cx, cy)
+      const translateBack = new DOMMatrix().translate(cx, cy);
+      
+      // 合成: startMatrix * T(-cx, -cy) * S(scale) * T(cx, cy)
+      // これは T(cx, cy) * S(scale) * T(-cx, -cy) * startMatrix と等価
+      const newMatrix = pinchStartMatrixRef.current
+        .multiply(translateToOrigin)
+        .multiply(scaleMatrix)
+        .multiply(translateBack);
+      
+      console.log("[PinchMove] Zoom matrix:", {
+        a: zoomMatrix.a,
+        b: zoomMatrix.b,
+        c: zoomMatrix.c,
+        d: zoomMatrix.d,
+        e: zoomMatrix.e,
+        f: zoomMatrix.f,
+      });
+      console.log("[PinchMove] New transform matrix:", {
+        a: newMatrix.a,
+        b: newMatrix.b,
+        c: newMatrix.c,
+        d: newMatrix.d,
+        e: newMatrix.e,
+        f: newMatrix.f,
+      });
+      
+      setTransformMatrix(newMatrix);
+      
       console.log("[PinchMove] =====================");
     },
-    [canvasZoomLayerRef, transformOrigin, canvasTranslate]
+    [canvasZoomLayerRef]
   );
 
   /**
    * ピンチ終了
    * 
-   * transform-originをcenter centerにリセットする際に、
-   * 見た目が変わらないようにtranslateを補正する
+   * 何も変更しない（行列がそのまま残る）
    */
   const handlePinchEnd = useCallback(() => {
-    console.log("[PinchEnd] ===== ピンチ終了（1フレーム前） =====");
-    console.log("[PinchEnd] Transform-origin (before):", transformOrigin);
-    console.log("[PinchEnd] Scale (before):", canvasScale);
-    console.log("[PinchEnd] Translate (before):", canvasTranslate);
-    
-    if (!canvasZoomLayerRef?.current || !pinchStartCenterLocalRef.current) {
-      // ピンチ中心が記録されていない場合は、通常のリセットのみ
-      pinchStartDistanceRef.current = null;
-      pinchStartCenterLocalRef.current = null;
-      setTransformOrigin("center center");
-      console.log("[PinchEnd] No pinch center recorded, reset only");
-      console.log("[PinchEnd] =====================");
-      return;
-    }
-
-    // ピンチ終了直前の状態を取得
-    const currentScale = canvasScale;
-    const currentTranslate = canvasTranslate;
-    const pinchCenterLocal = pinchStartCenterLocalRef.current;
-    
-    // CanvasZoomLayerのサイズを取得
-    const zoomLayerRect = canvasZoomLayerRef.current.getBoundingClientRect();
-    const zoomLayerWidth = zoomLayerRect.width;
-    const zoomLayerHeight = zoomLayerRect.height;
-    
-    // CanvasZoomLayerの中心（ローカル座標）
-    const centerLocalX = zoomLayerWidth / 2;
-    const centerLocalY = zoomLayerHeight / 2;
-    
-    console.log("[PinchEnd] Pinch center (local):", pinchCenterLocal);
-    console.log("[PinchEnd] ZoomLayer center (local):", { x: centerLocalX, y: centerLocalY });
-    console.log("[PinchEnd] ZoomLayer size:", { width: zoomLayerWidth, height: zoomLayerHeight });
-    
-    // ピンチ中心から中心への相対位置
-    const relativeX = centerLocalX - pinchCenterLocal.x;
-    const relativeY = centerLocalY - pinchCenterLocal.y;
-    
-    console.log("[PinchEnd] Relative position (center - pinch center):", { x: relativeX, y: relativeY });
-    
-    // transform-originをピンチ中心からcenter centerに変更する際の補正を計算
-    // 
-    // 前提：
-    // - transform-originがピンチ中心の場合、ピンチ中心は固定（viewport座標で）
-    // - transform-originがcenter centerの場合、中心は固定（viewport座標で）
-    // - 見た目を維持するには、ピンチ中心の位置（viewport座標）が変わらないようにする必要がある
-    //
-    // 計算方法：
-    // 1. ピンチ中心のviewport座標を計算（現在の状態）
-    //    pinchCenterViewport = {zoomLayerRect.left + pinchCenterLocal.x, zoomLayerRect.top + pinchCenterLocal.y}
-    //
-    // 2. transform-originがcenter centerの場合、ピンチ中心の位置を維持するには：
-    //    - 中心からピンチ中心への相対位置を計算
-    //    - スケールを考慮して、translateを補正
-    //
-    // 3. 補正量の計算：
-    //    - ピンチ中心から中心への相対位置（ローカル座標）: relativeX, relativeY
-    //    - transform-originがピンチ中心の場合、ピンチ中心は固定
-    //    - transform-originがcenter centerの場合、中心は固定
-    //    - ピンチ中心の位置を維持するには、translateを補正する必要がある
-    //
-    // 4. 補正量 = ピンチ中心から中心への相対位置 * (1 - 1/scale)
-    //    または = ピンチ中心から中心への相対位置 * (scale - 1) / scale
-    //
-    // より正確な計算：
-    // transform-originがピンチ中心の場合：
-    //   - ピンチ中心は固定（viewport座標で）
-    //   - ピンチ中心のviewport座標: pinchCenterViewport = {zoomLayerRect.left + px, zoomLayerRect.top + py}
-    //
-    // transform-originがcenter centerの場合：
-    //   - 中心は固定（viewport座標で）
-    //   - 中心のviewport座標: centerViewport = {zoomLayerRect.left + width/2, zoomLayerRect.top + height/2}
-    //   - ピンチ中心の位置を維持するには、translateを補正する必要がある
-    //
-    // 補正量の計算：
-    //   - ピンチ中心から中心への相対位置（ローカル座標）: relativeX = centerLocalX - pinchCenterLocal.x
-    //   - スケールを考慮して、translateを補正
-    //   - 補正量 = relativeX * (1 - 1/scale) = relativeX * (scale - 1) / scale
-    
-    // 補正量の計算
-    // ピンチ中心から中心への相対位置を、スケールを考慮して補正
-    // 補正量 = 相対位置 * (1 - 1/scale) = 相対位置 * (scale - 1) / scale
-    const correctionX = relativeX * (1 - 1 / currentScale);
-    const correctionY = relativeY * (1 - 1 / currentScale);
-    
-    console.log("[PinchEnd] Correction:", { x: correctionX, y: correctionY });
-    
-    // 新しいtranslateを計算
-    const newTranslateX = currentTranslate.x + correctionX;
-    const newTranslateY = currentTranslate.y + correctionY;
-    
-    console.log("[PinchEnd] New translate (calculated):", { x: newTranslateX, y: newTranslateY });
-    
-    // transform-originをcenter centerに変更し、同時にtranslateを適用
-    setTransformOrigin("center center");
-    setCanvasTranslate({ x: newTranslateX, y: newTranslateY });
+    console.log("[PinchEnd] ===== ピンチ終了 =====");
+    console.log("[PinchEnd] Transform matrix:", {
+      a: transformMatrix.a,
+      b: transformMatrix.b,
+      c: transformMatrix.c,
+      d: transformMatrix.d,
+      e: transformMatrix.e,
+      f: transformMatrix.f,
+    });
+    console.log("[PinchEnd] Pinch center (local):", pinchStartCenterLocalRef.current);
     
     // ピンチ開始時の記録をクリア
     pinchStartDistanceRef.current = null;
+    pinchStartMatrixRef.current = null;
     pinchStartCenterLocalRef.current = null;
     
-    console.log("[PinchEnd] ===== ピンチ終了（1フレーム後） =====");
-    console.log("[PinchEnd] Transform-origin (after): center center");
-    console.log("[PinchEnd] Scale (after):", currentScale);
-    console.log("[PinchEnd] Translate (after):", { x: newTranslateX, y: newTranslateY });
     console.log("[PinchEnd] =====================");
-  }, [canvasScale, canvasTranslate, transformOrigin, canvasZoomLayerRef]);
+  }, [transformMatrix]);
+
+  // transform行列をCSSのmatrix()形式に変換
+  const transformString = `matrix(${transformMatrix.a}, ${transformMatrix.b}, ${transformMatrix.c}, ${transformMatrix.d}, ${transformMatrix.e}, ${transformMatrix.f})`;
 
   return {
-    canvasScale,
-    canvasTranslate,
+    transformString,
     transformOrigin,
     handlePinchStart,
     handlePinchMove,
     handlePinchEnd,
   };
 }
-

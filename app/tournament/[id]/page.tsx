@@ -84,8 +84,7 @@ export default function TournamentEditPage() {
   useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark, editMode.canEdit);
   const { getRelativeCoordinates } = useCanvasCoordinates(canvasRef);
   const {
-    canvasScale,
-    canvasTranslate,
+    transformString,
     transformOrigin,
     handlePinchStart,
     handlePinchMove,
@@ -1041,7 +1040,7 @@ export default function TournamentEditPage() {
               <div
                 ref={canvasZoomLayerRef}
                 style={{
-                  transform: `translate(${canvasTranslate.x}px, ${canvasTranslate.y}px) scale(${canvasScale})`,
+                  transform: transformString,
                   transformOrigin: transformOrigin,
                   width: "100%",
                   height: "100%",
