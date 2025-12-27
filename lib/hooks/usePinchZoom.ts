@@ -17,9 +17,12 @@ export function usePinchZoom(
   // transform-originは常に0 0（左上）に固定
   const transformOrigin = "0 0";
   
+  // スケール比の閾値（これより小さい変化は無視）
+  const SCALE_EPSILON = 0.001;
+  
   const pinchStartDistanceRef = useRef<number | null>(null);
-  const pinchStartMatrixRef = useRef<DOMMatrix | null>(null); // ピンチ開始時の行列
-  const pinchStartCenterLocalRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の中心位置（CanvasZoomLayerローカル座標）
+  const pinchStartMatrixRef = useRef<DOMMatrix | null>(null); // ピンチ開始時の基準行列（baseMatrix）
+  const pinchStartCenterLocalRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の基準中心位置（basePinchCenter）
 
   /**
    * ピンチ開始
@@ -65,13 +68,13 @@ export function usePinchZoom(
         height: zoomLayerRect.height,
       });
 
-      // 現在のtransform行列を記録
+      // ピンチ開始時の基準値を記録（baseMatrix, baseScaleDistance, basePinchCenter）
       const currentMatrix = transformMatrix;
-      pinchStartMatrixRef.current = new DOMMatrix(currentMatrix);
-      pinchStartDistanceRef.current = distance;
-      pinchStartCenterLocalRef.current = { x: centerXLocal, y: centerYLocal };
+      pinchStartMatrixRef.current = new DOMMatrix(currentMatrix); // baseMatrix
+      pinchStartDistanceRef.current = distance; // baseScaleDistance
+      pinchStartCenterLocalRef.current = { x: centerXLocal, y: centerYLocal }; // basePinchCenter
 
-      console.log("[PinchStart] Current transform matrix:", {
+      console.log("[PinchStart] Base matrix (saved):", {
         a: currentMatrix.a,
         b: currentMatrix.b,
         c: currentMatrix.c,
@@ -79,6 +82,8 @@ export function usePinchZoom(
         e: currentMatrix.e,
         f: currentMatrix.f,
       });
+      console.log("[PinchStart] Base scale distance:", distance);
+      console.log("[PinchStart] Base pinch center (local):", { x: centerXLocal, y: centerYLocal });
       console.log("[PinchStart] =====================");
     },
     [transformMatrix, canvasZoomLayerRef]
@@ -115,16 +120,20 @@ export function usePinchZoom(
       console.log("[PinchMove] Center point (viewport):", { x: currentCenterXViewport, y: currentCenterYViewport });
       console.log("[PinchMove] Start center point (local):", pinchStartCenterLocalRef.current);
 
-      // スケール変更を計算
-      const scaleChange = currentDistance / pinchStartDistanceRef.current;
+      // スケール比を計算（scaleRatio）
+      const scaleRatio = currentDistance / pinchStartDistanceRef.current;
       
-      // ピンチ開始時の行列から現在のスケールを取得
-      const startScale = Math.sqrt(pinchStartMatrixRef.current.a * pinchStartMatrixRef.current.a + pinchStartMatrixRef.current.b * pinchStartMatrixRef.current.b);
-      const newScale = Math.max(1.0, Math.min(5, startScale * scaleChange));
-      
-      console.log("[PinchMove] Scale change:", scaleChange);
-      console.log("[PinchMove] Start scale:", startScale);
-      console.log("[PinchMove] New scale:", newScale);
+      console.log("[PinchMove] Scale ratio:", scaleRatio);
+      console.log("[PinchMove] Scale ratio - 1:", scaleRatio - 1);
+      console.log("[PinchMove] |Scale ratio - 1|:", Math.abs(scaleRatio - 1));
+
+      // スケール比が1.0に近い場合は行列を更新しない（必須のガード処理）
+      if (Math.abs(scaleRatio - 1) <= SCALE_EPSILON) {
+        console.log("[PinchMove] Scale ratio is 1.0 (within epsilon), skipping matrix update");
+        console.log("[PinchMove] Matrix updated: false");
+        console.log("[PinchMove] =====================");
+        return;
+      }
 
       if (!canvasZoomLayerRef?.current) {
         return;
@@ -136,45 +145,38 @@ export function usePinchZoom(
       const currentCenterYLocal = currentCenterYViewport - zoomLayerRect.top;
       
       console.log("[PinchMove] Current center point (local):", { x: currentCenterXLocal, y: currentCenterYLocal });
+      console.log("[PinchMove] Base center point (local):", pinchStartCenterLocalRef.current);
 
       // ピンチ中心を基準にしたズーム行列を合成
-      // T(cx, cy) → S(scale) → T(-cx, -cy)
+      // T(cx, cy) → S(scaleRatio) → T(-cx, -cy)
       // 
       // DOMMatrixのmultiplyは右から左に適用される
       // A.multiply(B) は B * A を意味する
       // 
-      // 欲しい変換: T(cx, cy) * S(scale) * T(-cx, -cy) * startMatrix
+      // 欲しい変換: T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix
       // これを実現するには:
-      // startMatrix.multiply(translateToOrigin).multiply(scaleMatrix).multiply(translateBack)
+      // baseMatrix.multiply(translateToOrigin).multiply(scaleMatrix).multiply(translateBack)
       
-      const cx = pinchStartCenterLocalRef.current.x;
-      const cy = pinchStartCenterLocalRef.current.y;
+      const cx = pinchStartCenterLocalRef.current.x; // basePinchCenter.x
+      const cy = pinchStartCenterLocalRef.current.y; // basePinchCenter.y
       
       // 1. ピンチ中心を原点に移動: T(-cx, -cy)
       const translateToOrigin = new DOMMatrix().translate(-cx, -cy);
       
-      // 2. スケール: S(scale)
-      const scale = newScale / startScale; // 相対スケール
-      const scaleMatrix = new DOMMatrix().scale(scale, scale);
+      // 2. スケール: S(scaleRatio)
+      const scaleMatrix = new DOMMatrix().scale(scaleRatio, scaleRatio);
       
       // 3. 元の位置に戻す: T(cx, cy)
       const translateBack = new DOMMatrix().translate(cx, cy);
       
-      // 合成: startMatrix * T(-cx, -cy) * S(scale) * T(cx, cy)
-      // これは T(cx, cy) * S(scale) * T(-cx, -cy) * startMatrix と等価
+      // 合成: baseMatrix * T(-cx, -cy) * S(scaleRatio) * T(cx, cy)
+      // これは T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix と等価
       const newMatrix = pinchStartMatrixRef.current
         .multiply(translateToOrigin)
         .multiply(scaleMatrix)
         .multiply(translateBack);
       
-      console.log("[PinchMove] Zoom matrix:", {
-        a: zoomMatrix.a,
-        b: zoomMatrix.b,
-        c: zoomMatrix.c,
-        d: zoomMatrix.d,
-        e: zoomMatrix.e,
-        f: zoomMatrix.f,
-      });
+      console.log("[PinchMove] Matrix updated: true");
       console.log("[PinchMove] New transform matrix:", {
         a: newMatrix.a,
         b: newMatrix.b,
