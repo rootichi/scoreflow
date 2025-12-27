@@ -70,6 +70,7 @@ export default function TournamentEditPage() {
   const [snapGuide, setSnapGuide] = useState<SnapGuide | null>(null); // スナップガイドライン（x: 垂直線、y: 水平線）
   const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null); // タッチ開始位置（スクロール判定用）
   const [isTouchDragging, setIsTouchDragging] = useState(false); // タッチドラッグ中かどうか
+  const [pinchTouchPoints, setPinchTouchPoints] = useState<{ touch1: { x: number; y: number } | null; touch2: { x: number; y: number } | null } | null>(null); // ピンチ操作中のタッチポイント（視覚化用）
   
   const canvasZoomLayerRef = useRef<HTMLDivElement>(null); // CanvasZoomLayerのref
   const initialImageSizeRef = useRef<{ width: number; height: number } | null>(null); // 初期画像サイズ（canvasScale=1.0の状態）
@@ -414,6 +415,11 @@ export default function TournamentEditPage() {
       
       if (e.touches.length >= 2) {
         handlePinchMove(e.touches[0], e.touches[1]);
+        // 視覚化用にタッチポイントを更新
+        setPinchTouchPoints({
+          touch1: { x: e.touches[0].clientX, y: e.touches[0].clientY },
+          touch2: { x: e.touches[1].clientX, y: e.touches[1].clientY },
+        });
       }
       
       return;
@@ -652,6 +658,11 @@ export default function TournamentEditPage() {
       
       if (e.touches.length >= 2) {
         handlePinchStart(e.touches[0], e.touches[1]);
+        // 視覚化用にタッチポイントを記録
+        setPinchTouchPoints({
+          touch1: { x: e.touches[0].clientX, y: e.touches[0].clientY },
+          touch2: { x: e.touches[1].clientX, y: e.touches[1].clientY },
+        });
       }
       
       return;
@@ -801,6 +812,8 @@ export default function TournamentEditPage() {
     // ピンチ操作が終了した場合、リセット
     if (e.touches.length < 2) {
       handlePinchEnd();
+      // 視覚化用のタッチポイントをクリア
+      setPinchTouchPoints(null);
     }
 
     // タッチジェスチャーを処理
@@ -1404,6 +1417,84 @@ export default function TournamentEditPage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
         </svg>
       </button>
+
+      {/* ピンチ操作の視覚化（デバッグ用） */}
+      {pinchTouchPoints && pinchTouchPoints.touch1 && pinchTouchPoints.touch2 && (
+        <div
+          className="fixed top-0 left-0 w-full h-full pointer-events-none"
+          style={{ zIndex: 9998 }}
+        >
+          {/* タッチポイント1 */}
+          <div
+            className="absolute rounded-full border-4"
+            style={{
+              left: `${pinchTouchPoints.touch1.x}px`,
+              top: `${pinchTouchPoints.touch1.y}px`,
+              width: '40px',
+              height: '40px',
+              marginLeft: '-20px',
+              marginTop: '-20px',
+              borderColor: 'rgba(59, 130, 246, 0.6)',
+              backgroundColor: 'rgba(59, 130, 246, 0.2)',
+            }}
+          />
+          {/* タッチポイント2 */}
+          <div
+            className="absolute rounded-full border-4"
+            style={{
+              left: `${pinchTouchPoints.touch2.x}px`,
+              top: `${pinchTouchPoints.touch2.y}px`,
+              width: '40px',
+              height: '40px',
+              marginLeft: '-20px',
+              marginTop: '-20px',
+              borderColor: 'rgba(59, 130, 246, 0.6)',
+              backgroundColor: 'rgba(59, 130, 246, 0.2)',
+            }}
+          />
+          {/* 2点間の線 */}
+          <svg
+            className="absolute top-0 left-0 w-full h-full"
+            style={{ pointerEvents: 'none' }}
+          >
+            <line
+              x1={pinchTouchPoints.touch1.x}
+              y1={pinchTouchPoints.touch1.y}
+              x2={pinchTouchPoints.touch2.x}
+              y2={pinchTouchPoints.touch2.y}
+              stroke="rgba(59, 130, 246, 0.4)"
+              strokeWidth="3"
+              strokeDasharray="5,5"
+            />
+          </svg>
+          {/* 2点を囲む矩形 */}
+          <div
+            className="absolute border-2"
+            style={{
+              left: `${Math.min(pinchTouchPoints.touch1.x, pinchTouchPoints.touch2.x)}px`,
+              top: `${Math.min(pinchTouchPoints.touch1.y, pinchTouchPoints.touch2.y)}px`,
+              width: `${Math.abs(pinchTouchPoints.touch2.x - pinchTouchPoints.touch1.x)}px`,
+              height: `${Math.abs(pinchTouchPoints.touch2.y - pinchTouchPoints.touch1.y)}px`,
+              borderColor: 'rgba(59, 130, 246, 0.5)',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            }}
+          />
+          {/* 中点（ピンチ中心） */}
+          <div
+            className="absolute rounded-full"
+            style={{
+              left: `${(pinchTouchPoints.touch1.x + pinchTouchPoints.touch2.x) / 2}px`,
+              top: `${(pinchTouchPoints.touch1.y + pinchTouchPoints.touch2.y) / 2}px`,
+              width: '20px',
+              height: '20px',
+              marginLeft: '-10px',
+              marginTop: '-10px',
+              backgroundColor: 'rgba(59, 130, 246, 0.8)',
+              border: '2px solid white',
+            }}
+          />
+        </div>
+      )}
     </div>
     </>
   );
