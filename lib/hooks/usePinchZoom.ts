@@ -20,6 +20,9 @@ export function usePinchZoom(
   // スケール比の閾値（これより小さい変化は無視）
   const SCALE_EPSILON = 0.001;
   
+  // ピンチ中フラグ（イベント責務分離のため）
+  const isPinchingRef = useRef<boolean>(false);
+  
   const pinchStartDistanceRef = useRef<number | null>(null);
   const pinchStartMatrixRef = useRef<DOMMatrix | null>(null); // ピンチ開始時の基準行列（baseMatrix）
   const pinchStartCenterLocalRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の基準中心位置（basePinchCenter）
@@ -68,12 +71,17 @@ export function usePinchZoom(
         height: zoomLayerRect.height,
       });
 
+      // ピンチ中フラグを設定
+      isPinchingRef.current = true;
+      
       // ピンチ開始時の基準値を記録（baseMatrix, baseScaleDistance, basePinchCenter）
       const currentMatrix = transformMatrix;
       pinchStartMatrixRef.current = new DOMMatrix(currentMatrix); // baseMatrix
       pinchStartDistanceRef.current = distance; // baseScaleDistance
       pinchStartCenterLocalRef.current = { x: centerXLocal, y: centerYLocal }; // basePinchCenter
 
+      console.log("[PinchStart] isPinching: true");
+      console.log("[PinchStart] pointerCount: 2");
       console.log("[PinchStart] Base matrix (saved):", {
         a: currentMatrix.a,
         b: currentMatrix.b,
@@ -98,6 +106,12 @@ export function usePinchZoom(
    */
   const handlePinchMove = useCallback(
     (touch1: React.Touch, touch2: React.Touch) => {
+      // ピンチ中でない場合は処理しない
+      if (!isPinchingRef.current) {
+        console.log("[PinchMove] isPinching is false, skipping");
+        return;
+      }
+      
       if (pinchStartDistanceRef.current === null || pinchStartCenterLocalRef.current === null || pinchStartMatrixRef.current === null) {
         return;
       }
@@ -176,7 +190,10 @@ export function usePinchZoom(
         .multiply(scaleMatrix)
         .multiply(translateBack);
       
+      console.log("[PinchMove] isPinching: true");
+      console.log("[PinchMove] pointerCount: 2");
       console.log("[PinchMove] Matrix updated: true");
+      console.log("[PinchMove] Event: pinch-move");
       console.log("[PinchMove] New transform matrix:", {
         a: newMatrix.a,
         b: newMatrix.b,
@@ -197,10 +214,13 @@ export function usePinchZoom(
    * ピンチ終了
    * 
    * 何も変更しない（行列がそのまま残る）
+   * transformMatrixを一切更新しない、再適用しない、正規化しない
    */
   const handlePinchEnd = useCallback(() => {
     console.log("[PinchEnd] ===== ピンチ終了 =====");
-    console.log("[PinchEnd] Transform matrix:", {
+    console.log("[PinchEnd] isPinching: false (setting)");
+    console.log("[PinchEnd] pointerCount: < 2");
+    console.log("[PinchEnd] Transform matrix (unchanged):", {
       a: transformMatrix.a,
       b: transformMatrix.b,
       c: transformMatrix.c,
@@ -209,11 +229,21 @@ export function usePinchZoom(
       f: transformMatrix.f,
     });
     console.log("[PinchEnd] Pinch center (local):", pinchStartCenterLocalRef.current);
+    console.log("[PinchEnd] Matrix updated: false");
+    console.log("[PinchEnd] Event: (none - pinch end frame is no-op)");
+    
+    // ピンチ中フラグを解除
+    isPinchingRef.current = false;
     
     // ピンチ開始時の記録をクリア
     pinchStartDistanceRef.current = null;
     pinchStartMatrixRef.current = null;
     pinchStartCenterLocalRef.current = null;
+    
+    // 重要: transformMatrixは一切更新しない
+    // setTransformMatrix()を呼ばない
+    // CSS transformを再適用しない
+    // translate/clamp/normalize処理を行わない
     
     console.log("[PinchEnd] =====================");
   }, [transformMatrix]);
@@ -221,9 +251,13 @@ export function usePinchZoom(
   // transform行列をCSSのmatrix()形式に変換
   const transformString = `matrix(${transformMatrix.a}, ${transformMatrix.b}, ${transformMatrix.c}, ${transformMatrix.d}, ${transformMatrix.e}, ${transformMatrix.f})`;
 
+  // isPinchingの現在の状態を返す（ページ側でpan/drag処理を制御するため）
+  const isPinching = isPinchingRef.current;
+
   return {
     transformString,
     transformOrigin,
+    isPinching,
     handlePinchStart,
     handlePinchMove,
     handlePinchEnd,

@@ -86,6 +86,7 @@ export default function TournamentEditPage() {
   const {
     transformString,
     transformOrigin,
+    isPinching,
     handlePinchStart,
     handlePinchMove,
     handlePinchEnd,
@@ -424,6 +425,12 @@ export default function TournamentEditPage() {
       return;
     }
     
+    // ピンチ中またはピンチ終了直後のフレームでは、pan/drag処理を一切発火しない
+    if (isPinching) {
+      console.log("[TouchMove] isPinching is true, skipping pan/drag processing");
+      return;
+    }
+    
     // パンモードで、編集操作中でない場合は、ネイティブ処理に委譲
     if (editMode.canPan() && !isDrawing && !draggingHandle && !draggingMark && !editMode.isObjectSelected) {
       // ネイティブスクロールを許可（何も処理しない）
@@ -457,7 +464,7 @@ export default function TournamentEditPage() {
       // オブジェクトが選択されていない場合はパン操作を許可
       // preventDefaultしない（パン操作を許可）
     }
-  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove, touchGestures, editMode, handlePinchMove]);
+  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove, touchGestures, editMode, handlePinchMove, isPinching]);
 
   // スコア追加の共通処理
   const handleAddScore = useCallback(async (coords: { x: number; y: number }) => {
@@ -809,10 +816,21 @@ export default function TournamentEditPage() {
     if (!tournament || !user) return;
 
     // ピンチ操作が終了した場合、リセット
+    const wasPinching = e.touches.length < 2 && isPinching;
     if (e.touches.length < 2) {
       handlePinchEnd();
       // 視覚化用のタッチポイントをクリア
       setPinchTouchPoints(null);
+    }
+
+    // ピンチ中またはピンチ終了直後のフレームでは、pan/drag関連の処理を一切発火しない
+    // 重要: ピンチ終了フレームは「無操作フレーム」として扱う
+    if (isPinching || wasPinching) {
+      console.log("[TouchEnd] isPinching or pinch end frame, skipping pan/drag processing");
+      console.log("[TouchEnd] pointerCount:", e.touches.length);
+      // タッチ開始位置をリセット（これは安全）
+      setTouchStartPos(null);
+      return;
     }
 
     // タッチジェスチャーを処理
