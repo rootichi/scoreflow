@@ -5,7 +5,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
  * 
  * 設計原則:
  * 1. scaleとtranslateを独立して管理
- * 2. ピンチ中心を基準にしたズーム（transform-originを動的に設定）
+ * 2. transform-originを動的に設定してピンチ中心を基準にしたズームを実現
  * 3. ドラッグ/パンでtranslateを更新
  * 4. シンプルで理解しやすい実装
  */
@@ -20,8 +20,8 @@ export function usePinchZoom(
   const [translateX, setTranslateX] = useState<number>(0);
   const [translateY, setTranslateY] = useState<number>(0);
   
-  // transform-originは常に0 0（左上）に固定
-  const transformOrigin = "0 0";
+  // transform-originを動的に管理（ピンチ中心の位置）
+  const [transformOrigin, setTransformOrigin] = useState<string>("0 0");
   
   // ピンチ中フラグ
   const [isPinching, setIsPinching] = useState<boolean>(false);
@@ -85,6 +85,10 @@ export function usePinchZoom(
       pinchStartTranslateYRef.current = translateY;
       pinchStartDistanceRef.current = distance;
       pinchStartCenterRef.current = { x: centerXLocal, y: centerYLocal };
+      
+      // transform-originをピンチ中心の位置に設定
+      // これにより、ピンチ中心を基準にしたズームが自然に実現できる
+      setTransformOrigin(`${centerXLocal}px ${centerYLocal}px`);
     },
     [scale, translateX, translateY, canvasZoomLayerRef]
   );
@@ -92,11 +96,8 @@ export function usePinchZoom(
   /**
    * ピンチ移動
    * 
-   * ピンチ中心を基準にしたズームを実現
-   * 数学的には:
-   * 1. ピンチ中心を世界座標に変換（現在のtransformを考慮）
-   * 2. 新しいscaleを適用
-   * 3. ピンチ中心が同じ位置に来るようにtranslateを調整
+   * transform-originをピンチ中心に設定することで、
+   * シンプルなscaleとtranslateの組み合わせでピンチ中心を基準にしたズームを実現
    */
   const handlePinchMove = useCallback(
     (touch1: React.Touch, touch2: React.Touch) => {
@@ -130,21 +131,32 @@ export function usePinchZoom(
       const currentCenterXLocal = currentCenterXViewport - zoomLayerRectRef.current.left;
       const currentCenterYLocal = currentCenterYViewport - zoomLayerRectRef.current.top;
 
-      // ピンチ中心を基準にしたズームを実現
-      // ピンチ開始時の中心位置（ローカル座標）
+      // transform-originをピンチ開始時の中心位置に固定
+      // これにより、ピンチ開始時の中心位置を基準にしたズームが実現できる
       const startCenterX = pinchStartCenterRef.current.x;
       const startCenterY = pinchStartCenterRef.current.y;
-      
-      // ピンチ開始時の中心位置を世界座標に変換（開始時のtransformを考慮）
-      // 世界座標 = ローカル座標 * scale + translate
-      const startCenterWorldX = startCenterX * pinchStartScaleRef.current + pinchStartTranslateXRef.current;
-      const startCenterWorldY = startCenterY * pinchStartScaleRef.current + pinchStartTranslateYRef.current;
-      
-      // 新しいscaleで、開始時の中心位置が同じ世界座標に来るようにtranslateを計算
-      // 世界座標 = 開始時の中心位置（ローカル座標） * 新しいscale + 新しいtranslate
-      // 新しいtranslate = 世界座標 - 開始時の中心位置（ローカル座標） * 新しいscale
-      const newTranslateX = startCenterWorldX - startCenterX * newScale;
-      const newTranslateY = startCenterWorldY - startCenterY * newScale;
+      setTransformOrigin(`${startCenterX}px ${startCenterY}px`);
+
+      // ピンチ中心を基準にしたズームを実現
+      // transform-originがピンチ開始時の中心位置に設定されているため、
+      // シンプルにscaleを更新するだけで、ピンチ開始時の中心位置を基準にしたズームが実現できる
+      // 
+      // ピンチ中に指が動いた場合、translateを調整して、
+      // ピンチ開始時の中心位置が同じ画面位置に来るようにする
+      // 
+      // 計算式:
+      // 開始時の中心位置（ローカル座標）を、現在のtransform（scale + translate）で変換した位置
+      // = 開始時の中心位置（ローカル座標） * 開始時のscale + 開始時のtranslate
+      // 
+      // 新しいtransform（新しいscale + 新しいtranslate）で変換した位置が同じになるようにする
+      // = 開始時の中心位置（ローカル座標） * 新しいscale + 新しいtranslate
+      // 
+      // したがって:
+      // 新しいtranslate = 開始時の中心位置（ローカル座標） * 開始時のscale + 開始時のtranslate
+      //                  - 開始時の中心位置（ローカル座標） * 新しいscale
+      //                = 開始時の中心位置（ローカル座標） * (開始時のscale - 新しいscale) + 開始時のtranslate
+      const newTranslateX = startCenterX * (pinchStartScaleRef.current - newScale) + pinchStartTranslateXRef.current;
+      const newTranslateY = startCenterY * (pinchStartScaleRef.current - newScale) + pinchStartTranslateYRef.current;
 
       // 状態を更新
       setScale(newScale);
@@ -164,6 +176,10 @@ export function usePinchZoom(
     pinchStartDistanceRef.current = null;
     pinchStartCenterRef.current = null;
     zoomLayerRectRef.current = null;
+    
+    // transform-originをデフォルト（左上）に戻す
+    // ピンチ終了後は、通常の操作（パンなど）でtransform-originが左上の方が自然
+    setTransformOrigin("0 0");
   }, []);
 
   /**
@@ -213,6 +229,7 @@ export function usePinchZoom(
   }, []);
 
   // transform文字列を生成
+  // transform-originが動的に設定されているため、シンプルなscaleとtranslateの組み合わせで実現
   const transformString = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
 
   // DOMにtransformを適用
