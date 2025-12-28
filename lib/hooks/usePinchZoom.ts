@@ -119,7 +119,22 @@ export function usePinchZoom(
       };
       
       // 重要: CanvasZoomLayerの位置とサイズを取得（local座標変換用）
+      // getBoundingClientRect()はtransform適用後の位置を返すため、
+      // transform適用前の状態でrectを取得する必要がある
+      // そのため、一時的にtransformを解除してrectを取得する
+      const currentTransform = canvasZoomLayerRef.current.style.transform;
+      const currentTransformOrigin = canvasZoomLayerRef.current.style.transformOrigin;
+      
+      // transformを一時的に解除してrectを取得（transform適用前の状態）
+      canvasZoomLayerRef.current.style.transform = "none";
+      canvasZoomLayerRef.current.style.transformOrigin = "0 0";
       const zoomLayerRect = canvasZoomLayerRef.current.getBoundingClientRect();
+      
+      // transformを復元
+      canvasZoomLayerRef.current.style.transform = currentTransform;
+      canvasZoomLayerRef.current.style.transformOrigin = currentTransformOrigin;
+      
+      // rectを保存（transform適用前の状態）
       zoomLayerRectRef.current = {
         left: zoomLayerRect.left,
         top: zoomLayerRect.top,
