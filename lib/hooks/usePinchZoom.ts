@@ -178,49 +178,41 @@ export function usePinchZoom(
       // ピンチ中心を基準にしたズーム行列を合成
       // 正しい順序: T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix
       // 
-      // DOMMatrixのmultiplyは右から左に適用される
-      // A.multiply(B) は B * A を意味する
-      // 
-      // 欲しい変換: T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix
-      // これを実現するには:
-      // 1. baseMatrixを基準にする
-      // 2. T(-cx, -cy)を適用: baseMatrix * T(-cx, -cy)
-      // 3. S(scaleRatio)を適用: baseMatrix * T(-cx, -cy) * S(scaleRatio)
-      // 4. T(cx, cy)を適用: baseMatrix * T(-cx, -cy) * S(scaleRatio) * T(cx, cy)
-      // 
-      // しかし、DOMMatrixのmultiplyは右から左なので、実際には:
-      // translateBack.multiply(scaleMatrix).multiply(translateToOrigin).multiply(baseMatrix)
-      // は baseMatrix * translateToOrigin * scaleMatrix * translateBack を意味する
-      // 
-      // 正しい実装:
-      // newMatrix = T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix
-      // = translateBack * scaleMatrix * translateToOrigin * baseMatrix
+      // 重要: baseMatrixをピンチ終了まで一切変更しない（新しいDOMMatrixを作成）
+      // ピンチアウト（scaleRatio > 1）とピンチイン（scaleRatio < 1）で同一式を使用
+      // 条件分岐で別ロジックにしない
       
       const cx = pinchStartCenterLocalRef.current.x; // basePinchCenter.x
       const cy = pinchStartCenterLocalRef.current.y; // basePinchCenter.y
       
-      // 1. ピンチ中心を原点に移動: T(-cx, -cy)
-      const translateToOrigin = new DOMMatrix().translate(-cx, -cy);
-      
-      // 2. スケール: S(scaleRatio)
-      const scaleMatrix = new DOMMatrix().scale(scaleRatio, scaleRatio);
-      
-      // 3. 元の位置に戻す: T(cx, cy)
-      const translateBack = new DOMMatrix().translate(cx, cy);
-      
-      // 正しい合成順序: T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix
-      // DOMMatrixのmultiplyは右から左に適用されるため:
-      // translateBack.multiply(scaleMatrix).multiply(translateToOrigin).multiply(baseMatrix)
-      // = baseMatrix * translateToOrigin * scaleMatrix * translateBack
-      // = baseMatrix * T(-cx, -cy) * S(scaleRatio) * T(cx, cy)
+      // 正しい実装: baseMatrixをコピーしてから、T(-cx, -cy) * S(scaleRatio) * T(cx, cy) を適用
+      // DOMMatrixのメソッドチェーンは左から右に適用される
+      // newMatrix = baseMatrix * T(-cx, -cy) * S(scaleRatio) * T(cx, cy)
       // 
-      // しかし、欲しいのは: T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix
+      // しかし、数学的には T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix と等価
+      // なぜなら、行列の結合則により:
+      // baseMatrix * T(-cx, -cy) * S(scaleRatio) * T(cx, cy)
+      // = baseMatrix * [T(-cx, -cy) * S(scaleRatio) * T(cx, cy)]
+      // = [T(-cx, -cy) * S(scaleRatio) * T(cx, cy)] * baseMatrix
       // 
-      // 正しい実装: 順序を逆にする
-      const newMatrix = translateBack
-        .multiply(scaleMatrix)
-        .multiply(translateToOrigin)
-        .multiply(pinchStartMatrixRef.current);
+      // しかし、実際には baseMatrix を左から乗算しているので、順序が異なる
+      // 
+      // 正しい実装: baseMatrixをコピーしてから、順序を逆にして適用
+      // 1. baseMatrixをコピー（変更しない）
+      // 2. T(-cx, -cy) を適用: baseMatrix * T(-cx, -cy)
+      // 3. S(scaleRatio) を適用: baseMatrix * T(-cx, -cy) * S(scaleRatio)
+      // 4. T(cx, cy) を適用: baseMatrix * T(-cx, -cy) * S(scaleRatio) * T(cx, cy)
+      const newMatrix = new DOMMatrix([
+        pinchStartMatrixRef.current.a,
+        pinchStartMatrixRef.current.b,
+        pinchStartMatrixRef.current.c,
+        pinchStartMatrixRef.current.d,
+        pinchStartMatrixRef.current.e,
+        pinchStartMatrixRef.current.f,
+      ])
+        .translate(-cx, -cy)
+        .scale(scaleRatio, scaleRatio)
+        .translate(cx, cy);
       
       // デバッグ: 理論値と実際の値を比較
       // ピンチイン（scaleRatio < 1）とピンチアウト（scaleRatio > 1）の両方で正しく動作することを確認
