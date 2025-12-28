@@ -120,21 +120,37 @@ export function usePinchZoom(
       };
       
       // 重要: CanvasZoomLayerの位置とサイズを取得（local座標変換用）
-      // getBoundingClientRect()はtransform適用後の位置を返すが、これで問題ない
-      // pivot計算には、transform適用後のrectを使う（これが正しい）
-      const zoomLayerRect = canvasZoomLayerRef.current.getBoundingClientRect();
+      // DOMMatrixはtransform適用前の座標系で動作するため、
+      // pivot計算にはtransform適用前のrectを使う必要がある
+      // 
+      // canvasZoomLayerRefはposition: relativeで親要素内に配置されるため、
+      // 親要素の位置を基準に計算する
+      const parentElement = canvasZoomLayerRef.current.parentElement;
+      if (!parentElement) {
+        return;
+      }
       
-      // rectを保存（transform適用後の状態で問題ない）
-      zoomLayerRectRef.current = {
-        left: zoomLayerRect.left,
-        top: zoomLayerRect.top,
-        width: zoomLayerRect.width,
-        height: zoomLayerRect.height,
-        right: zoomLayerRect.right,
-        bottom: zoomLayerRect.bottom,
-        x: zoomLayerRect.x,
-        y: zoomLayerRect.y,
-      } as DOMRect;
+      // 親要素の位置を取得（これがtransform適用前の基準位置）
+      const parentRect = parentElement.getBoundingClientRect();
+      
+      // 初期状態のrectを計算（transform適用前の状態）
+      // canvasZoomLayerRefは親要素の左上角（0, 0）に配置される
+      if (!initialZoomLayerRectRef.current) {
+        initialZoomLayerRectRef.current = {
+          left: parentRect.left,
+          top: parentRect.top,
+          width: canvasZoomLayerRef.current.offsetWidth,
+          height: canvasZoomLayerRef.current.offsetHeight,
+          right: parentRect.left + canvasZoomLayerRef.current.offsetWidth,
+          bottom: parentRect.top + canvasZoomLayerRef.current.offsetHeight,
+          x: parentRect.left,
+          y: parentRect.top,
+        } as DOMRect;
+      }
+      
+      // pivot計算には、初期状態（transform適用前）のrectを使う
+      // これにより、DOMMatrixの座標系と一致する
+      zoomLayerRectRef.current = initialZoomLayerRectRef.current;
 
       // ピンチ中フラグを設定
       setIsPinching(true);
@@ -174,16 +190,16 @@ export function usePinchZoom(
           pinchStartCenter: {
             screen: { x: centerXScreen, y: centerYScreen },
           },
-          zoomLayerRect: {
-            left: zoomLayerRect.left,
-            top: zoomLayerRect.top,
-            width: zoomLayerRect.width,
-            height: zoomLayerRect.height,
-            right: zoomLayerRect.right,
-            bottom: zoomLayerRect.bottom,
-            x: zoomLayerRect.x,
-            y: zoomLayerRect.y,
-          },
+          zoomLayerRect: initialZoomLayerRectRef.current ? {
+            left: initialZoomLayerRectRef.current.left,
+            top: initialZoomLayerRectRef.current.top,
+            width: initialZoomLayerRectRef.current.width,
+            height: initialZoomLayerRectRef.current.height,
+            right: initialZoomLayerRectRef.current.right,
+            bottom: initialZoomLayerRectRef.current.bottom,
+            x: initialZoomLayerRectRef.current.x,
+            y: initialZoomLayerRectRef.current.y,
+          } : null,
           imageSize: {
             natural: imageNaturalSize,
             display: imageDisplaySize,
@@ -212,12 +228,12 @@ export function usePinchZoom(
           screen: { x: centerXScreen.toFixed(2), y: centerYScreen.toFixed(2) },
         },
         説明: "ピンチ中心はscreen座標で固定（変換しない）",
-        zoomLayerRect: {
-          left: zoomLayerRect.left.toFixed(2),
-          top: zoomLayerRect.top.toFixed(2),
-          width: zoomLayerRect.width.toFixed(2),
-          height: zoomLayerRect.height.toFixed(2),
-        },
+        zoomLayerRect: initialZoomLayerRectRef.current ? {
+          left: initialZoomLayerRectRef.current.left.toFixed(2),
+          top: initialZoomLayerRectRef.current.top.toFixed(2),
+          width: initialZoomLayerRectRef.current.width.toFixed(2),
+          height: initialZoomLayerRectRef.current.height.toFixed(2),
+        } : null,
         imageSize: {
           natural: imageNaturalSize,
           display: imageDisplaySize,
@@ -676,18 +692,27 @@ export function usePinchZoom(
     }
     
     // 初期状態のrectを保存（transform適用前の状態）
+    // canvasZoomLayerRefはposition: relativeで親要素内に配置されるため、
+    // 親要素の位置を基準に計算する
     if (canvasZoomLayerRef?.current && !initialZoomLayerRectRef.current) {
-      const initialRect = canvasZoomLayerRef.current.getBoundingClientRect();
-      initialZoomLayerRectRef.current = {
-        left: initialRect.left,
-        top: initialRect.top,
-        width: initialRect.width,
-        height: initialRect.height,
-        right: initialRect.right,
-        bottom: initialRect.bottom,
-        x: initialRect.x,
-        y: initialRect.y,
-      } as DOMRect;
+      const parentElement = canvasZoomLayerRef.current.parentElement;
+      if (parentElement) {
+        // 親要素の位置を取得（これがtransform適用前の基準位置）
+        const parentRect = parentElement.getBoundingClientRect();
+        
+        // 初期状態のrectを計算（transform適用前の状態）
+        // canvasZoomLayerRefは親要素の左上角（0, 0）に配置される
+        initialZoomLayerRectRef.current = {
+          left: parentRect.left,
+          top: parentRect.top,
+          width: canvasZoomLayerRef.current.offsetWidth,
+          height: canvasZoomLayerRef.current.offsetHeight,
+          right: parentRect.left + canvasZoomLayerRef.current.offsetWidth,
+          bottom: parentRect.top + canvasZoomLayerRef.current.offsetHeight,
+          x: parentRect.left,
+          y: parentRect.top,
+        } as DOMRect;
+      }
     }
     
     // ピンチ中でない場合のみ、stateからrefに同期（初期化時やピンチ終了後のrender用）
