@@ -19,7 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja" style={{ touchAction: "manipulation" }}>
-      <head>
+      <body style={{ touchAction: "manipulation" }}>
         {/* Eruda: モバイル用デベロッパーツール */}
         <Script
           src="https://cdn.jsdelivr.net/npm/eruda"
@@ -30,8 +30,6 @@ export default function RootLayout({
             }
           }}
         />
-      </head>
-      <body style={{ touchAction: "manipulation" }}>
         {children}
         <VersionBadge />
       </body>
