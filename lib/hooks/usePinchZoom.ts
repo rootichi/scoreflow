@@ -141,11 +141,19 @@ export function usePinchZoom(
         Math.abs(pinchStartMatrixRef.current.e) < 0.0001 &&
         Math.abs(pinchStartMatrixRef.current.f) < 0.0001;
       
+      // デバッグ用: world座標も計算（比較用）
+      const worldPointDebug = new DOMPoint(centerXLocal, centerYLocal).matrixTransform(pinchStartMatrixInverseRef.current);
+      
       console.log("[PinchStart] ===== ピンチ開始 =====", {
         pinchCenterScreen: {
           x: centerXLocal.toFixed(2),
           y: centerYLocal.toFixed(2),
         },
+        pinchCenterWorld_参考: {
+          x: worldPointDebug.x.toFixed(2),
+          y: worldPointDebug.y.toFixed(2),
+        },
+        使用座標系: "screen座標（world変換なし）",
         pinchStartMatrix: {
           a: pinchStartMatrixRef.current.a.toFixed(4),
           b: pinchStartMatrixRef.current.b.toFixed(4),
@@ -153,14 +161,6 @@ export function usePinchZoom(
           d: pinchStartMatrixRef.current.d.toFixed(4),
           e: pinchStartMatrixRef.current.e.toFixed(4),
           f: pinchStartMatrixRef.current.f.toFixed(4),
-        },
-        pinchStartMatrixInverse: {
-          a: pinchStartMatrixInverseRef.current.a.toFixed(4),
-          b: pinchStartMatrixInverseRef.current.b.toFixed(4),
-          c: pinchStartMatrixInverseRef.current.c.toFixed(4),
-          d: pinchStartMatrixInverseRef.current.d.toFixed(4),
-          e: pinchStartMatrixInverseRef.current.e.toFixed(4),
-          f: pinchStartMatrixInverseRef.current.f.toFixed(4),
         },
         isIdentity: isIdentity,
         initialDistance: distance.toFixed(2),
@@ -214,19 +214,14 @@ export function usePinchZoom(
       const currentCenterXLocal = currentCenterXViewport - zoomLayerRectRef.current.left;
       const currentCenterYLocal = currentCenterYViewport - zoomLayerRectRef.current.top;
 
-      // 重要: ピンチ中心は「現在のtransformを逆変換した座標（world座標）」を使用する
-      // ピンチ中心（local座標）はtransform適用後の見た目上の座標であるため、
-      // DOMMatrixによる行列合成（未変換のローカル座標系を前提）と座標系が一致していない
+      // 重要: ユーザーの要求に従い、world座標変換を無効化してscreen座標のまま使用
+      // これにより、world座標変換が原因かどうかを切り分けできる
       // 
-      // 解決策: pinch-start時に保存したpinchStartMatrixInverseを使って、ピンチ中心をworld座標に変換
-      // 重要: pinch-move中にinverseを再計算しない（数値誤差の蓄積を防ぐ）
-      const worldPoint = new DOMPoint(currentCenterXLocal, currentCenterYLocal).matrixTransform(pinchStartMatrixInverseRef.current);
-      
-      // デバッグ用: screen座標をそのまま使う検証（一時的）
-      // これで正常になる場合、world変換ロジックに問題があると切り分けできる
-      const USE_SCREEN_COORDINATES = false; // 検証時はtrueに変更
-      const cx = USE_SCREEN_COORDINATES ? currentCenterXLocal : worldPoint.x; // world座標系のピンチ中心
-      const cy = USE_SCREEN_COORDINATES ? currentCenterYLocal : worldPoint.y; // world座標系のピンチ中心
+      // ピンチ中心はscreen座標（local座標）のまま使用
+      // 行列合成: pinchStartMatrix * T(cx, cy) * S(scaleRatio) * T(-cx, -cy)
+      // ここで、cx, cyはscreen座標（transform適用後の見た目上の座標）
+      const cx = currentCenterXLocal; // screen座標のまま使用
+      const cy = currentCenterYLocal; // screen座標のまま使用
       
       // 正しい実装: baseMatrixをコピーしてから、T(cx, cy) * S(scaleRatio) * T(-cx, -cy) を適用
       // DOMMatrixのメソッドチェーンは左から右に適用される
@@ -345,10 +340,18 @@ export function usePinchZoom(
       const finalScale = Math.sqrt(finalMatrix.a * finalMatrix.a + finalMatrix.b * finalMatrix.b);
       const scaleRatio = finalScale / startScale;
       
-      // ピンチ中心をworld座標に変換（開始時のinverseを使用）
-      const worldPoint = new DOMPoint(startCenter.x, startCenter.y).matrixTransform(startInverse);
+      // 重要: screen座標ベースでの理論値計算
+      // ピンチ中心はscreen座標（local座標）のまま使用
+      const cx = startCenter.x; // screen座標
+      const cy = startCenter.y; // screen座標
       
       // 理論値の計算
+      // 行列合成: baseMatrix * T(cx, cy) * S(scaleRatio) * T(-cx, -cy)
+      // 
+      // screen座標ベースでの計算:
+      // baseMatrixが matrix(s, 0, 0, s, tx, ty) の場合:
+      // - ピンチ中心 (cx, cy) を基準にスケール
+      // - 最終的なtranslate: (tx + cx * (1 - scaleRatio) * s, ty + cy * (1 - scaleRatio) * s)
       const isIdentity = 
         Math.abs(startMatrix.a - 1) < 0.0001 &&
         Math.abs(startMatrix.b) < 0.0001 &&
@@ -357,36 +360,24 @@ export function usePinchZoom(
         Math.abs(startMatrix.e) < 0.0001 &&
         Math.abs(startMatrix.f) < 0.0001;
       
-      // 理論値の計算
-      // 行列合成: baseMatrix * T(cx, cy) * S(scaleRatio) * T(-cx, -cy)
-      // 
-      // T(cx, cy) * S(scaleRatio) * T(-cx, -cy) の結果:
-      // - scale: scaleRatio
-      // - translate: (cx * (1 - scaleRatio), cy * (1 - scaleRatio))
-      // 
-      // これはworld座標系での値です。
-      // baseMatrixが既にスケール/トランスレートされている場合、
-      // world座標でのtranslateをscreen座標に変換する必要があります。
-      // 
-      // baseMatrixが matrix(s, 0, 0, s, tx, ty) の場合:
-      // - world座標 (cx, cy) でのtranslate (cx * (1 - scaleRatio), cy * (1 - scaleRatio))
-      // - をscreen座標に変換: (cx * (1 - scaleRatio) * s, cy * (1 - scaleRatio) * s)
-      // - 最終的なscreen座標のtranslate: (tx + cx * (1 - scaleRatio) * s, ty + cy * (1 - scaleRatio) * s)
       let expectedTx: number;
       let expectedTy: number;
       
       if (isIdentity) {
-        // identity行列の場合: world座標 = screen座標
-        expectedTx = worldPoint.x * (1 - scaleRatio);
-        expectedTy = worldPoint.y * (1 - scaleRatio);
+        // identity行列の場合: screen座標ベースで計算
+        expectedTx = cx * (1 - scaleRatio);
+        expectedTy = cy * (1 - scaleRatio);
       } else {
         // baseMatrixが既にスケール/トランスレートされている場合
         const baseTx = startMatrix.e;
         const baseTy = startMatrix.f;
-        // world座標でのtranslateをscreen座標に変換
-        expectedTx = baseTx + worldPoint.x * (1 - scaleRatio) * startScale;
-        expectedTy = baseTy + worldPoint.y * (1 - scaleRatio) * startScale;
+        // screen座標ベースでの計算
+        expectedTx = baseTx + cx * (1 - scaleRatio) * startScale;
+        expectedTy = baseTy + cy * (1 - scaleRatio) * startScale;
       }
+      
+      // デバッグ用: world座標も計算（比較用）
+      const worldPoint = new DOMPoint(startCenter.x, startCenter.y).matrixTransform(startInverse);
       
       const actualTx = finalMatrix.e;
       const actualTy = finalMatrix.f;
@@ -399,7 +390,8 @@ export function usePinchZoom(
       console.log("[PinchEnd] pinchType:", scaleRatio > 1 ? "OUT" : "IN");
       console.log("[PinchEnd] isIdentity:", isIdentity);
       console.log("[PinchEnd] pinchCenterScreen:", { x: startCenter.x.toFixed(2), y: startCenter.y.toFixed(2) });
-      console.log("[PinchEnd] pinchCenterWorld:", { x: worldPoint.x.toFixed(2), y: worldPoint.y.toFixed(2) });
+      console.log("[PinchEnd] pinchCenterWorld (参考):", { x: worldPoint.x.toFixed(2), y: worldPoint.y.toFixed(2) });
+      console.log("[PinchEnd] 使用座標系: screen座標（world変換なし）");
       console.log("[PinchEnd] startMatrix:", {
         a: startMatrix.a.toFixed(4),
         b: startMatrix.b.toFixed(4),
