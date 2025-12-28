@@ -188,8 +188,11 @@ export function usePinchZoom(
       // 重要: pinch-move中にinverseを再計算しない（数値誤差の蓄積を防ぐ）
       const worldPoint = new DOMPoint(currentCenterXLocal, currentCenterYLocal).matrixTransform(pinchStartMatrixInverseRef.current);
       
-      const cx = worldPoint.x; // world座標系のピンチ中心
-      const cy = worldPoint.y; // world座標系のピンチ中心
+      // デバッグ用: screen座標をそのまま使う検証（一時的）
+      // これで正常になる場合、world変換ロジックに問題があると切り分けできる
+      const USE_SCREEN_COORDINATES = false; // 検証時はtrueに変更
+      const cx = USE_SCREEN_COORDINATES ? currentCenterXLocal : worldPoint.x; // world座標系のピンチ中心
+      const cy = USE_SCREEN_COORDINATES ? currentCenterYLocal : worldPoint.y; // world座標系のピンチ中心
       
       // 正しい実装: baseMatrixをコピーしてから、T(cx, cy) * S(scaleRatio) * T(-cx, -cy) を適用
       // DOMMatrixのメソッドチェーンは左から右に適用される
@@ -217,15 +220,60 @@ export function usePinchZoom(
         .scale(scaleRatio, scaleRatio)
         .translate(-cx, -cy);
       
+      // デバッグ: 理論値と実際の値を比較
+      // baseMatrixがidentity行列かどうかを確認
+      const isIdentity = 
+        Math.abs(pinchStartMatrixRef.current.a - 1) < 0.0001 &&
+        Math.abs(pinchStartMatrixRef.current.b) < 0.0001 &&
+        Math.abs(pinchStartMatrixRef.current.c) < 0.0001 &&
+        Math.abs(pinchStartMatrixRef.current.d - 1) < 0.0001 &&
+        Math.abs(pinchStartMatrixRef.current.e) < 0.0001 &&
+        Math.abs(pinchStartMatrixRef.current.f) < 0.0001;
+      
+      // 理論値の計算
+      // baseMatrixがidentityの場合: expectedTx = cx * (1 - scaleRatio), expectedTy = cy * (1 - scaleRatio)
+      // baseMatrixが既にスケール/トランスレートされている場合: より複雑な計算が必要
+      let expectedTx: number;
+      let expectedTy: number;
+      
+      if (isIdentity) {
+        // identity行列の場合の理論値
+        expectedTx = cx * (1 - scaleRatio);
+        expectedTy = cy * (1 - scaleRatio);
+      } else {
+        // baseMatrixが既にスケール/トランスレートされている場合
+        // baseMatrix * T(cx, cy) * S(scaleRatio) * T(-cx, -cy) の結果を計算
+        // 理論的には、baseMatrixのtranslate成分 + ピンチ中心を基準にしたズームによる補正
+        const baseScale = Math.sqrt(
+          pinchStartMatrixRef.current.a * pinchStartMatrixRef.current.a +
+          pinchStartMatrixRef.current.b * pinchStartMatrixRef.current.b
+        );
+        const baseTx = pinchStartMatrixRef.current.e;
+        const baseTy = pinchStartMatrixRef.current.f;
+        expectedTx = baseTx + cx * (1 - scaleRatio) * baseScale;
+        expectedTy = baseTy + cy * (1 - scaleRatio) * baseScale;
+      }
+      
+      const actualTx = newMatrix.e;
+      const actualTy = newMatrix.f;
+      const diffTx = actualTx - expectedTx;
+      const diffTy = actualTy - expectedTy;
+      
       // デバッグ: ピンチ中心の座標変換と行列合成を確認
       console.log("[PinchMove] Matrix composition debug:", {
         scaleRatio: scaleRatio.toFixed(6),
         pinchType: scaleRatio > 1 ? "OUT" : "IN",
+        isIdentity: isIdentity,
+        useScreenCoordinates: USE_SCREEN_COORDINATES,
         pinchCenterScreen: {
           x: currentCenterXLocal.toFixed(2),
           y: currentCenterYLocal.toFixed(2),
         },
         pinchCenterWorld: {
+          x: worldPoint.x.toFixed(2),
+          y: worldPoint.y.toFixed(2),
+        },
+        pinchCenterUsed: {
           x: cx.toFixed(2),
           y: cy.toFixed(2),
         },
@@ -244,6 +292,18 @@ export function usePinchZoom(
           d: pinchStartMatrixInverseRef.current.d.toFixed(4),
           e: pinchStartMatrixInverseRef.current.e.toFixed(4),
           f: pinchStartMatrixInverseRef.current.f.toFixed(4),
+        },
+        expectedTranslate: {
+          x: expectedTx.toFixed(4),
+          y: expectedTy.toFixed(4),
+        },
+        actualTranslate: {
+          x: actualTx.toFixed(4),
+          y: actualTy.toFixed(4),
+        },
+        diffTranslate: {
+          x: diffTx.toFixed(4),
+          y: diffTy.toFixed(4),
         },
         nextMatrix: {
           a: newMatrix.a.toFixed(4),
