@@ -49,6 +49,12 @@ export function usePinchZoom(
   const currentEventSourceRef = useRef<string>("none");
   const animationFrameIdRef = useRef<number | null>(null);
   const pointerCountRef = useRef<number>(0);
+  
+  // transformStringをrefで管理（ピンチ中はReactのrender/re-renderで再計算されないようにする）
+  const transformStringRef = useRef<string>("matrix(1, 0, 0, 1, 0, 0)");
+  
+  // transformMatrixの最新値をrefで保持（ピンチ中にDOMに直接適用するため）
+  const transformMatrixRef = useRef<DOMMatrix>(new DOMMatrix());
 
   /**
    * ピンチ開始
@@ -100,13 +106,21 @@ export function usePinchZoom(
       currentEventSourceRef.current = "pinch-start";
       
       // ピンチ開始時の基準値を記録（baseMatrix, baseScaleDistance, basePinchCenter）
-      const currentMatrix = transformMatrix;
+      // 重要: ピンチ中はrefから取得、ピンチ中でない場合はstateから取得
+      const currentMatrix = isPinching ? transformMatrixRef.current : transformMatrix;
       // DOMMatrixをコピー（各要素を個別に設定）
       pinchStartMatrixRef.current = new DOMMatrix([
         currentMatrix.a, currentMatrix.b,
         currentMatrix.c, currentMatrix.d,
         currentMatrix.e, currentMatrix.f
       ]); // baseMatrix
+      
+      // transformMatrixRefも更新（ピンチ開始時の状態を保持）
+      transformMatrixRef.current = new DOMMatrix([
+        currentMatrix.a, currentMatrix.b,
+        currentMatrix.c, currentMatrix.d,
+        currentMatrix.e, currentMatrix.f
+      ]);
       pinchStartDistanceRef.current = distance; // baseScaleDistance
       pinchStartCenterLocalRef.current = { x: centerXLocal, y: centerYLocal }; // basePinchCenter
 
@@ -118,7 +132,7 @@ export function usePinchZoom(
       console.log("[PinchStart] pinch center (local):", { x: centerXLocal, y: centerYLocal });
       console.log("[PinchStart] =====================");
     },
-    [transformMatrix, canvasZoomLayerRef]
+    [transformMatrix, canvasZoomLayerRef, isPinching]
   );
 
   /**
@@ -202,11 +216,30 @@ export function usePinchZoom(
       
       console.log("[PinchMove] scale:", scale, "translate:", { x: translateX, y: translateY }, "scaleRatio:", scaleRatio.toFixed(3));
       
-      // eventSourceを設定してからtransformMatrixを更新
+      // eventSourceを設定
       currentEventSourceRef.current = "pinch-move";
+      
+      // transformMatrixRefを更新（ピンチ中はrefで管理）
+      transformMatrixRef.current = new DOMMatrix([
+        newMatrix.a, newMatrix.b,
+        newMatrix.c, newMatrix.d,
+        newMatrix.e, newMatrix.f
+      ]);
+      
+      // transformStringを直接計算してrefに保存（Reactのrender/re-renderを経由しない）
+      const newTransformString = `matrix(${newMatrix.a}, ${newMatrix.b}, ${newMatrix.c}, ${newMatrix.d}, ${newMatrix.e}, ${newMatrix.f})`;
+      transformStringRef.current = newTransformString;
+      
+      // DOMに直接適用（Reactのrender/re-renderを経由しない）
+      if (canvasZoomLayerRef?.current) {
+        canvasZoomLayerRef.current.style.transform = newTransformString;
+        canvasZoomLayerRef.current.style.transformOrigin = transformOrigin;
+      }
+      
+      // stateも更新（ピンチ終了後のrender用、ただしピンチ中は使用しない）
       setTransformMatrix(newMatrix);
     },
-    [canvasZoomLayerRef, isPinching, transformMatrix]
+    [canvasZoomLayerRef, isPinching]
   );
 
   /**
@@ -216,9 +249,11 @@ export function usePinchZoom(
    * transformMatrixを一切更新しない、再適用しない、正規化しない
    */
   const handlePinchEnd = useCallback(() => {
-    const scale = Math.sqrt(transformMatrix.a * transformMatrix.a + transformMatrix.b * transformMatrix.b);
-    const translateX = transformMatrix.e;
-    const translateY = transformMatrix.f;
+    // 重要: ピンチ終了時はrefから最新の値を取得（pinch-moveの最終フレームで確定した値）
+    const finalMatrix = transformMatrixRef.current;
+    const scale = Math.sqrt(finalMatrix.a * finalMatrix.a + finalMatrix.b * finalMatrix.b);
+    const translateX = finalMatrix.e;
+    const translateY = finalMatrix.f;
     
     console.log("[PinchEnd] ===== ピンチ終了 =====");
     console.log("[PinchEnd] scale:", scale, "translate:", { x: translateX, y: translateY });
@@ -231,14 +266,21 @@ export function usePinchZoom(
     // ピンチ中フラグを解除（stateを更新するが、transformMatrixは変更しない）
     setIsPinching(false);
     
+    // 重要: ピンチ終了時は、refからstateに同期（ピンチ終了後のrender用）
+    // ただし、DOMには既に適用済みなので、再適用は不要
+    setTransformMatrix(new DOMMatrix([
+      finalMatrix.a, finalMatrix.b,
+      finalMatrix.c, finalMatrix.d,
+      finalMatrix.e, finalMatrix.f
+    ]));
+    
     // ピンチ開始時の記録をクリア
     pinchStartDistanceRef.current = null;
     pinchStartMatrixRef.current = null;
     pinchStartCenterLocalRef.current = null;
     zoomLayerRectRef.current = null;
     
-    // 重要: transformMatrixは一切更新しない
-    // setTransformMatrix()を呼ばない
+    // 重要: DOMへの再適用は不要（既にpinch-moveで適用済み）
     // CSS transformを再適用しない
     // translate/clamp/normalize処理を行わない
     
@@ -248,12 +290,19 @@ export function usePinchZoom(
     });
     
     console.log("[PinchEnd] =====================");
-  }, [transformMatrix]);
+  }, []);
 
-  // transform行列をCSSのmatrix()形式に変換（useMemoでメモ化して再計算を防ぐ）
+  // transform行列をCSSのmatrix()形式に変換
+  // 重要: ピンチ中はReactのrender/re-renderで再計算されないように、refから取得
+  // ピンチ中でない場合のみ、stateから計算（初期化時やピンチ終了後のrender用）
   const transformString = useMemo(() => {
+    // ピンチ中はrefから取得（Reactのrender/re-renderを経由しない）
+    if (isPinching) {
+      return transformStringRef.current;
+    }
+    // ピンチ中でない場合はstateから計算（初期化時やピンチ終了後のrender用）
     return `matrix(${transformMatrix.a}, ${transformMatrix.b}, ${transformMatrix.c}, ${transformMatrix.d}, ${transformMatrix.e}, ${transformMatrix.f})`;
-  }, [transformMatrix.a, transformMatrix.b, transformMatrix.c, transformMatrix.d, transformMatrix.e, transformMatrix.f]);
+  }, [transformMatrix.a, transformMatrix.b, transformMatrix.c, transformMatrix.d, transformMatrix.e, transformMatrix.f, isPinching]);
 
   // ピンチ終了後のログ出力を制限するためのref
   const pinchEndLogCountRef = useRef<number>(0);
@@ -298,9 +347,12 @@ export function usePinchZoom(
     }
     
     if (shouldLog) {
-      const scale = Math.sqrt(transformMatrix.a * transformMatrix.a + transformMatrix.b * transformMatrix.b);
-      const translateX = transformMatrix.e;
-      const translateY = transformMatrix.f;
+      // 重要: ピンチ中はrefから取得、ピンチ中でない場合はstateから取得
+      const currentMatrix = isPinching ? transformMatrixRef.current : transformMatrix;
+      const scale = Math.sqrt(currentMatrix.a * currentMatrix.a + currentMatrix.b * currentMatrix.b);
+      const translateX = currentMatrix.e;
+      const translateY = currentMatrix.f;
+      const currentTransformString = isPinching ? transformStringRef.current : transformString;
       
       const log: FrameLog = {
         frameId: frameIdRef.current++,
@@ -314,7 +366,7 @@ export function usePinchZoom(
         pinchCenterX: pinchStartCenterLocalRef.current?.x ?? null,
         pinchCenterY: pinchStartCenterLocalRef.current?.y ?? null,
         transformOrigin: transformOrigin,
-        matrix: transformString,
+        matrix: currentTransformString,
       };
       
       console.log(`[Frame ${log.frameId}]`, log);
@@ -341,10 +393,15 @@ export function usePinchZoom(
   }, [logFrame]);
 
   // デバッグ: transformStringが再計算されるたびにログ出力
-  // 重要: ピンチ操作中またはピンチ終了直後のみログ出力
+  // 重要: ピンチ中はReactのrender/re-renderで再計算されないため、このログはピンチ中でない場合のみ出力
   useEffect(() => {
-    // ピンチ操作中またはピンチ終了直後のみログ出力
-    if (!isPinching && currentEventSourceRef.current !== "pinch-end" && currentEventSourceRef.current !== "touch-end-after-pinch") {
+    // ピンチ中はReactのrender/re-renderで再計算されないため、ログを出力しない
+    if (isPinching) {
+      return;
+    }
+    
+    // ピンチ終了直後のみログ出力
+    if (currentEventSourceRef.current !== "pinch-end" && currentEventSourceRef.current !== "touch-end-after-pinch") {
       return;
     }
     
@@ -352,7 +409,7 @@ export function usePinchZoom(
     const translateX = transformMatrix.e;
     const translateY = transformMatrix.f;
     
-    console.log("[TransformString] ===== transformString再計算 =====");
+    console.log("[TransformString] ===== transformString再計算（ピンチ終了後） =====");
     console.log("[TransformString] Event: render/re-render");
     console.log("[TransformString] isPinching:", isPinching);
     console.log("[TransformString] scale:", scale);
@@ -370,6 +427,23 @@ export function usePinchZoom(
     console.log("[TransformString] transformString:", transformString);
     console.log("[TransformString] =====================");
   }, [transformMatrix, transformString, isPinching]);
+  
+  // 初期化時とピンチ終了後に、refとstateを同期
+  useEffect(() => {
+    // ピンチ中は何もしない（pinch-moveで直接DOMに適用済み）
+    if (isPinching) {
+      return;
+    }
+    
+    // ピンチ中でない場合のみ、stateからrefに同期（初期化時やピンチ終了後のrender用）
+    transformMatrixRef.current = new DOMMatrix([
+      transformMatrix.a, transformMatrix.b,
+      transformMatrix.c, transformMatrix.d,
+      transformMatrix.e, transformMatrix.f
+    ]);
+    
+    transformStringRef.current = `matrix(${transformMatrix.a}, ${transformMatrix.b}, ${transformMatrix.c}, ${transformMatrix.d}, ${transformMatrix.e}, ${transformMatrix.f})`;
+  }, [transformMatrix, isPinching]);
 
   // 外部からeventSourceを設定する関数（ページ側のイベントハンドラで使用）
   const setEventSource = useCallback((source: string) => {

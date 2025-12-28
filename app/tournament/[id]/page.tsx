@@ -95,6 +95,25 @@ export default function TournamentEditPage() {
   // ピンチ中はスクロール制御を行わない（レイアウト変更を防ぐため）
   useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark, editMode.canEdit, isPinching);
   
+  // 重要: transformの適用経路を1系統に統一
+  // ピンチ中はhandlePinchMoveでDOMに直接適用される（Reactのrender/re-renderを経由しない）
+  // ピンチ中でない場合のみ、Reactのrender/re-renderでtransformを適用
+  useEffect(() => {
+    if (!canvasZoomLayerRef.current) {
+      return;
+    }
+    
+    // ピンチ中は何もしない（handlePinchMoveでDOMに直接適用済み）
+    if (isPinching) {
+      return;
+    }
+    
+    // ピンチ中でない場合のみ、Reactのrender/re-renderでtransformを適用
+    // 初期化時やピンチ終了後のrender/re-renderでtransformを同期
+    canvasZoomLayerRef.current.style.transform = transformString;
+    canvasZoomLayerRef.current.style.transformOrigin = transformOrigin;
+  }, [transformString, transformOrigin, isPinching]);
+  
   // 編集モードと選択状態を同期
   useEffect(() => {
     editMode.selectObject(selectedMarkId);
@@ -1090,11 +1109,11 @@ export default function TournamentEditPage() {
               }}
             >
               {/* CanvasZoomLayer: ここだけを拡大縮小 */}
+              {/* 重要: transformはuseEffectでDOMに直接適用する（ピンチ中はReactのrender/re-renderで上書きされないようにする） */}
               <div
                 ref={canvasZoomLayerRef}
                 style={{
-                  transform: transformString,
-                  transformOrigin: transformOrigin,
+                  // transformとtransformOriginはuseEffectでDOMに直接適用するため、ここでは指定しない
                   width: "100%",
                   height: "100%",
                   position: "relative",
