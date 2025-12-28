@@ -175,33 +175,31 @@ export function usePinchZoom(
       const currentCenterXLocal = currentCenterXViewport - zoomLayerRectRef.current.left;
       const currentCenterYLocal = currentCenterYViewport - zoomLayerRectRef.current.top;
 
-      // ピンチ中心を基準にしたズーム行列を合成
-      // 正しい順序: T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix
+      // 重要: ピンチ中心は「現在のtransformを逆変換した座標（world座標）」を使用する
+      // ピンチ中心（local座標）はtransform適用後の見た目上の座標であるため、
+      // DOMMatrixによる行列合成（未変換のローカル座標系を前提）と座標系が一致していない
       // 
-      // 重要: baseMatrixをピンチ終了まで一切変更しない（新しいDOMMatrixを作成）
-      // ピンチアウト（scaleRatio > 1）とピンチイン（scaleRatio < 1）で同一式を使用
-      // 条件分岐で別ロジックにしない
+      // 解決策: baseMatrixのinverseを使って、ピンチ中心をworld座標に変換
+      const inverseMatrix = pinchStartMatrixRef.current.inverse();
+      const worldPoint = new DOMPoint(currentCenterXLocal, currentCenterYLocal).matrixTransform(inverseMatrix);
       
-      const cx = pinchStartCenterLocalRef.current.x; // basePinchCenter.x
-      const cy = pinchStartCenterLocalRef.current.y; // basePinchCenter.y
+      const cx = worldPoint.x; // world座標系のピンチ中心
+      const cy = worldPoint.y; // world座標系のピンチ中心
       
-      // 正しい実装: baseMatrixをコピーしてから、T(-cx, -cy) * S(scaleRatio) * T(cx, cy) を適用
+      // 正しい実装: baseMatrixをコピーしてから、T(cx, cy) * S(scaleRatio) * T(-cx, -cy) を適用
       // DOMMatrixのメソッドチェーンは左から右に適用される
-      // newMatrix = baseMatrix * T(-cx, -cy) * S(scaleRatio) * T(cx, cy)
+      // newMatrix = baseMatrix * T(cx, cy) * S(scaleRatio) * T(-cx, -cy)
       // 
       // しかし、数学的には T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix と等価
       // なぜなら、行列の結合則により:
-      // baseMatrix * T(-cx, -cy) * S(scaleRatio) * T(cx, cy)
-      // = baseMatrix * [T(-cx, -cy) * S(scaleRatio) * T(cx, cy)]
-      // = [T(-cx, -cy) * S(scaleRatio) * T(cx, cy)] * baseMatrix
+      // baseMatrix * T(cx, cy) * S(scaleRatio) * T(-cx, -cy)
+      // = [T(cx, cy) * S(scaleRatio) * T(-cx, -cy)] * baseMatrix
       // 
-      // しかし、実際には baseMatrix を左から乗算しているので、順序が異なる
-      // 
-      // 正しい実装: baseMatrixをコピーしてから、順序を逆にして適用
+      // 正しい実装: baseMatrixをコピーしてから、T(cx, cy) * S(scaleRatio) * T(-cx, -cy) を適用
       // 1. baseMatrixをコピー（変更しない）
-      // 2. T(-cx, -cy) を適用: baseMatrix * T(-cx, -cy)
-      // 3. S(scaleRatio) を適用: baseMatrix * T(-cx, -cy) * S(scaleRatio)
-      // 4. T(cx, cy) を適用: baseMatrix * T(-cx, -cy) * S(scaleRatio) * T(cx, cy)
+      // 2. T(cx, cy) を適用: baseMatrix * T(cx, cy)
+      // 3. S(scaleRatio) を適用: baseMatrix * T(cx, cy) * S(scaleRatio)
+      // 4. T(-cx, -cy) を適用: baseMatrix * T(cx, cy) * S(scaleRatio) * T(-cx, -cy)
       const newMatrix = new DOMMatrix([
         pinchStartMatrixRef.current.a,
         pinchStartMatrixRef.current.b,
@@ -210,44 +208,46 @@ export function usePinchZoom(
         pinchStartMatrixRef.current.e,
         pinchStartMatrixRef.current.f,
       ])
-        .translate(-cx, -cy)
+        .translate(cx, cy)
         .scale(scaleRatio, scaleRatio)
-        .translate(cx, cy);
+        .translate(-cx, -cy);
       
-      // デバッグ: 理論値と実際の値を比較
-      // ピンチイン（scaleRatio < 1）とピンチアウト（scaleRatio > 1）の両方で正しく動作することを確認
-      // baseMatrixが既にスケールされている場合でも、baseMatrixを基準にした計算が正しいことを確認
-      const baseScale = Math.sqrt(
-        pinchStartMatrixRef.current.a * pinchStartMatrixRef.current.a +
-        pinchStartMatrixRef.current.b * pinchStartMatrixRef.current.b
-      );
-      const baseTx = pinchStartMatrixRef.current.e;
-      const baseTy = pinchStartMatrixRef.current.f;
-      
-      // 理論値: baseMatrixのtranslate成分 + ピンチ中心を基準にしたズームによるtranslate成分
-      // ピンチ中心を基準にしたズーム: T(cx, cy) * S(scaleRatio) * T(-cx, -cy)
-      // この変換をbaseMatrixに適用した場合のtranslate成分:
-      // newTx = baseTx + cx * (1 - scaleRatio) * baseScale
-      // newTy = baseTy + cy * (1 - scaleRatio) * baseScale
-      const theoreticalTx = baseTx + cx * (1 - scaleRatio) * baseScale;
-      const theoreticalTy = baseTy + cy * (1 - scaleRatio) * baseScale;
-      const actualTx = newMatrix.e;
-      const actualTy = newMatrix.f;
-      
+      // デバッグ: ピンチ中心の座標変換と行列合成を確認
       console.log("[PinchMove] Matrix composition debug:", {
         scaleRatio: scaleRatio.toFixed(6),
         pinchType: scaleRatio > 1 ? "OUT" : "IN",
-        cx: cx.toFixed(2),
-        cy: cy.toFixed(2),
-        baseScale: baseScale.toFixed(4),
-        baseTx: baseTx.toFixed(4),
-        baseTy: baseTy.toFixed(4),
-        theoreticalTx: theoreticalTx.toFixed(4),
-        theoreticalTy: theoreticalTy.toFixed(4),
-        actualTx: actualTx.toFixed(4),
-        actualTy: actualTy.toFixed(4),
-        diffTx: (actualTx - theoreticalTx).toFixed(4),
-        diffTy: (actualTy - theoreticalTy).toFixed(4),
+        pinchCenterScreen: {
+          x: currentCenterXLocal.toFixed(2),
+          y: currentCenterYLocal.toFixed(2),
+        },
+        pinchCenterWorld: {
+          x: cx.toFixed(2),
+          y: cy.toFixed(2),
+        },
+        currentMatrix: {
+          a: pinchStartMatrixRef.current.a.toFixed(4),
+          b: pinchStartMatrixRef.current.b.toFixed(4),
+          c: pinchStartMatrixRef.current.c.toFixed(4),
+          d: pinchStartMatrixRef.current.d.toFixed(4),
+          e: pinchStartMatrixRef.current.e.toFixed(4),
+          f: pinchStartMatrixRef.current.f.toFixed(4),
+        },
+        inverseMatrix: {
+          a: inverseMatrix.a.toFixed(4),
+          b: inverseMatrix.b.toFixed(4),
+          c: inverseMatrix.c.toFixed(4),
+          d: inverseMatrix.d.toFixed(4),
+          e: inverseMatrix.e.toFixed(4),
+          f: inverseMatrix.f.toFixed(4),
+        },
+        nextMatrix: {
+          a: newMatrix.a.toFixed(4),
+          b: newMatrix.b.toFixed(4),
+          c: newMatrix.c.toFixed(4),
+          d: newMatrix.d.toFixed(4),
+          e: newMatrix.e.toFixed(4),
+          f: newMatrix.f.toFixed(4),
+        },
       });
       
       // eventSourceを設定（transformMatrixを更新したフレームのみ）
