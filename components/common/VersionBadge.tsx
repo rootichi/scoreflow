@@ -1,11 +1,13 @@
 "use client";
 
+import { BUILD_TIME } from "@/lib/build-time";
+
 /**
  * 画面左下にデプロイ時刻を表示するコンポーネント
  */
 export function VersionBadge() {
-  // デプロイ時刻を取得（ビルド時に設定された環境変数）
-  const deployTime = process.env.NEXT_PUBLIC_DEPLOY_TIME || process.env.DEPLOY_TIME;
+  // デプロイ時刻を取得（ビルド時に生成されたファイルから）
+  const deployTime = BUILD_TIME;
   
   // 時刻をフォーマット（YYYY-MM-DD HH:MM:SS形式）
   const formatDeployTime = (isoString: string | undefined) => {
