@@ -144,16 +144,23 @@ export function usePinchZoom(
       // デバッグ用: world座標も計算（比較用）
       const worldPointDebug = new DOMPoint(centerXLocal, centerYLocal).matrixTransform(pinchStartMatrixInverseRef.current);
       
+      // 重要: pinchCenterScreenをstartMatrixで変換した座標（不動点条件の検証用）
+      const pinchCenterTransformed = new DOMPoint(centerXLocal, centerYLocal).matrixTransform(pinchStartMatrixRef.current);
+      
       console.log("[PinchStart] ===== ピンチ開始 =====", {
         pinchCenterScreen: {
           x: centerXLocal.toFixed(2),
           y: centerYLocal.toFixed(2),
         },
+        pinchCenterScreen_変換後: {
+          x: pinchCenterTransformed.x.toFixed(4),
+          y: pinchCenterTransformed.y.toFixed(4),
+        },
         pinchCenterWorld_参考: {
           x: worldPointDebug.x.toFixed(2),
           y: worldPointDebug.y.toFixed(2),
         },
-        使用座標系: "screen座標（world変換なし）",
+        使用座標系: "screen座標（不動点条件を満たす実装）",
         pinchStartMatrix: {
           a: pinchStartMatrixRef.current.a.toFixed(4),
           b: pinchStartMatrixRef.current.b.toFixed(4),
@@ -214,29 +221,28 @@ export function usePinchZoom(
       const currentCenterXLocal = currentCenterXViewport - zoomLayerRectRef.current.left;
       const currentCenterYLocal = currentCenterYViewport - zoomLayerRectRef.current.top;
 
-      // 重要: ユーザーの要求に従い、world座標変換を無効化してscreen座標のまま使用
-      // これにより、world座標変換が原因かどうかを切り分けできる
+      // 重要: 不動点条件を満たす実装
+      // 「pinchCenterScreenをstartMatrixで変換した座標」を基準にスケーリングを行う
+      // これにより、pinchCenterScreenをstartMatrixで変換した座標と、
+      // pinchCenterScreenをfinalMatrixで変換した座標が一致する（不動点条件）
       // 
-      // ピンチ中心はscreen座標（local座標）のまま使用
-      // 行列合成: pinchStartMatrix * T(cx, cy) * S(scaleRatio) * T(-cx, -cy)
-      // ここで、cx, cyはscreen座標（transform適用後の見た目上の座標）
-      const cx = currentCenterXLocal; // screen座標のまま使用
-      const cy = currentCenterYLocal; // screen座標のまま使用
+      // 数学的には:
+      // P_start = pinchCenterScreen * startMatrix
+      // P_final = pinchCenterScreen * finalMatrix
+      // P_final = P_start * scaleRatio
+      // 
+      // これを満たすには:
+      // finalMatrix = startMatrix * T(P_start.x, P_start.y) * S(scaleRatio) * T(-P_start.x, -P_start.y)
+      const cx = currentCenterXLocal; // screen座標
+      const cy = currentCenterYLocal; // screen座標
       
-      // 正しい実装: baseMatrixをコピーしてから、T(cx, cy) * S(scaleRatio) * T(-cx, -cy) を適用
-      // DOMMatrixのメソッドチェーンは左から右に適用される
-      // newMatrix = baseMatrix * T(cx, cy) * S(scaleRatio) * T(-cx, -cy)
-      // 
-      // しかし、数学的には T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix と等価
-      // なぜなら、行列の結合則により:
-      // baseMatrix * T(cx, cy) * S(scaleRatio) * T(-cx, -cy)
-      // = [T(cx, cy) * S(scaleRatio) * T(-cx, -cy)] * baseMatrix
-      // 
-      // 正しい実装: baseMatrixをコピーしてから、T(cx, cy) * S(scaleRatio) * T(-cx, -cy) を適用
-      // 1. baseMatrixをコピー（変更しない）
-      // 2. T(cx, cy) を適用: baseMatrix * T(cx, cy)
-      // 3. S(scaleRatio) を適用: baseMatrix * T(cx, cy) * S(scaleRatio)
-      // 4. T(-cx, -cy) を適用: baseMatrix * T(cx, cy) * S(scaleRatio) * T(-cx, -cy)
+      // pinchCenterScreenをstartMatrixで変換した座標を取得
+      const pinchCenterTransformed = new DOMPoint(cx, cy).matrixTransform(pinchStartMatrixRef.current);
+      const transformedX = pinchCenterTransformed.x;
+      const transformedY = pinchCenterTransformed.y;
+      
+      // 変換後の座標を基準にスケーリング
+      // finalMatrix = startMatrix * T(transformedX, transformedY) * S(scaleRatio) * T(-transformedX, -transformedY)
       const newMatrix = new DOMMatrix([
         pinchStartMatrixRef.current.a,
         pinchStartMatrixRef.current.b,
@@ -245,51 +251,9 @@ export function usePinchZoom(
         pinchStartMatrixRef.current.e,
         pinchStartMatrixRef.current.f,
       ])
-        .translate(cx, cy)
+        .translate(transformedX, transformedY)
         .scale(scaleRatio, scaleRatio)
-        .translate(-cx, -cy);
-      
-      // デバッグ: 理論値と実際の値を比較
-      // baseMatrixがidentity行列かどうかを確認
-      const isIdentity = 
-        Math.abs(pinchStartMatrixRef.current.a - 1) < 0.0001 &&
-        Math.abs(pinchStartMatrixRef.current.b) < 0.0001 &&
-        Math.abs(pinchStartMatrixRef.current.c) < 0.0001 &&
-        Math.abs(pinchStartMatrixRef.current.d - 1) < 0.0001 &&
-        Math.abs(pinchStartMatrixRef.current.e) < 0.0001 &&
-        Math.abs(pinchStartMatrixRef.current.f) < 0.0001;
-      
-      // 理論値の計算
-      // baseMatrixがidentityの場合: expectedTx = cx * (1 - scaleRatio), expectedTy = cy * (1 - scaleRatio)
-      // baseMatrixが既にスケール/トランスレートされている場合: より複雑な計算が必要
-      let expectedTx: number;
-      let expectedTy: number;
-      
-      if (isIdentity) {
-        // identity行列の場合の理論値
-        expectedTx = cx * (1 - scaleRatio);
-        expectedTy = cy * (1 - scaleRatio);
-      } else {
-        // baseMatrixが既にスケール/トランスレートされている場合
-        // baseMatrix * T(cx, cy) * S(scaleRatio) * T(-cx, -cy) の結果を計算
-        // 理論的には、baseMatrixのtranslate成分 + ピンチ中心を基準にしたズームによる補正
-        const baseScale = Math.sqrt(
-          pinchStartMatrixRef.current.a * pinchStartMatrixRef.current.a +
-          pinchStartMatrixRef.current.b * pinchStartMatrixRef.current.b
-        );
-        const baseTx = pinchStartMatrixRef.current.e;
-        const baseTy = pinchStartMatrixRef.current.f;
-        expectedTx = baseTx + cx * (1 - scaleRatio) * baseScale;
-        expectedTy = baseTy + cy * (1 - scaleRatio) * baseScale;
-      }
-      
-      const actualTx = newMatrix.e;
-      const actualTy = newMatrix.f;
-      const diffTx = actualTx - expectedTx;
-      const diffTy = actualTy - expectedTy;
-      
-      // デバッグ: pinch-move中のログは削除（ログが多すぎるため）
-      // ピンチ終了時に最終的な値を出力する
+        .translate(-transformedX, -transformedY);
       
       // eventSourceを設定（transformMatrixを更新したフレームのみ）
       currentEventSourceRef.current = "pinch-move";
@@ -340,18 +304,21 @@ export function usePinchZoom(
       const finalScale = Math.sqrt(finalMatrix.a * finalMatrix.a + finalMatrix.b * finalMatrix.b);
       const scaleRatio = finalScale / startScale;
       
-      // 重要: screen座標ベースでの理論値計算
-      // ピンチ中心はscreen座標（local座標）のまま使用
+      // 重要: 不動点条件を満たす実装に基づく理論値計算
+      // pinchCenterScreenをstartMatrixで変換した座標を基準にスケーリング
       const cx = startCenter.x; // screen座標
       const cy = startCenter.y; // screen座標
       
+      // pinchCenterScreenをstartMatrixで変換した座標
+      const pinchCenterTransformed = new DOMPoint(cx, cy).matrixTransform(startMatrix);
+      const transformedX = pinchCenterTransformed.x;
+      const transformedY = pinchCenterTransformed.y;
+      
       // 理論値の計算
-      // 行列合成: baseMatrix * T(cx, cy) * S(scaleRatio) * T(-cx, -cy)
+      // 行列合成: startMatrix * T(transformedX, transformedY) * S(scaleRatio) * T(-transformedX, -transformedY)
       // 
-      // screen座標ベースでの計算:
-      // baseMatrixが matrix(s, 0, 0, s, tx, ty) の場合:
-      // - ピンチ中心 (cx, cy) を基準にスケール
-      // - 最終的なtranslate: (tx + cx * (1 - scaleRatio) * s, ty + cy * (1 - scaleRatio) * s)
+      // この実装により、pinchCenterScreenをstartMatrixで変換した座標と、
+      // pinchCenterScreenをfinalMatrixで変換した座標が一致する（不動点条件）
       const isIdentity = 
         Math.abs(startMatrix.a - 1) < 0.0001 &&
         Math.abs(startMatrix.b) < 0.0001 &&
@@ -360,24 +327,48 @@ export function usePinchZoom(
         Math.abs(startMatrix.e) < 0.0001 &&
         Math.abs(startMatrix.f) < 0.0001;
       
+      // 理論値の計算（不動点条件を満たす実装に基づく）
+      // finalMatrix = startMatrix * T(transformedX, transformedY) * S(scaleRatio) * T(-transformedX, -transformedY)
+      // これを展開すると:
+      // finalMatrix.e = startMatrix.e + transformedX * (1 - scaleRatio) * startScale
+      // finalMatrix.f = startMatrix.f + transformedY * (1 - scaleRatio) * startScale
       let expectedTx: number;
       let expectedTy: number;
       
       if (isIdentity) {
-        // identity行列の場合: screen座標ベースで計算
-        expectedTx = cx * (1 - scaleRatio);
-        expectedTy = cy * (1 - scaleRatio);
+        // identity行列の場合: transformedX = cx, transformedY = cy
+        expectedTx = transformedX * (1 - scaleRatio);
+        expectedTy = transformedY * (1 - scaleRatio);
       } else {
         // baseMatrixが既にスケール/トランスレートされている場合
         const baseTx = startMatrix.e;
         const baseTy = startMatrix.f;
-        // screen座標ベースでの計算
-        expectedTx = baseTx + cx * (1 - scaleRatio) * startScale;
-        expectedTy = baseTy + cy * (1 - scaleRatio) * startScale;
+        expectedTx = baseTx + transformedX * (1 - scaleRatio) * startScale;
+        expectedTy = baseTy + transformedY * (1 - scaleRatio) * startScale;
       }
       
       // デバッグ用: world座標も計算（比較用）
       const worldPoint = new DOMPoint(startCenter.x, startCenter.y).matrixTransform(startInverse);
+      
+      // 重要: 不動点条件の検証
+      // pinchCenterScreenをstartMatrixで変換した座標
+      const pinchCenterStart = new DOMPoint(startCenter.x, startCenter.y).matrixTransform(startMatrix);
+      // pinchCenterScreenをfinalMatrixで変換した座標
+      const pinchCenterFinal = new DOMPoint(startCenter.x, startCenter.y).matrixTransform(finalMatrix);
+      // 期待値: pinchCenterStart * scaleRatio
+      const pinchCenterExpected = new DOMPoint(
+        pinchCenterStart.x * scaleRatio,
+        pinchCenterStart.y * scaleRatio
+      );
+      // 差分
+      const pinchCenterDiff = {
+        x: pinchCenterFinal.x - pinchCenterExpected.x,
+        y: pinchCenterFinal.y - pinchCenterExpected.y,
+      };
+      // 距離の差分（不動点条件の満足度）
+      const pinchCenterDistance = Math.sqrt(
+        pinchCenterDiff.x * pinchCenterDiff.x + pinchCenterDiff.y * pinchCenterDiff.y
+      );
       
       const actualTx = finalMatrix.e;
       const actualTy = finalMatrix.f;
@@ -411,6 +402,25 @@ export function usePinchZoom(
       console.log("[PinchEnd] expectedTranslate:", { x: expectedTx.toFixed(4), y: expectedTy.toFixed(4) });
       console.log("[PinchEnd] actualTranslate:", { x: actualTx.toFixed(4), y: actualTy.toFixed(4) });
       console.log("[PinchEnd] diffTranslate:", { x: diffTx.toFixed(4), y: diffTy.toFixed(4) });
+      console.log("[PinchEnd] === 不動点条件の検証 ===");
+      console.log("[PinchEnd] pinchCenterScreenをstartMatrixで変換:", {
+        x: pinchCenterStart.x.toFixed(4),
+        y: pinchCenterStart.y.toFixed(4),
+      });
+      console.log("[PinchEnd] pinchCenterScreenをfinalMatrixで変換:", {
+        x: pinchCenterFinal.x.toFixed(4),
+        y: pinchCenterFinal.y.toFixed(4),
+      });
+      console.log("[PinchEnd] 期待値 (startMatrix変換 * scaleRatio):", {
+        x: pinchCenterExpected.x.toFixed(4),
+        y: pinchCenterExpected.y.toFixed(4),
+      });
+      console.log("[PinchEnd] 差分:", {
+        x: pinchCenterDiff.x.toFixed(4),
+        y: pinchCenterDiff.y.toFixed(4),
+        distance: pinchCenterDistance.toFixed(4),
+      });
+      console.log("[PinchEnd] 不動点条件:", pinchCenterDistance < 0.1 ? "✓ 満足" : "✗ 不満足");
       console.log("[PinchEnd] =====================");
     }
     
