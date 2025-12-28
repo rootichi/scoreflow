@@ -20,8 +20,8 @@ export function usePinchZoom(
   // スケール比の閾値（これより小さい変化は無視）
   const SCALE_EPSILON = 0.001;
   
-  // ピンチ中フラグ（イベント責務分離のため）
-  const isPinchingRef = useRef<boolean>(false);
+  // ピンチ中フラグ（stateとして管理して再レンダリングを制御）
+  const [isPinching, setIsPinching] = useState<boolean>(false);
   
   const pinchStartDistanceRef = useRef<number | null>(null);
   const pinchStartMatrixRef = useRef<DOMMatrix | null>(null); // ピンチ開始時の基準行列（baseMatrix）
@@ -72,7 +72,7 @@ export function usePinchZoom(
       });
 
       // ピンチ中フラグを設定
-      isPinchingRef.current = true;
+      setIsPinching(true);
       
       // ピンチ開始時の基準値を記録（baseMatrix, baseScaleDistance, basePinchCenter）
       const currentMatrix = transformMatrix;
@@ -115,7 +115,7 @@ export function usePinchZoom(
   const handlePinchMove = useCallback(
     (touch1: React.Touch, touch2: React.Touch) => {
       // ピンチ中でない場合は処理しない
-      if (!isPinchingRef.current) {
+      if (!isPinching) {
         console.log("[PinchMove] isPinching is false, skipping");
         return;
       }
@@ -223,7 +223,7 @@ export function usePinchZoom(
       
       console.log("[PinchMove] =====================");
     },
-    [canvasZoomLayerRef]
+    [canvasZoomLayerRef, isPinching]
   );
 
   /**
@@ -256,8 +256,8 @@ export function usePinchZoom(
     console.log("[PinchEnd] Matrix updated: false");
     console.log("[PinchEnd] Event: pinch-end (no-op frame)");
     
-    // ピンチ中フラグを解除
-    isPinchingRef.current = false;
+    // ピンチ中フラグを解除（stateを更新するが、transformMatrixは変更しない）
+    setIsPinching(false);
     
     // ピンチ開始時の記録をクリア
     pinchStartDistanceRef.current = null;
@@ -283,7 +283,7 @@ export function usePinchZoom(
     
     console.log("[TransformString] ===== transformString再計算 =====");
     console.log("[TransformString] Event: render/re-render");
-    console.log("[TransformString] isPinching:", isPinchingRef.current);
+    console.log("[TransformString] isPinching:", isPinching);
     console.log("[TransformString] scale:", scale);
     console.log("[TransformString] translateX:", translateX);
     console.log("[TransformString] translateY:", translateY);
@@ -298,10 +298,7 @@ export function usePinchZoom(
     });
     console.log("[TransformString] transformString:", transformString);
     console.log("[TransformString] =====================");
-  }, [transformMatrix, transformString]);
-
-  // isPinchingの現在の状態を返す（ページ側でpan/drag処理を制御するため）
-  const isPinching = isPinchingRef.current;
+  }, [transformMatrix, transformString, isPinching]);
 
   return {
     transformString,

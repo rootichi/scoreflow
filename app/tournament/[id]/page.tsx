@@ -823,19 +823,25 @@ export default function TournamentEditPage() {
     console.log("[TouchEnd] transformOrigin:", transformOrigin);
 
     // ピンチ操作が終了した場合、リセット
-    const wasPinching = e.touches.length < 2 && isPinching;
     if (e.touches.length < 2) {
+      // ピンチ終了処理（isPinchingをfalseに設定するが、transformMatrixは変更しない）
       handlePinchEnd();
-      // 視覚化用のタッチポイントをクリア
+      // 視覚化用のタッチポイントをクリア（これが再レンダリングをトリガーするが、transformMatrixは変更されていない）
       setPinchTouchPoints(null);
+      
+      // ピンチ終了フレームでは、pan/drag関連の処理を一切発火しない
+      // 重要: ピンチ終了フレームは「無操作フレーム」として扱う
+      console.log("[TouchEnd] Pinch end frame, skipping pan/drag processing");
+      console.log("[TouchEnd] isPinching (after handlePinchEnd):", isPinching);
+      // タッチ開始位置をリセット（これは安全）
+      setTouchStartPos(null);
+      console.log("[TouchEnd] =====================");
+      return;
     }
 
-    // ピンチ中またはピンチ終了直後のフレームでは、pan/drag関連の処理を一切発火しない
-    // 重要: ピンチ終了フレームは「無操作フレーム」として扱う
-    if (isPinching || wasPinching) {
-      console.log("[TouchEnd] isPinching or pinch end frame, skipping pan/drag processing");
-      console.log("[TouchEnd] isPinching (after):", isPinching);
-      console.log("[TouchEnd] wasPinching:", wasPinching);
+    // ピンチ中は、pan/drag関連の処理を一切発火しない
+    if (isPinching) {
+      console.log("[TouchEnd] isPinching is true, skipping pan/drag processing");
       // タッチ開始位置をリセット（これは安全）
       setTouchStartPos(null);
       console.log("[TouchEnd] =====================");
