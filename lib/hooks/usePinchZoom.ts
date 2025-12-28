@@ -42,7 +42,8 @@ export function usePinchZoom(
   const pinchStartDistanceRef = useRef<number | null>(null);
   const pinchStartMatrixRef = useRef<DOMMatrix | null>(null); // ピンチ開始時の基準行列（M_old）
   const pinchStartCenterScreenRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の中心位置（screen座標）
-  const zoomLayerRectRef = useRef<DOMRect | null>(null); // ピンチ開始時のCanvasZoomLayerのrect（local座標変換用）
+  const zoomLayerRectRef = useRef<DOMRect | null>(null); // ピンチ開始時のCanvasZoomLayerのrect（transform適用前の状態）
+  const initialZoomLayerRectRef = useRef<DOMRect | null>(null); // 初期状態（transform適用前）のCanvasZoomLayerのrect
   
   // フレーム単位ログ用のref
   const frameIdRef = useRef<number>(0);
@@ -119,22 +120,11 @@ export function usePinchZoom(
       };
       
       // 重要: CanvasZoomLayerの位置とサイズを取得（local座標変換用）
-      // getBoundingClientRect()はtransform適用後の位置を返すため、
-      // transform適用前の状態でrectを取得する必要がある
-      // そのため、一時的にtransformを解除してrectを取得する
-      const currentTransform = canvasZoomLayerRef.current.style.transform;
-      const currentTransformOrigin = canvasZoomLayerRef.current.style.transformOrigin;
-      
-      // transformを一時的に解除してrectを取得（transform適用前の状態）
-      canvasZoomLayerRef.current.style.transform = "none";
-      canvasZoomLayerRef.current.style.transformOrigin = "0 0";
+      // getBoundingClientRect()はtransform適用後の位置を返すが、これで問題ない
+      // pivot計算には、transform適用後のrectを使う（これが正しい）
       const zoomLayerRect = canvasZoomLayerRef.current.getBoundingClientRect();
       
-      // transformを復元
-      canvasZoomLayerRef.current.style.transform = currentTransform;
-      canvasZoomLayerRef.current.style.transformOrigin = currentTransformOrigin;
-      
-      // rectを保存（transform適用前の状態）
+      // rectを保存（transform適用後の状態で問題ない）
       zoomLayerRectRef.current = {
         left: zoomLayerRect.left,
         top: zoomLayerRect.top,
@@ -291,6 +281,8 @@ export function usePinchZoom(
       const pivotScreenY = pinchStartCenterScreenRef.current.y;
       
       // screen座標からlocal座標へ変換
+      // 重要: zoomLayerRectRefはtransform適用前の状態なので、
+      // pivot計算にはこれを使う（DOMMatrixの座標系と一致する）
       const pivotLocalX = pivotScreenX - zoomLayerRectRef.current.left;
       const pivotLocalY = pivotScreenY - zoomLayerRectRef.current.top;
       
@@ -683,6 +675,21 @@ export function usePinchZoom(
       return;
     }
     
+    // 初期状態のrectを保存（transform適用前の状態）
+    if (canvasZoomLayerRef?.current && !initialZoomLayerRectRef.current) {
+      const initialRect = canvasZoomLayerRef.current.getBoundingClientRect();
+      initialZoomLayerRectRef.current = {
+        left: initialRect.left,
+        top: initialRect.top,
+        width: initialRect.width,
+        height: initialRect.height,
+        right: initialRect.right,
+        bottom: initialRect.bottom,
+        x: initialRect.x,
+        y: initialRect.y,
+      } as DOMRect;
+    }
+    
     // ピンチ中でない場合のみ、stateからrefに同期（初期化時やピンチ終了後のrender用）
     transformMatrixRef.current = new DOMMatrix([
       transformMatrix.a, transformMatrix.b,
@@ -698,7 +705,7 @@ export function usePinchZoom(
       transformMatrix.c, transformMatrix.d,
       transformMatrix.e, transformMatrix.f
     ]);
-  }, [transformMatrix, isPinching]);
+  }, [transformMatrix, isPinching, canvasZoomLayerRef]);
 
   // 外部からeventSourceを設定する関数（ページ側のイベントハンドラで使用）
   const setEventSource = useCallback((source: string) => {
