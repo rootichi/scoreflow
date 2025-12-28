@@ -176,14 +176,25 @@ export function usePinchZoom(
       const currentCenterYLocal = currentCenterYViewport - zoomLayerRectRef.current.top;
 
       // ピンチ中心を基準にしたズーム行列を合成
-      // T(cx, cy) → S(scaleRatio) → T(-cx, -cy)
+      // 正しい順序: T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix
       // 
       // DOMMatrixのmultiplyは右から左に適用される
       // A.multiply(B) は B * A を意味する
       // 
       // 欲しい変換: T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix
       // これを実現するには:
-      // baseMatrix.multiply(translateToOrigin).multiply(scaleMatrix).multiply(translateBack)
+      // 1. baseMatrixを基準にする
+      // 2. T(-cx, -cy)を適用: baseMatrix * T(-cx, -cy)
+      // 3. S(scaleRatio)を適用: baseMatrix * T(-cx, -cy) * S(scaleRatio)
+      // 4. T(cx, cy)を適用: baseMatrix * T(-cx, -cy) * S(scaleRatio) * T(cx, cy)
+      // 
+      // しかし、DOMMatrixのmultiplyは右から左なので、実際には:
+      // translateBack.multiply(scaleMatrix).multiply(translateToOrigin).multiply(baseMatrix)
+      // は baseMatrix * translateToOrigin * scaleMatrix * translateBack を意味する
+      // 
+      // 正しい実装:
+      // newMatrix = T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix
+      // = translateBack * scaleMatrix * translateToOrigin * baseMatrix
       
       const cx = pinchStartCenterLocalRef.current.x; // basePinchCenter.x
       const cy = pinchStartCenterLocalRef.current.y; // basePinchCenter.y
@@ -197,12 +208,37 @@ export function usePinchZoom(
       // 3. 元の位置に戻す: T(cx, cy)
       const translateBack = new DOMMatrix().translate(cx, cy);
       
-      // 合成: baseMatrix * T(-cx, -cy) * S(scaleRatio) * T(cx, cy)
-      // これは T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix と等価
-      const newMatrix = pinchStartMatrixRef.current
-        .multiply(translateToOrigin)
+      // 正しい合成順序: T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix
+      // DOMMatrixのmultiplyは右から左に適用されるため:
+      // translateBack.multiply(scaleMatrix).multiply(translateToOrigin).multiply(baseMatrix)
+      // = baseMatrix * translateToOrigin * scaleMatrix * translateBack
+      // = baseMatrix * T(-cx, -cy) * S(scaleRatio) * T(cx, cy)
+      // 
+      // しかし、欲しいのは: T(cx, cy) * S(scaleRatio) * T(-cx, -cy) * baseMatrix
+      // 
+      // 正しい実装: 順序を逆にする
+      const newMatrix = translateBack
         .multiply(scaleMatrix)
-        .multiply(translateBack);
+        .multiply(translateToOrigin)
+        .multiply(pinchStartMatrixRef.current);
+      
+      // デバッグ: 理論値と実際の値を比較
+      const theoreticalTx = cx * (1 - scaleRatio);
+      const theoreticalTy = cy * (1 - scaleRatio);
+      const actualTx = newMatrix.e;
+      const actualTy = newMatrix.f;
+      
+      console.log("[PinchMove] Matrix composition debug:", {
+        scaleRatio: scaleRatio.toFixed(6),
+        cx: cx.toFixed(2),
+        cy: cy.toFixed(2),
+        theoreticalTx: theoreticalTx.toFixed(4),
+        theoreticalTy: theoreticalTy.toFixed(4),
+        actualTx: actualTx.toFixed(4),
+        actualTy: actualTy.toFixed(4),
+        diffTx: (actualTx - theoreticalTx).toFixed(4),
+        diffTy: (actualTy - theoreticalTy).toFixed(4),
+      });
       
       // eventSourceを設定（transformMatrixを更新したフレームのみ）
       currentEventSourceRef.current = "pinch-move";
