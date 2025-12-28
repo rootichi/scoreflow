@@ -41,6 +41,7 @@ export function usePinchZoom(
   
   const pinchStartDistanceRef = useRef<number | null>(null);
   const pinchStartMatrixRef = useRef<DOMMatrix | null>(null); // ピンチ開始時の基準行列（baseMatrix）
+  const pinchStartMatrixInverseRef = useRef<DOMMatrix | null>(null); // ピンチ開始時の基準行列のinverse（world座標変換用）
   const pinchStartCenterLocalRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の基準中心位置（basePinchCenter）
   const zoomLayerRectRef = useRef<DOMRect | null>(null); // ピンチ開始時のCanvasZoomLayerのrect（レイアウト変更を防ぐため）
   
@@ -118,6 +119,10 @@ export function usePinchZoom(
         currentMatrix.e, currentMatrix.f
       ]); // baseMatrix
       
+      // 重要: pinchStartMatrixのinverseを計算して保存（world座標変換用）
+      // ピンチ移動時は必ずこの保存されたinverseを使用する
+      pinchStartMatrixInverseRef.current = pinchStartMatrixRef.current.inverse();
+      
       // transformMatrixRefも更新（ピンチ開始時の状態を保持）
       transformMatrixRef.current = new DOMMatrix([
         currentMatrix.a, currentMatrix.b,
@@ -144,7 +149,7 @@ export function usePinchZoom(
         return;
       }
       
-      if (pinchStartDistanceRef.current === null || pinchStartCenterLocalRef.current === null || pinchStartMatrixRef.current === null) {
+      if (pinchStartDistanceRef.current === null || pinchStartCenterLocalRef.current === null || pinchStartMatrixRef.current === null || pinchStartMatrixInverseRef.current === null) {
         return;
       }
 
@@ -179,9 +184,9 @@ export function usePinchZoom(
       // ピンチ中心（local座標）はtransform適用後の見た目上の座標であるため、
       // DOMMatrixによる行列合成（未変換のローカル座標系を前提）と座標系が一致していない
       // 
-      // 解決策: baseMatrixのinverseを使って、ピンチ中心をworld座標に変換
-      const inverseMatrix = pinchStartMatrixRef.current.inverse();
-      const worldPoint = new DOMPoint(currentCenterXLocal, currentCenterYLocal).matrixTransform(inverseMatrix);
+      // 解決策: pinch-start時に保存したpinchStartMatrixInverseを使って、ピンチ中心をworld座標に変換
+      // 重要: pinch-move中にinverseを再計算しない（数値誤差の蓄積を防ぐ）
+      const worldPoint = new DOMPoint(currentCenterXLocal, currentCenterYLocal).matrixTransform(pinchStartMatrixInverseRef.current);
       
       const cx = worldPoint.x; // world座標系のピンチ中心
       const cy = worldPoint.y; // world座標系のピンチ中心
@@ -224,7 +229,7 @@ export function usePinchZoom(
           x: cx.toFixed(2),
           y: cy.toFixed(2),
         },
-        currentMatrix: {
+        pinchStartMatrix: {
           a: pinchStartMatrixRef.current.a.toFixed(4),
           b: pinchStartMatrixRef.current.b.toFixed(4),
           c: pinchStartMatrixRef.current.c.toFixed(4),
@@ -232,13 +237,13 @@ export function usePinchZoom(
           e: pinchStartMatrixRef.current.e.toFixed(4),
           f: pinchStartMatrixRef.current.f.toFixed(4),
         },
-        inverseMatrix: {
-          a: inverseMatrix.a.toFixed(4),
-          b: inverseMatrix.b.toFixed(4),
-          c: inverseMatrix.c.toFixed(4),
-          d: inverseMatrix.d.toFixed(4),
-          e: inverseMatrix.e.toFixed(4),
-          f: inverseMatrix.f.toFixed(4),
+        pinchStartMatrixInverse: {
+          a: pinchStartMatrixInverseRef.current.a.toFixed(4),
+          b: pinchStartMatrixInverseRef.current.b.toFixed(4),
+          c: pinchStartMatrixInverseRef.current.c.toFixed(4),
+          d: pinchStartMatrixInverseRef.current.d.toFixed(4),
+          e: pinchStartMatrixInverseRef.current.e.toFixed(4),
+          f: pinchStartMatrixInverseRef.current.f.toFixed(4),
         },
         nextMatrix: {
           a: newMatrix.a.toFixed(4),
@@ -305,6 +310,7 @@ export function usePinchZoom(
     // ピンチ開始時の記録をクリア
     pinchStartDistanceRef.current = null;
     pinchStartMatrixRef.current = null;
+    pinchStartMatrixInverseRef.current = null;
     pinchStartCenterLocalRef.current = null;
     zoomLayerRectRef.current = null;
     
