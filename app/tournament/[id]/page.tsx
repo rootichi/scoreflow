@@ -434,7 +434,6 @@ export default function TournamentEditPage() {
     
     // ピンチ中またはピンチ終了直後のフレームでは、pan/drag処理を一切発火しない
     if (isPinching) {
-      console.log("[TouchMove] isPinching is true, skipping pan/drag processing");
       setEventSource("touch-move-skip-pinching");
       return;
     }
@@ -829,12 +828,11 @@ export default function TournamentEditPage() {
     setPointerCount(e.touches.length);
     setEventSource("touch-end");
 
-    console.log("[TouchEnd] ===== TouchEndイベント =====");
-    console.log("[TouchEnd] Event: touch-end");
-    console.log("[TouchEnd] pointerCount:", e.touches.length);
-    console.log("[TouchEnd] isPinching (before):", isPinching);
-    console.log("[TouchEnd] transformString:", transformString);
-    console.log("[TouchEnd] transformOrigin:", transformOrigin);
+    // ピンチ終了時のみ詳細ログを出力
+    if (e.touches.length < 2 && isPinching) {
+      console.log("[TouchEnd] ===== ピンチ終了時のTouchEnd =====");
+      console.log("[TouchEnd] pointerCount:", e.touches.length, "isPinching:", isPinching);
+    }
 
     // ピンチ操作が終了した場合、リセット
     if (e.touches.length < 2) {
@@ -851,20 +849,16 @@ export default function TournamentEditPage() {
       // ピンチ終了フレームでは、pan/drag関連の処理を一切発火しない
       // 重要: ピンチ終了フレームは「無操作フレーム」として扱う
       console.log("[TouchEnd] Pinch end frame, skipping pan/drag processing");
-      console.log("[TouchEnd] isPinching (after handlePinchEnd):", isPinching);
       // タッチ開始位置をリセット（これは安全）
       setTouchStartPos(null);
-      console.log("[TouchEnd] =====================");
       return;
     }
 
     // ピンチ中は、pan/drag関連の処理を一切発火しない
     if (isPinching) {
-      console.log("[TouchEnd] isPinching is true, skipping pan/drag processing");
       setEventSource("touch-end-skip-pinching");
       // タッチ開始位置をリセット（これは安全）
       setTouchStartPos(null);
-      console.log("[TouchEnd] =====================");
       return;
     }
     

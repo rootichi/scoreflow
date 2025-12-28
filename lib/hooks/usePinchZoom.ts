@@ -77,8 +77,6 @@ export function usePinchZoom(
       const centerXViewport = (touch1.clientX + touch2.clientX) / 2;
       const centerYViewport = (touch1.clientY + touch2.clientY) / 2;
 
-      console.log("[PinchStart] Center point (viewport):", { x: centerXViewport, y: centerYViewport });
-
       // CanvasZoomLayerの位置とサイズを取得（ピンチ開始時にキャッシュ）
       const zoomLayerRect = canvasZoomLayerRef.current.getBoundingClientRect();
       zoomLayerRectRef.current = {
@@ -95,14 +93,6 @@ export function usePinchZoom(
       // ピンチ中心をCanvasZoomLayerのローカル座標に変換（キャッシュされたrectを使用）
       const centerXLocal = centerXViewport - zoomLayerRectRef.current.left;
       const centerYLocal = centerYViewport - zoomLayerRectRef.current.top;
-
-      console.log("[PinchStart] Center point (local):", { x: centerXLocal, y: centerYLocal });
-      console.log("[PinchStart] ZoomLayer rect:", {
-        left: zoomLayerRect.left,
-        top: zoomLayerRect.top,
-        width: zoomLayerRect.width,
-        height: zoomLayerRect.height,
-      });
 
       // ピンチ中フラグを設定
       setIsPinching(true);
@@ -124,22 +114,8 @@ export function usePinchZoom(
       const translateX = currentMatrix.e;
       const translateY = currentMatrix.f;
       
-      console.log("[PinchStart] isPinching: true");
-      console.log("[PinchStart] pointerCount: 2");
-      console.log("[PinchStart] scale:", scale);
-      console.log("[PinchStart] translateX:", translateX);
-      console.log("[PinchStart] translateY:", translateY);
-      console.log("[PinchStart] transform-origin:", transformOrigin);
-      console.log("[PinchStart] Base matrix (saved):", {
-        a: currentMatrix.a,
-        b: currentMatrix.b,
-        c: currentMatrix.c,
-        d: currentMatrix.d,
-        e: currentMatrix.e,
-        f: currentMatrix.f,
-      });
-      console.log("[PinchStart] Base scale distance:", distance);
-      console.log("[PinchStart] Base pinch center (local):", { x: centerXLocal, y: centerYLocal });
+      console.log("[PinchStart] scale:", scale, "translate:", { x: translateX, y: translateY });
+      console.log("[PinchStart] pinch center (local):", { x: centerXLocal, y: centerYLocal });
       console.log("[PinchStart] =====================");
     },
     [transformMatrix, canvasZoomLayerRef]
@@ -164,12 +140,6 @@ export function usePinchZoom(
         return;
       }
 
-      console.log("[PinchMove] ===== ピンチ移動 =====");
-      console.log("[PinchMove] Touch points (viewport):", {
-        touch1: { x: touch1.clientX, y: touch1.clientY },
-        touch2: { x: touch2.clientX, y: touch2.clientY },
-      });
-
       const currentDistance = Math.sqrt(
         Math.pow(touch2.clientX - touch1.clientX, 2) +
           Math.pow(touch2.clientY - touch1.clientY, 2)
@@ -179,21 +149,11 @@ export function usePinchZoom(
       const currentCenterXViewport = (touch1.clientX + touch2.clientX) / 2;
       const currentCenterYViewport = (touch1.clientY + touch2.clientY) / 2;
 
-      console.log("[PinchMove] Center point (viewport):", { x: currentCenterXViewport, y: currentCenterYViewport });
-      console.log("[PinchMove] Start center point (local):", pinchStartCenterLocalRef.current);
-
       // スケール比を計算（scaleRatio）
       const scaleRatio = currentDistance / pinchStartDistanceRef.current;
-      
-      console.log("[PinchMove] Scale ratio:", scaleRatio);
-      console.log("[PinchMove] Scale ratio - 1:", scaleRatio - 1);
-      console.log("[PinchMove] |Scale ratio - 1|:", Math.abs(scaleRatio - 1));
 
       // スケール比が1.0に近い場合は行列を更新しない（必須のガード処理）
       if (Math.abs(scaleRatio - 1) <= SCALE_EPSILON) {
-        console.log("[PinchMove] Scale ratio is 1.0 (within epsilon), skipping matrix update");
-        console.log("[PinchMove] Matrix updated: false");
-        console.log("[PinchMove] =====================");
         return;
       }
 
@@ -206,9 +166,6 @@ export function usePinchZoom(
       // これにより、レイアウト変更（useScrollPreventionなど）による影響を防ぐ
       const currentCenterXLocal = currentCenterXViewport - zoomLayerRectRef.current.left;
       const currentCenterYLocal = currentCenterYViewport - zoomLayerRectRef.current.top;
-      
-      console.log("[PinchMove] Current center point (local):", { x: currentCenterXLocal, y: currentCenterYLocal });
-      console.log("[PinchMove] Base center point (local):", pinchStartCenterLocalRef.current);
 
       // ピンチ中心を基準にしたズーム行列を合成
       // T(cx, cy) → S(scaleRatio) → T(-cx, -cy)
@@ -243,28 +200,11 @@ export function usePinchZoom(
       const translateX = newMatrix.e;
       const translateY = newMatrix.f;
       
-      console.log("[PinchMove] isPinching: true");
-      console.log("[PinchMove] pointerCount: 2");
-      console.log("[PinchMove] Matrix updated: true");
-      console.log("[PinchMove] Event: pinch-move");
-      console.log("[PinchMove] scale:", scale);
-      console.log("[PinchMove] translateX:", translateX);
-      console.log("[PinchMove] translateY:", translateY);
-      console.log("[PinchMove] transform-origin:", transformOrigin);
-      console.log("[PinchMove] New transform matrix:", {
-        a: newMatrix.a,
-        b: newMatrix.b,
-        c: newMatrix.c,
-        d: newMatrix.d,
-        e: newMatrix.e,
-        f: newMatrix.f,
-      });
+      console.log("[PinchMove] scale:", scale, "translate:", { x: translateX, y: translateY }, "scaleRatio:", scaleRatio.toFixed(3));
       
       // eventSourceを設定してからtransformMatrixを更新
       currentEventSourceRef.current = "pinch-move";
       setTransformMatrix(newMatrix);
-      
-      console.log("[PinchMove] =====================");
     },
     [canvasZoomLayerRef, isPinching, transformMatrix]
   );
@@ -281,23 +221,8 @@ export function usePinchZoom(
     const translateY = transformMatrix.f;
     
     console.log("[PinchEnd] ===== ピンチ終了 =====");
-    console.log("[PinchEnd] isPinching: false (setting)");
-    console.log("[PinchEnd] pointerCount: < 2");
-    console.log("[PinchEnd] scale:", scale);
-    console.log("[PinchEnd] translateX:", translateX);
-    console.log("[PinchEnd] translateY:", translateY);
-    console.log("[PinchEnd] transform-origin:", transformOrigin);
-    console.log("[PinchEnd] Transform matrix (unchanged):", {
-      a: transformMatrix.a,
-      b: transformMatrix.b,
-      c: transformMatrix.c,
-      d: transformMatrix.d,
-      e: transformMatrix.e,
-      f: transformMatrix.f,
-    });
-    console.log("[PinchEnd] Pinch center (local):", pinchStartCenterLocalRef.current);
-    console.log("[PinchEnd] Matrix updated: false");
-    console.log("[PinchEnd] Event: pinch-end (no-op frame)");
+    console.log("[PinchEnd] scale:", scale, "translate:", { x: translateX, y: translateY });
+    console.log("[PinchEnd] Matrix updated: false (no-op)");
     
     // eventSourceを設定（transformMatrixは更新しないが、ログには記録）
     currentEventSourceRef.current = "pinch-end";
@@ -331,27 +256,48 @@ export function usePinchZoom(
   }, [transformMatrix.a, transformMatrix.b, transformMatrix.c, transformMatrix.d, transformMatrix.e, transformMatrix.f]);
 
   // フレーム単位ログ出力関数
+  // 重要: ピンチ操作中またはピンチ関連イベントがある場合のみログ出力
   const logFrame = useCallback(() => {
-    const scale = Math.sqrt(transformMatrix.a * transformMatrix.a + transformMatrix.b * transformMatrix.b);
-    const translateX = transformMatrix.e;
-    const translateY = transformMatrix.f;
+    const eventSource = currentEventSourceRef.current;
     
-    const log: FrameLog = {
-      frameId: frameIdRef.current++,
-      timestamp: performance.now(),
-      eventSource: currentEventSourceRef.current,
-      isPinching: isPinching,
-      pointerCount: pointerCountRef.current,
-      scale: scale,
-      translateX: translateX,
-      translateY: translateY,
-      pinchCenterX: pinchStartCenterLocalRef.current?.x ?? null,
-      pinchCenterY: pinchStartCenterLocalRef.current?.y ?? null,
-      transformOrigin: transformOrigin,
-      matrix: transformString,
-    };
+    // ログを出力する条件:
+    // 1. ピンチ中（isPinching === true）
+    // 2. ピンチ関連のイベント（pinch-start, pinch-move, pinch-end, touch-end）
+    // 3. transformが更新された場合（eventSource !== "none"）
+    const shouldLog = 
+      isPinching || 
+      eventSource === "pinch-start" || 
+      eventSource === "pinch-move" || 
+      eventSource === "pinch-end" || 
+      eventSource === "touch-end" ||
+      eventSource === "touch-end-after-pinch" ||
+      (eventSource !== "none" && eventSource.startsWith("touch-"));
     
-    console.log(`[Frame ${log.frameId}]`, log);
+    if (shouldLog) {
+      const scale = Math.sqrt(transformMatrix.a * transformMatrix.a + transformMatrix.b * transformMatrix.b);
+      const translateX = transformMatrix.e;
+      const translateY = transformMatrix.f;
+      
+      const log: FrameLog = {
+        frameId: frameIdRef.current++,
+        timestamp: performance.now(),
+        eventSource: eventSource,
+        isPinching: isPinching,
+        pointerCount: pointerCountRef.current,
+        scale: scale,
+        translateX: translateX,
+        translateY: translateY,
+        pinchCenterX: pinchStartCenterLocalRef.current?.x ?? null,
+        pinchCenterY: pinchStartCenterLocalRef.current?.y ?? null,
+        transformOrigin: transformOrigin,
+        matrix: transformString,
+      };
+      
+      console.log(`[Frame ${log.frameId}]`, log);
+    } else {
+      // ログを出力しない場合でもフレームIDはインクリメント（連続性を保つ）
+      frameIdRef.current++;
+    }
     
     // 次のフレームでログを出力
     animationFrameIdRef.current = requestAnimationFrame(logFrame);
@@ -371,7 +317,13 @@ export function usePinchZoom(
   }, [logFrame]);
 
   // デバッグ: transformStringが再計算されるたびにログ出力
+  // 重要: ピンチ操作中またはピンチ終了直後のみログ出力
   useEffect(() => {
+    // ピンチ操作中またはピンチ終了直後のみログ出力
+    if (!isPinching && currentEventSourceRef.current !== "pinch-end" && currentEventSourceRef.current !== "touch-end-after-pinch") {
+      return;
+    }
+    
     const scale = Math.sqrt(transformMatrix.a * transformMatrix.a + transformMatrix.b * transformMatrix.b);
     const translateX = transformMatrix.e;
     const translateY = transformMatrix.f;
