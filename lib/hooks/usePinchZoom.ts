@@ -223,15 +223,33 @@ export function usePinchZoom(
         .multiply(pinchStartMatrixRef.current);
       
       // デバッグ: 理論値と実際の値を比較
-      const theoreticalTx = cx * (1 - scaleRatio);
-      const theoreticalTy = cy * (1 - scaleRatio);
+      // ピンチイン（scaleRatio < 1）とピンチアウト（scaleRatio > 1）の両方で正しく動作することを確認
+      // baseMatrixが既にスケールされている場合でも、baseMatrixを基準にした計算が正しいことを確認
+      const baseScale = Math.sqrt(
+        pinchStartMatrixRef.current.a * pinchStartMatrixRef.current.a +
+        pinchStartMatrixRef.current.b * pinchStartMatrixRef.current.b
+      );
+      const baseTx = pinchStartMatrixRef.current.e;
+      const baseTy = pinchStartMatrixRef.current.f;
+      
+      // 理論値: baseMatrixのtranslate成分 + ピンチ中心を基準にしたズームによるtranslate成分
+      // ピンチ中心を基準にしたズーム: T(cx, cy) * S(scaleRatio) * T(-cx, -cy)
+      // この変換をbaseMatrixに適用した場合のtranslate成分:
+      // newTx = baseTx + cx * (1 - scaleRatio) * baseScale
+      // newTy = baseTy + cy * (1 - scaleRatio) * baseScale
+      const theoreticalTx = baseTx + cx * (1 - scaleRatio) * baseScale;
+      const theoreticalTy = baseTy + cy * (1 - scaleRatio) * baseScale;
       const actualTx = newMatrix.e;
       const actualTy = newMatrix.f;
       
       console.log("[PinchMove] Matrix composition debug:", {
         scaleRatio: scaleRatio.toFixed(6),
+        pinchType: scaleRatio > 1 ? "OUT" : "IN",
         cx: cx.toFixed(2),
         cy: cy.toFixed(2),
+        baseScale: baseScale.toFixed(4),
+        baseTx: baseTx.toFixed(4),
+        baseTy: baseTy.toFixed(4),
         theoreticalTx: theoreticalTx.toFixed(4),
         theoreticalTy: theoreticalTy.toFixed(4),
         actualTx: actualTx.toFixed(4),
