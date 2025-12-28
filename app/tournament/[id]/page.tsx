@@ -847,12 +847,6 @@ export default function TournamentEditPage() {
     setPointerCount(e.touches.length);
     setEventSource("touch-end");
 
-    // ピンチ終了時のみ詳細ログを出力
-    if (e.touches.length < 2 && isPinching) {
-      console.log("[TouchEnd] ===== ピンチ終了時のTouchEnd =====");
-      console.log("[TouchEnd] pointerCount:", e.touches.length, "isPinching:", isPinching);
-    }
-
     // ピンチ操作が終了した場合、リセット
     if (e.touches.length < 2) {
       // ピンチ終了処理（isPinchingをfalseに設定するが、transformMatrixは変更しない）
@@ -871,7 +865,6 @@ export default function TournamentEditPage() {
       
       // ピンチ終了フレームでは、pan/drag関連の処理を一切発火しない
       // 重要: ピンチ終了フレームは「無操作フレーム」として扱う
-      console.log("[TouchEnd] Pinch end frame, skipping pan/drag processing");
       // タッチ開始位置をリセット（これは安全）
       setTouchStartPos(null);
       return;
@@ -1119,8 +1112,7 @@ export default function TournamentEditPage() {
                   position: "relative",
                 }}
                 onTransitionEnd={() => {
-                  // デバッグ: トランジション終了時（存在する場合）
-                  console.log("[CanvasZoomLayer] Transition ended");
+                  // トランジション終了時（存在する場合）
                 }}
               >
                 {/* キャンバス要素（画像とSVGを含む） */}
