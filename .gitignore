@@ -35,9 +35,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# ビルド時に自動生成されるファイル
-lib/build-time.ts
-
 
 
 
