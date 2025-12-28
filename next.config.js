@@ -10,11 +10,6 @@ const nextConfig = {
     config.resolve.alias.canvas = false;
     return config;
   },
-  // ビルド時にデプロイ時刻を環境変数として設定
-  // NEXT_PUBLIC_プレフィックスを付けることで、クライアント側でもアクセス可能
-  env: {
-    NEXT_PUBLIC_DEPLOY_TIME: new Date().toISOString(),
-  },
 }
 
 module.exports = nextConfig
