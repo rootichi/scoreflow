@@ -844,6 +844,10 @@ export default function TournamentEditPage() {
       requestAnimationFrame(() => {
         setPinchTouchPoints(null);
         setEventSource("touch-end-after-pinch");
+        // 次のフレームでeventSourceをリセット（無限ログを防ぐ）
+        requestAnimationFrame(() => {
+          setEventSource("none");
+        });
       });
       
       // ピンチ終了フレームでは、pan/drag関連の処理を一切発火しない

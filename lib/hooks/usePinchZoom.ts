@@ -255,23 +255,47 @@ export function usePinchZoom(
     return `matrix(${transformMatrix.a}, ${transformMatrix.b}, ${transformMatrix.c}, ${transformMatrix.d}, ${transformMatrix.e}, ${transformMatrix.f})`;
   }, [transformMatrix.a, transformMatrix.b, transformMatrix.c, transformMatrix.d, transformMatrix.e, transformMatrix.f]);
 
+  // ピンチ終了後のログ出力を制限するためのref
+  const pinchEndLogCountRef = useRef<number>(0);
+  const MAX_PINCH_END_LOGS = 3; // ピンチ終了後、最大3フレームまでログ出力
+
   // フレーム単位ログ出力関数
-  // 重要: ピンチ操作中またはピンチ関連イベントがある場合のみログ出力
+  // 重要: ピンチ操作中またはピンチ終了直後の数フレームのみログ出力
   const logFrame = useCallback(() => {
     const eventSource = currentEventSourceRef.current;
     
     // ログを出力する条件:
     // 1. ピンチ中（isPinching === true）
-    // 2. ピンチ関連のイベント（pinch-start, pinch-move, pinch-end, touch-end）
-    // 3. transformが更新された場合（eventSource !== "none"）
-    const shouldLog = 
-      isPinching || 
-      eventSource === "pinch-start" || 
-      eventSource === "pinch-move" || 
-      eventSource === "pinch-end" || 
-      eventSource === "touch-end" ||
-      eventSource === "touch-end-after-pinch" ||
-      (eventSource !== "none" && eventSource.startsWith("touch-"));
+    // 2. ピンチ関連のイベント（pinch-start, pinch-move, pinch-end）
+    // 3. ピンチ終了直後の数フレームのみ（touch-end-after-pinchは最初の数フレームのみ）
+    let shouldLog = false;
+    
+    if (isPinching) {
+      // ピンチ中は常にログ出力
+      shouldLog = true;
+      pinchEndLogCountRef.current = 0; // リセット
+    } else if (eventSource === "pinch-start" || eventSource === "pinch-move" || eventSource === "pinch-end") {
+      // ピンチ関連イベントは常にログ出力
+      shouldLog = true;
+      pinchEndLogCountRef.current = 0; // リセット
+    } else if (eventSource === "touch-end-after-pinch") {
+      // ピンチ終了直後の数フレームのみログ出力
+      if (pinchEndLogCountRef.current < MAX_PINCH_END_LOGS) {
+        shouldLog = true;
+        pinchEndLogCountRef.current++;
+      } else {
+        // 最大フレーム数に達したらeventSourceをリセット
+        currentEventSourceRef.current = "none";
+        shouldLog = false;
+      }
+    } else if (eventSource === "touch-end" && isPinching === false) {
+      // touch-endはピンチ終了時のみ（1フレームのみ）
+      shouldLog = true;
+      // 次のフレームでeventSourceをリセット
+      requestAnimationFrame(() => {
+        currentEventSourceRef.current = "none";
+      });
+    }
     
     if (shouldLog) {
       const scale = Math.sqrt(transformMatrix.a * transformMatrix.a + transformMatrix.b * transformMatrix.b);
