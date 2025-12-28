@@ -357,15 +357,33 @@ export function usePinchZoom(
         Math.abs(startMatrix.e) < 0.0001 &&
         Math.abs(startMatrix.f) < 0.0001;
       
+      // 理論値の計算
+      // 行列合成: baseMatrix * T(cx, cy) * S(scaleRatio) * T(-cx, -cy)
+      // 
+      // T(cx, cy) * S(scaleRatio) * T(-cx, -cy) の結果:
+      // - scale: scaleRatio
+      // - translate: (cx * (1 - scaleRatio), cy * (1 - scaleRatio))
+      // 
+      // これはworld座標系での値です。
+      // baseMatrixが既にスケール/トランスレートされている場合、
+      // world座標でのtranslateをscreen座標に変換する必要があります。
+      // 
+      // baseMatrixが matrix(s, 0, 0, s, tx, ty) の場合:
+      // - world座標 (cx, cy) でのtranslate (cx * (1 - scaleRatio), cy * (1 - scaleRatio))
+      // - をscreen座標に変換: (cx * (1 - scaleRatio) * s, cy * (1 - scaleRatio) * s)
+      // - 最終的なscreen座標のtranslate: (tx + cx * (1 - scaleRatio) * s, ty + cy * (1 - scaleRatio) * s)
       let expectedTx: number;
       let expectedTy: number;
       
       if (isIdentity) {
+        // identity行列の場合: world座標 = screen座標
         expectedTx = worldPoint.x * (1 - scaleRatio);
         expectedTy = worldPoint.y * (1 - scaleRatio);
       } else {
+        // baseMatrixが既にスケール/トランスレートされている場合
         const baseTx = startMatrix.e;
         const baseTy = startMatrix.f;
+        // world座標でのtranslateをscreen座標に変換
         expectedTx = baseTx + worldPoint.x * (1 - scaleRatio) * startScale;
         expectedTy = baseTy + worldPoint.y * (1 - scaleRatio) * startScale;
       }
@@ -375,47 +393,33 @@ export function usePinchZoom(
       const diffTx = actualTx - expectedTx;
       const diffTy = actualTy - expectedTy;
       
-      console.log("[PinchEnd] ===== ピンチ終了 =====", {
-        scaleRatio: scaleRatio.toFixed(6),
-        pinchType: scaleRatio > 1 ? "OUT" : "IN",
-        isIdentity: isIdentity,
-        pinchCenterScreen: {
-          x: startCenter.x.toFixed(2),
-          y: startCenter.y.toFixed(2),
-        },
-        pinchCenterWorld: {
-          x: worldPoint.x.toFixed(2),
-          y: worldPoint.y.toFixed(2),
-        },
-        startMatrix: {
-          a: startMatrix.a.toFixed(4),
-          b: startMatrix.b.toFixed(4),
-          c: startMatrix.c.toFixed(4),
-          d: startMatrix.d.toFixed(4),
-          e: startMatrix.e.toFixed(4),
-          f: startMatrix.f.toFixed(4),
-        },
-        finalMatrix: {
-          a: finalMatrix.a.toFixed(4),
-          b: finalMatrix.b.toFixed(4),
-          c: finalMatrix.c.toFixed(4),
-          d: finalMatrix.d.toFixed(4),
-          e: finalMatrix.e.toFixed(4),
-          f: finalMatrix.f.toFixed(4),
-        },
-        expectedTranslate: {
-          x: expectedTx.toFixed(4),
-          y: expectedTy.toFixed(4),
-        },
-        actualTranslate: {
-          x: actualTx.toFixed(4),
-          y: actualTy.toFixed(4),
-        },
-        diffTranslate: {
-          x: diffTx.toFixed(4),
-          y: diffTy.toFixed(4),
-        },
+      // ログを詳細に出力（数値を展開して確認できるように）
+      console.log("[PinchEnd] ===== ピンチ終了 =====");
+      console.log("[PinchEnd] scaleRatio:", scaleRatio.toFixed(6));
+      console.log("[PinchEnd] pinchType:", scaleRatio > 1 ? "OUT" : "IN");
+      console.log("[PinchEnd] isIdentity:", isIdentity);
+      console.log("[PinchEnd] pinchCenterScreen:", { x: startCenter.x.toFixed(2), y: startCenter.y.toFixed(2) });
+      console.log("[PinchEnd] pinchCenterWorld:", { x: worldPoint.x.toFixed(2), y: worldPoint.y.toFixed(2) });
+      console.log("[PinchEnd] startMatrix:", {
+        a: startMatrix.a.toFixed(4),
+        b: startMatrix.b.toFixed(4),
+        c: startMatrix.c.toFixed(4),
+        d: startMatrix.d.toFixed(4),
+        e: startMatrix.e.toFixed(4),
+        f: startMatrix.f.toFixed(4),
       });
+      console.log("[PinchEnd] finalMatrix:", {
+        a: finalMatrix.a.toFixed(4),
+        b: finalMatrix.b.toFixed(4),
+        c: finalMatrix.c.toFixed(4),
+        d: finalMatrix.d.toFixed(4),
+        e: finalMatrix.e.toFixed(4),
+        f: finalMatrix.f.toFixed(4),
+      });
+      console.log("[PinchEnd] expectedTranslate:", { x: expectedTx.toFixed(4), y: expectedTy.toFixed(4) });
+      console.log("[PinchEnd] actualTranslate:", { x: actualTx.toFixed(4), y: actualTy.toFixed(4) });
+      console.log("[PinchEnd] diffTranslate:", { x: diffTx.toFixed(4), y: diffTy.toFixed(4) });
+      console.log("[PinchEnd] =====================");
     }
     
     // eventSourceを設定（次のフレームでログ出力）
