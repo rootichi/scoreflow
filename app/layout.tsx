@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import "./globals.css";
 import { VersionBadge } from "@/components/common/VersionBadge";
+import { ErudaLoader } from "@/components/common/ErudaLoader";
 
 export const metadata: Metadata = {
   title: "ScoreFlow - 大会進行状況リアルタイム発信",
@@ -20,16 +20,7 @@ export default function RootLayout({
   return (
     <html lang="ja" style={{ touchAction: "manipulation" }}>
       <body style={{ touchAction: "manipulation" }}>
-        {/* Eruda: モバイル用デベロッパーツール */}
-        <Script
-          src="https://cdn.jsdelivr.net/npm/eruda"
-          strategy="afterInteractive"
-          onLoad={() => {
-            if (typeof window !== "undefined" && (window as any).eruda) {
-              (window as any).eruda.init();
-            }
-          }}
-        />
+        <ErudaLoader />
         {children}
         <VersionBadge />
       </body>
