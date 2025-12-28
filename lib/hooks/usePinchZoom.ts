@@ -142,13 +142,8 @@ export function usePinchZoom(
           y: centerYLocal.toFixed(2),
         },
         pivot: {
-<<<<<<< HEAD
           x: pivotPoint.x.toFixed(4),
           y: pivotPoint.y.toFixed(4),
-=======
-          x: pinchCenterTransformed.x.toFixed(4),
-          y: pinchCenterTransformed.y.toFixed(4),
->>>>>>> 4031ae6 (fix: ピンチ開始時の中心を不動点として固定)
         },
         説明: "ピンチ開始時の中心が不動点として機能します",
         pinchStartMatrix: {
@@ -298,21 +293,22 @@ export function usePinchZoom(
         pinchCenterDiff.x * pinchCenterDiff.x + pinchCenterDiff.y * pinchCenterDiff.y
       );
       
+      // isIdentityの判定
+      const isIdentity = 
+        Math.abs(startMatrix.a - 1) < 0.0001 &&
+        Math.abs(startMatrix.b) < 0.0001 &&
+        Math.abs(startMatrix.c) < 0.0001 &&
+        Math.abs(startMatrix.d - 1) < 0.0001 &&
+        Math.abs(startMatrix.e) < 0.0001 &&
+        Math.abs(startMatrix.f) < 0.0001;
+      
       // ログを詳細に出力（数値を展開して確認できるように）
       console.log("[PinchEnd] ===== ピンチ終了 =====");
       console.log("[PinchEnd] scaleRatio:", scaleRatio.toFixed(6));
       console.log("[PinchEnd] pinchType:", scaleRatio > 1 ? "OUT" : "IN");
-<<<<<<< HEAD
-      console.log("[PinchEnd] pinchStartCenter (screen座標):", { x: startCenter.x.toFixed(2), y: startCenter.y.toFixed(2) });
-      console.log("[PinchEnd] pivot (startMatrix変換後):", { x: pivotX.toFixed(4), y: pivotY.toFixed(4) });
-=======
       console.log("[PinchEnd] isIdentity:", isIdentity);
       console.log("[PinchEnd] pinchStartCenter (screen座標):", { x: startCenter.x.toFixed(2), y: startCenter.y.toFixed(2) });
-      console.log("[PinchEnd] pivot (startMatrix変換後):", {
-        x: pinchCenterStart.x.toFixed(4),
-        y: pinchCenterStart.y.toFixed(4),
-      });
->>>>>>> 4031ae6 (fix: ピンチ開始時の中心を不動点として固定)
+      console.log("[PinchEnd] pivot (startMatrix変換後):", { x: pivotX.toFixed(4), y: pivotY.toFixed(4) });
       console.log("[PinchEnd] startMatrix:", {
         a: startMatrix.a.toFixed(4),
         b: startMatrix.b.toFixed(4),
