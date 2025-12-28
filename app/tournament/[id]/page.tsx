@@ -86,33 +86,16 @@ export default function TournamentEditPage() {
     transformString,
     transformOrigin,
     isPinching,
+    isPanning,
     handlePinchStart,
     handlePinchMove,
     handlePinchEnd,
-    setEventSource,
-    setPointerCount,
+    handlePanStart,
+    handlePanMove,
+    handlePanEnd,
   } = usePinchZoom(imageContainerRef, initialImageSizeRef, canvasRef, canvasZoomLayerRef);
-  // ピンチ中はスクロール制御を行わない（レイアウト変更を防ぐため）
-  useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark, editMode.canEdit, isPinching);
-  
-  // 重要: transformの適用経路を1系統に統一
-  // ピンチ中はhandlePinchMoveでDOMに直接適用される（Reactのrender/re-renderを経由しない）
-  // ピンチ中でない場合のみ、Reactのrender/re-renderでtransformを適用
-  useEffect(() => {
-    if (!canvasZoomLayerRef.current) {
-      return;
-    }
-    
-    // ピンチ中は何もしない（handlePinchMoveでDOMに直接適用済み）
-    if (isPinching) {
-      return;
-    }
-    
-    // ピンチ中でない場合のみ、Reactのrender/re-renderでtransformを適用
-    // 初期化時やピンチ終了後のrender/re-renderでtransformを同期
-    canvasZoomLayerRef.current.style.transform = transformString;
-    canvasZoomLayerRef.current.style.transformOrigin = transformOrigin;
-  }, [transformString, transformOrigin, isPinching]);
+  // ピンチ中またはパン中はスクロール制御を行わない（レイアウト変更を防ぐため）
+  useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark, editMode.canEdit, isPinching || isPanning);
   
   // 編集モードと選択状態を同期
   useEffect(() => {
@@ -422,16 +405,12 @@ export default function TournamentEditPage() {
   }, [handleCanvasMove]);
 
   const handleCanvasTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    // pointerCountを更新
-    setPointerCount(e.touches.length);
-    
     // 複数のタッチポイントがある場合（ピンチ操作）
     if (e.touches.length > 1) {
       // 編集操作中はピンチ操作を無効化
       if (isDrawing || draggingHandle || draggingMark) {
         e.preventDefault();
         e.stopPropagation();
-        setEventSource("touch-move-skip");
         return;
       }
       
@@ -451,17 +430,19 @@ export default function TournamentEditPage() {
       return;
     }
     
-    // ピンチ中またはピンチ終了直後のフレームでは、pan/drag処理を一切発火しない
+    // ピンチ中はパン/ドラッグ処理を一切発火しない
     if (isPinching) {
-      setEventSource("touch-move-skip-pinching");
       return;
     }
     
-    setEventSource("touch-move-pan");
-    
-    // パンモードで、編集操作中でない場合は、ネイティブ処理に委譲
+    // パンモードで、編集操作中でない場合はパン操作を処理
     if (editMode.canPan() && !isDrawing && !draggingHandle && !draggingMark && !editMode.isObjectSelected) {
-      // ネイティブスクロールを許可（何も処理しない）
+      const touch = e.touches[0];
+      if (isPanning) {
+        handlePanMove(touch.clientX, touch.clientY);
+        e.preventDefault();
+        e.stopPropagation();
+      }
       return;
     }
     
@@ -492,7 +473,7 @@ export default function TournamentEditPage() {
       // オブジェクトが選択されていない場合はパン操作を許可
       // preventDefaultしない（パン操作を許可）
     }
-  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove, touchGestures, editMode, handlePinchMove, isPinching, setEventSource, setPointerCount]);
+  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove, touchGestures, editMode, handlePinchMove, handlePanMove, isPinching, isPanning]);
 
   // スコア追加の共通処理
   const handleAddScore = useCallback(async (coords: { x: number; y: number }) => {
@@ -702,9 +683,13 @@ export default function TournamentEditPage() {
       return;
     }
     
-    // パンモードで、ライン追加モードでもない場合は、ネイティブ処理に委譲
-    if (editMode.canPan() && mode !== "line" && !isDrawing && !draggingHandle && !draggingMark) {
-      // ネイティブスクロールを許可（何も処理しない）
+    // パンモードで、編集操作中でない場合はパン操作を開始
+    if (editMode.canPan() && mode !== "line" && !isDrawing && !draggingHandle && !draggingMark && !editMode.isObjectSelected) {
+      const touch = e.touches[0];
+      handlePanStart(touch.clientX, touch.clientY);
+      // ネイティブスクロールを無効化（パン操作を処理）
+      e.preventDefault();
+      e.stopPropagation();
       return;
     }
     
@@ -843,42 +828,33 @@ export default function TournamentEditPage() {
   const handleCanvasTouchEnd = async (e: React.TouchEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
 
-    // pointerCountを更新
-    setPointerCount(e.touches.length);
-    setEventSource("touch-end");
-
     // ピンチ操作が終了した場合、リセット
     if (e.touches.length < 2) {
-      // ピンチ終了処理（isPinchingをfalseに設定するが、transformMatrixは変更しない）
+      // ピンチ終了処理
       handlePinchEnd();
       
-      // 視覚化用のタッチポイントをクリア（requestAnimationFrameで遅延させて再レンダリングのタイミングを調整）
-      // これにより、transformの適用タイミングと再レンダリングのタイミングを分離
+      // 視覚化用のタッチポイントをクリア
       requestAnimationFrame(() => {
         setPinchTouchPoints(null);
-        setEventSource("touch-end-after-pinch");
-        // 次のフレームでeventSourceをリセット（無限ログを防ぐ）
-        requestAnimationFrame(() => {
-          setEventSource("none");
-        });
       });
       
       // ピンチ終了フレームでは、pan/drag関連の処理を一切発火しない
-      // 重要: ピンチ終了フレームは「無操作フレーム」として扱う
-      // タッチ開始位置をリセット（これは安全）
       setTouchStartPos(null);
       return;
     }
 
     // ピンチ中は、pan/drag関連の処理を一切発火しない
     if (isPinching) {
-      setEventSource("touch-end-skip-pinching");
-      // タッチ開始位置をリセット（これは安全）
       setTouchStartPos(null);
       return;
     }
     
-    setEventSource("touch-end-pan");
+    // パン操作が終了した場合
+    if (isPanning) {
+      handlePanEnd();
+      setTouchStartPos(null);
+      return;
+    }
 
     // タッチジェスチャーを処理
     touchGestures.handleTouchEnd(e);
