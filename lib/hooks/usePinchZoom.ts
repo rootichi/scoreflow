@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 /**
  * ピンチズーム用のカスタムフック
@@ -80,8 +80,16 @@ export function usePinchZoom(
       pinchStartDistanceRef.current = distance; // baseScaleDistance
       pinchStartCenterLocalRef.current = { x: centerXLocal, y: centerYLocal }; // basePinchCenter
 
+      const scale = Math.sqrt(currentMatrix.a * currentMatrix.a + currentMatrix.b * currentMatrix.b);
+      const translateX = currentMatrix.e;
+      const translateY = currentMatrix.f;
+      
       console.log("[PinchStart] isPinching: true");
       console.log("[PinchStart] pointerCount: 2");
+      console.log("[PinchStart] scale:", scale);
+      console.log("[PinchStart] translateX:", translateX);
+      console.log("[PinchStart] translateY:", translateY);
+      console.log("[PinchStart] transform-origin:", transformOrigin);
       console.log("[PinchStart] Base matrix (saved):", {
         a: currentMatrix.a,
         b: currentMatrix.b,
@@ -190,10 +198,18 @@ export function usePinchZoom(
         .multiply(scaleMatrix)
         .multiply(translateBack);
       
+      const scale = Math.sqrt(newMatrix.a * newMatrix.a + newMatrix.b * newMatrix.b);
+      const translateX = newMatrix.e;
+      const translateY = newMatrix.f;
+      
       console.log("[PinchMove] isPinching: true");
       console.log("[PinchMove] pointerCount: 2");
       console.log("[PinchMove] Matrix updated: true");
       console.log("[PinchMove] Event: pinch-move");
+      console.log("[PinchMove] scale:", scale);
+      console.log("[PinchMove] translateX:", translateX);
+      console.log("[PinchMove] translateY:", translateY);
+      console.log("[PinchMove] transform-origin:", transformOrigin);
       console.log("[PinchMove] New transform matrix:", {
         a: newMatrix.a,
         b: newMatrix.b,
@@ -217,9 +233,17 @@ export function usePinchZoom(
    * transformMatrixを一切更新しない、再適用しない、正規化しない
    */
   const handlePinchEnd = useCallback(() => {
+    const scale = Math.sqrt(transformMatrix.a * transformMatrix.a + transformMatrix.b * transformMatrix.b);
+    const translateX = transformMatrix.e;
+    const translateY = transformMatrix.f;
+    
     console.log("[PinchEnd] ===== ピンチ終了 =====");
     console.log("[PinchEnd] isPinching: false (setting)");
     console.log("[PinchEnd] pointerCount: < 2");
+    console.log("[PinchEnd] scale:", scale);
+    console.log("[PinchEnd] translateX:", translateX);
+    console.log("[PinchEnd] translateY:", translateY);
+    console.log("[PinchEnd] transform-origin:", transformOrigin);
     console.log("[PinchEnd] Transform matrix (unchanged):", {
       a: transformMatrix.a,
       b: transformMatrix.b,
@@ -230,7 +254,7 @@ export function usePinchZoom(
     });
     console.log("[PinchEnd] Pinch center (local):", pinchStartCenterLocalRef.current);
     console.log("[PinchEnd] Matrix updated: false");
-    console.log("[PinchEnd] Event: (none - pinch end frame is no-op)");
+    console.log("[PinchEnd] Event: pinch-end (no-op frame)");
     
     // ピンチ中フラグを解除
     isPinchingRef.current = false;
@@ -250,6 +274,31 @@ export function usePinchZoom(
 
   // transform行列をCSSのmatrix()形式に変換
   const transformString = `matrix(${transformMatrix.a}, ${transformMatrix.b}, ${transformMatrix.c}, ${transformMatrix.d}, ${transformMatrix.e}, ${transformMatrix.f})`;
+
+  // デバッグ: transformStringが再計算されるたびにログ出力
+  useEffect(() => {
+    const scale = Math.sqrt(transformMatrix.a * transformMatrix.a + transformMatrix.b * transformMatrix.b);
+    const translateX = transformMatrix.e;
+    const translateY = transformMatrix.f;
+    
+    console.log("[TransformString] ===== transformString再計算 =====");
+    console.log("[TransformString] Event: render/re-render");
+    console.log("[TransformString] isPinching:", isPinchingRef.current);
+    console.log("[TransformString] scale:", scale);
+    console.log("[TransformString] translateX:", translateX);
+    console.log("[TransformString] translateY:", translateY);
+    console.log("[TransformString] transform-origin:", transformOrigin);
+    console.log("[TransformString] transform matrix:", {
+      a: transformMatrix.a,
+      b: transformMatrix.b,
+      c: transformMatrix.c,
+      d: transformMatrix.d,
+      e: transformMatrix.e,
+      f: transformMatrix.f,
+    });
+    console.log("[TransformString] transformString:", transformString);
+    console.log("[TransformString] =====================");
+  }, [transformMatrix, transformString]);
 
   // isPinchingの現在の状態を返す（ページ側でpan/drag処理を制御するため）
   const isPinching = isPinchingRef.current;

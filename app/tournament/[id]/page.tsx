@@ -815,6 +815,13 @@ export default function TournamentEditPage() {
   const handleCanvasTouchEnd = async (e: React.TouchEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
 
+    console.log("[TouchEnd] ===== TouchEndイベント =====");
+    console.log("[TouchEnd] Event: touch-end");
+    console.log("[TouchEnd] pointerCount:", e.touches.length);
+    console.log("[TouchEnd] isPinching (before):", isPinching);
+    console.log("[TouchEnd] transformString:", transformString);
+    console.log("[TouchEnd] transformOrigin:", transformOrigin);
+
     // ピンチ操作が終了した場合、リセット
     const wasPinching = e.touches.length < 2 && isPinching;
     if (e.touches.length < 2) {
@@ -827,9 +834,11 @@ export default function TournamentEditPage() {
     // 重要: ピンチ終了フレームは「無操作フレーム」として扱う
     if (isPinching || wasPinching) {
       console.log("[TouchEnd] isPinching or pinch end frame, skipping pan/drag processing");
-      console.log("[TouchEnd] pointerCount:", e.touches.length);
+      console.log("[TouchEnd] isPinching (after):", isPinching);
+      console.log("[TouchEnd] wasPinching:", wasPinching);
       // タッチ開始位置をリセット（これは安全）
       setTouchStartPos(null);
+      console.log("[TouchEnd] =====================");
       return;
     }
 
@@ -1063,6 +1072,10 @@ export default function TournamentEditPage() {
                   width: "100%",
                   height: "100%",
                   position: "relative",
+                }}
+                onTransitionEnd={() => {
+                  // デバッグ: トランジション終了時（存在する場合）
+                  console.log("[CanvasZoomLayer] Transition ended");
                 }}
               >
                 {/* キャンバス要素（画像とSVGを含む） */}
