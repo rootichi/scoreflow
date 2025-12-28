@@ -483,8 +483,8 @@ export function usePinchZoom(
     
     // ログを出力する条件:
     // 1. pinch-start / pinch-endが発火したフレーム（1フレームのみ）
-    // 2. pinch-moveでtransformMatrixを更新したフレーム
-    // 3. scaleまたはtranslateX/translateYが前フレームから変化したフレーム
+    // 重要: pinch-move中のログは出力しない（ログが多すぎるため）
+    // 重要: scale/translateの変化検出も無効化（ピンチ中は不要）
     let shouldLog = false;
     
     // pinch-start / pinch-endが発火したフレーム（1フレームのみ）
@@ -493,16 +493,13 @@ export function usePinchZoom(
         shouldLog = true;
       }
     }
-    // pinch-moveでtransformMatrixを更新したフレーム
-    else if (eventSource === "pinch-move") {
-      shouldLog = true;
-    }
-    // scaleまたはtranslateX/translateYが前フレームから変化したフレーム
-    else if (
+    // ピンチ中でない場合のみ、scale/translateの変化を検出
+    // ピンチ中はpinch-start/pinch-endのみログを出力
+    else if (!isPinching && (
       Math.abs(scale - prevScale) > SCALE_EPSILON ||
       Math.abs(translateX - prevTranslateX) > 0.001 ||
       Math.abs(translateY - prevTranslateY) > 0.001
-    ) {
+    )) {
       shouldLog = true;
     }
     
