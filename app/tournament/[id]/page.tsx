@@ -89,6 +89,8 @@ export default function TournamentEditPage() {
     handlePinchStart,
     handlePinchMove,
     handlePinchEnd,
+    setEventSource,
+    setPointerCount,
   } = usePinchZoom(imageContainerRef, initialImageSizeRef, canvasRef, canvasZoomLayerRef);
   // ピンチ中はスクロール制御を行わない（レイアウト変更を防ぐため）
   useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark, editMode.canEdit, isPinching);
@@ -401,12 +403,16 @@ export default function TournamentEditPage() {
   }, [handleCanvasMove]);
 
   const handleCanvasTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    // pointerCountを更新
+    setPointerCount(e.touches.length);
+    
     // 複数のタッチポイントがある場合（ピンチ操作）
     if (e.touches.length > 1) {
       // 編集操作中はピンチ操作を無効化
       if (isDrawing || draggingHandle || draggingMark) {
         e.preventDefault();
         e.stopPropagation();
+        setEventSource("touch-move-skip");
         return;
       }
       
@@ -429,8 +435,11 @@ export default function TournamentEditPage() {
     // ピンチ中またはピンチ終了直後のフレームでは、pan/drag処理を一切発火しない
     if (isPinching) {
       console.log("[TouchMove] isPinching is true, skipping pan/drag processing");
+      setEventSource("touch-move-skip-pinching");
       return;
     }
+    
+    setEventSource("touch-move-pan");
     
     // パンモードで、編集操作中でない場合は、ネイティブ処理に委譲
     if (editMode.canPan() && !isDrawing && !draggingHandle && !draggingMark && !editMode.isObjectSelected) {
@@ -465,7 +474,7 @@ export default function TournamentEditPage() {
       // オブジェクトが選択されていない場合はパン操作を許可
       // preventDefaultしない（パン操作を許可）
     }
-  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove, touchGestures, editMode, handlePinchMove, isPinching]);
+  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove, touchGestures, editMode, handlePinchMove, isPinching, setEventSource, setPointerCount]);
 
   // スコア追加の共通処理
   const handleAddScore = useCallback(async (coords: { x: number; y: number }) => {
@@ -816,6 +825,10 @@ export default function TournamentEditPage() {
   const handleCanvasTouchEnd = async (e: React.TouchEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
 
+    // pointerCountを更新
+    setPointerCount(e.touches.length);
+    setEventSource("touch-end");
+
     console.log("[TouchEnd] ===== TouchEndイベント =====");
     console.log("[TouchEnd] Event: touch-end");
     console.log("[TouchEnd] pointerCount:", e.touches.length);
@@ -832,6 +845,7 @@ export default function TournamentEditPage() {
       // これにより、transformの適用タイミングと再レンダリングのタイミングを分離
       requestAnimationFrame(() => {
         setPinchTouchPoints(null);
+        setEventSource("touch-end-after-pinch");
       });
       
       // ピンチ終了フレームでは、pan/drag関連の処理を一切発火しない
@@ -847,11 +861,14 @@ export default function TournamentEditPage() {
     // ピンチ中は、pan/drag関連の処理を一切発火しない
     if (isPinching) {
       console.log("[TouchEnd] isPinching is true, skipping pan/drag processing");
+      setEventSource("touch-end-skip-pinching");
       // タッチ開始位置をリセット（これは安全）
       setTouchStartPos(null);
       console.log("[TouchEnd] =====================");
       return;
     }
+    
+    setEventSource("touch-end-pan");
 
     // タッチジェスチャーを処理
     touchGestures.handleTouchEnd(e);
@@ -1540,4 +1557,5 @@ export default function TournamentEditPage() {
     </>
   );
 }
+
 

@@ -1,5 +1,21 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 
+// フレーム単位ログ用の型定義
+interface FrameLog {
+  frameId: number;
+  timestamp: number;
+  eventSource: string;
+  isPinching: boolean;
+  pointerCount: number;
+  scale: number;
+  translateX: number;
+  translateY: number;
+  pinchCenterX: number | null;
+  pinchCenterY: number | null;
+  transformOrigin: string;
+  matrix: string;
+}
+
 /**
  * ピンチズーム用のカスタムフック
  * transformを行列（matrix）として管理する方式
@@ -27,6 +43,12 @@ export function usePinchZoom(
   const pinchStartMatrixRef = useRef<DOMMatrix | null>(null); // ピンチ開始時の基準行列（baseMatrix）
   const pinchStartCenterLocalRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の基準中心位置（basePinchCenter）
   const zoomLayerRectRef = useRef<DOMRect | null>(null); // ピンチ開始時のCanvasZoomLayerのrect（レイアウト変更を防ぐため）
+  
+  // フレーム単位ログ用のref
+  const frameIdRef = useRef<number>(0);
+  const currentEventSourceRef = useRef<string>("none");
+  const animationFrameIdRef = useRef<number | null>(null);
+  const pointerCountRef = useRef<number>(0);
 
   /**
    * ピンチ開始
@@ -84,6 +106,8 @@ export function usePinchZoom(
 
       // ピンチ中フラグを設定
       setIsPinching(true);
+      pointerCountRef.current = 2;
+      currentEventSourceRef.current = "pinch-start";
       
       // ピンチ開始時の基準値を記録（baseMatrix, baseScaleDistance, basePinchCenter）
       const currentMatrix = transformMatrix;
@@ -236,6 +260,8 @@ export function usePinchZoom(
         f: newMatrix.f,
       });
       
+      // eventSourceを設定してからtransformMatrixを更新
+      currentEventSourceRef.current = "pinch-move";
       setTransformMatrix(newMatrix);
       
       console.log("[PinchMove] =====================");
@@ -273,6 +299,10 @@ export function usePinchZoom(
     console.log("[PinchEnd] Matrix updated: false");
     console.log("[PinchEnd] Event: pinch-end (no-op frame)");
     
+    // eventSourceを設定（transformMatrixは更新しないが、ログには記録）
+    currentEventSourceRef.current = "pinch-end";
+    pointerCountRef.current = 0;
+    
     // ピンチ中フラグを解除（stateを更新するが、transformMatrixは変更しない）
     setIsPinching(false);
     
@@ -287,6 +317,11 @@ export function usePinchZoom(
     // CSS transformを再適用しない
     // translate/clamp/normalize処理を行わない
     
+    // 次のフレームでeventSourceをリセット
+    requestAnimationFrame(() => {
+      currentEventSourceRef.current = "none";
+    });
+    
     console.log("[PinchEnd] =====================");
   }, [transformMatrix]);
 
@@ -294,6 +329,46 @@ export function usePinchZoom(
   const transformString = useMemo(() => {
     return `matrix(${transformMatrix.a}, ${transformMatrix.b}, ${transformMatrix.c}, ${transformMatrix.d}, ${transformMatrix.e}, ${transformMatrix.f})`;
   }, [transformMatrix.a, transformMatrix.b, transformMatrix.c, transformMatrix.d, transformMatrix.e, transformMatrix.f]);
+
+  // フレーム単位ログ出力関数
+  const logFrame = useCallback(() => {
+    const scale = Math.sqrt(transformMatrix.a * transformMatrix.a + transformMatrix.b * transformMatrix.b);
+    const translateX = transformMatrix.e;
+    const translateY = transformMatrix.f;
+    
+    const log: FrameLog = {
+      frameId: frameIdRef.current++,
+      timestamp: performance.now(),
+      eventSource: currentEventSourceRef.current,
+      isPinching: isPinching,
+      pointerCount: pointerCountRef.current,
+      scale: scale,
+      translateX: translateX,
+      translateY: translateY,
+      pinchCenterX: pinchStartCenterLocalRef.current?.x ?? null,
+      pinchCenterY: pinchStartCenterLocalRef.current?.y ?? null,
+      transformOrigin: transformOrigin,
+      matrix: transformString,
+    };
+    
+    console.log(`[Frame ${log.frameId}]`, log);
+    
+    // 次のフレームでログを出力
+    animationFrameIdRef.current = requestAnimationFrame(logFrame);
+  }, [transformMatrix, isPinching, transformOrigin, transformString]);
+
+  // フレーム単位ログの開始
+  useEffect(() => {
+    // 初回フレームでログを開始
+    animationFrameIdRef.current = requestAnimationFrame(logFrame);
+    
+    return () => {
+      if (animationFrameIdRef.current !== null) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+        animationFrameIdRef.current = null;
+      }
+    };
+  }, [logFrame]);
 
   // デバッグ: transformStringが再計算されるたびにログ出力
   useEffect(() => {
@@ -320,6 +395,16 @@ export function usePinchZoom(
     console.log("[TransformString] =====================");
   }, [transformMatrix, transformString, isPinching]);
 
+  // 外部からeventSourceを設定する関数（ページ側のイベントハンドラで使用）
+  const setEventSource = useCallback((source: string) => {
+    currentEventSourceRef.current = source;
+  }, []);
+
+  // 外部からpointerCountを設定する関数（ページ側のイベントハンドラで使用）
+  const setPointerCount = useCallback((count: number) => {
+    pointerCountRef.current = count;
+  }, []);
+
   return {
     transformString,
     transformOrigin,
@@ -327,5 +412,7 @@ export function usePinchZoom(
     handlePinchStart,
     handlePinchMove,
     handlePinchEnd,
+    setEventSource,
+    setPointerCount,
   };
 }
