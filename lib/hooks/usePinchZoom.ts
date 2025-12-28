@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 
 /**
  * ピンチズーム用のカスタムフック
@@ -285,8 +285,10 @@ export function usePinchZoom(
     console.log("[PinchEnd] =====================");
   }, [transformMatrix]);
 
-  // transform行列をCSSのmatrix()形式に変換
-  const transformString = `matrix(${transformMatrix.a}, ${transformMatrix.b}, ${transformMatrix.c}, ${transformMatrix.d}, ${transformMatrix.e}, ${transformMatrix.f})`;
+  // transform行列をCSSのmatrix()形式に変換（useMemoでメモ化して再計算を防ぐ）
+  const transformString = useMemo(() => {
+    return `matrix(${transformMatrix.a}, ${transformMatrix.b}, ${transformMatrix.c}, ${transformMatrix.d}, ${transformMatrix.e}, ${transformMatrix.f})`;
+  }, [transformMatrix.a, transformMatrix.b, transformMatrix.c, transformMatrix.d, transformMatrix.e, transformMatrix.f]);
 
   // デバッグ: transformStringが再計算されるたびにログ出力
   useEffect(() => {

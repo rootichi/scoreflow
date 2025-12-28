@@ -827,8 +827,12 @@ export default function TournamentEditPage() {
     if (e.touches.length < 2) {
       // ピンチ終了処理（isPinchingをfalseに設定するが、transformMatrixは変更しない）
       handlePinchEnd();
-      // 視覚化用のタッチポイントをクリア（これが再レンダリングをトリガーするが、transformMatrixは変更されていない）
-      setPinchTouchPoints(null);
+      
+      // 視覚化用のタッチポイントをクリア（requestAnimationFrameで遅延させて再レンダリングのタイミングを調整）
+      // これにより、transformの適用タイミングと再レンダリングのタイミングを分離
+      requestAnimationFrame(() => {
+        setPinchTouchPoints(null);
+      });
       
       // ピンチ終了フレームでは、pan/drag関連の処理を一切発火しない
       // 重要: ピンチ終了フレームは「無操作フレーム」として扱う

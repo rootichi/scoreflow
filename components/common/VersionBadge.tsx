@@ -1,11 +1,31 @@
 "use client";
 
-import { APP_VERSION } from "@/lib/constants";
-
 /**
- * 画面左下にバージョン情報を表示するコンポーネント
+ * 画面左下にデプロイ時刻を表示するコンポーネント
  */
 export function VersionBadge() {
+  // デプロイ時刻を取得（ビルド時に設定された環境変数）
+  const deployTime = process.env.NEXT_PUBLIC_DEPLOY_TIME || process.env.DEPLOY_TIME;
+  
+  // 時刻をフォーマット（YYYY-MM-DD HH:MM:SS形式）
+  const formatDeployTime = (isoString: string | undefined) => {
+    if (!isoString) return "N/A";
+    try {
+      const date = new Date(isoString);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    } catch (e) {
+      return "N/A";
+    }
+  };
+
+  const displayTime = formatDeployTime(deployTime);
+
   return (
     <div 
       className="fixed bottom-0 left-0 z-[9999] p-2 pointer-events-none"
@@ -29,7 +49,7 @@ export function VersionBadge() {
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
         }}
       >
-        v{APP_VERSION}
+        {displayTime}
       </div>
     </div>
   );
