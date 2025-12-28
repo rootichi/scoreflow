@@ -87,7 +87,12 @@ export function usePinchZoom(
       
       // ピンチ開始時の基準値を記録（baseMatrix, baseScaleDistance, basePinchCenter）
       const currentMatrix = transformMatrix;
-      pinchStartMatrixRef.current = new DOMMatrix(currentMatrix); // baseMatrix
+      // DOMMatrixをコピー（各要素を個別に設定）
+      pinchStartMatrixRef.current = new DOMMatrix([
+        currentMatrix.a, currentMatrix.b,
+        currentMatrix.c, currentMatrix.d,
+        currentMatrix.e, currentMatrix.f
+      ]); // baseMatrix
       pinchStartDistanceRef.current = distance; // baseScaleDistance
       pinchStartCenterLocalRef.current = { x: centerXLocal, y: centerYLocal }; // basePinchCenter
 
