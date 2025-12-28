@@ -63,6 +63,13 @@ export function usePinchZoom(
   // eventSourceが設定されたフレームを記録（1フレームのみログ出力するため）
   const eventSourceFrameRef = useRef<number>(-1);
 
+  // デバッグログをファイルに記録するためのref
+  const debugLogRef = useRef<Array<{
+    timestamp: number;
+    event: string;
+    data: any;
+  }>>([]);
+
   /**
    * ピンチ開始
    * 
@@ -84,8 +91,38 @@ export function usePinchZoom(
       const centerXViewport = (touch1.clientX + touch2.clientX) / 2;
       const centerYViewport = (touch1.clientY + touch2.clientY) / 2;
 
-      // CanvasZoomLayerの位置とサイズを取得（ピンチ開始時にキャッシュ）
+      // 重要: ピンチ開始時に毎回getBoundingClientRect()を呼び出す（キャッシュしない）
+      // これにより、レイアウト変更やスクロール位置の変更に対応できる
       const zoomLayerRect = canvasZoomLayerRef.current.getBoundingClientRect();
+      
+      // 画像の実際のサイズを取得
+      const imgElement = canvasZoomLayerRef.current.querySelector("img");
+      const imageNaturalSize = imgElement ? {
+        width: imgElement.naturalWidth,
+        height: imgElement.naturalHeight,
+      } : null;
+      const imageDisplaySize = imgElement ? {
+        width: imgElement.offsetWidth,
+        height: imgElement.offsetHeight,
+      } : null;
+      
+      // ヘッダーの高さを取得（固定ヘッダーの場合）
+      const headerElement = document.querySelector("nav, header");
+      const headerHeight = headerElement ? headerElement.getBoundingClientRect().height : 0;
+      
+      // ビューポートのサイズを取得
+      const viewportSize = {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      };
+      
+      // スクロール位置を取得
+      const scrollPosition = {
+        x: window.scrollX,
+        y: window.scrollY,
+      };
+      
+      // CanvasZoomLayerの位置とサイズを記録（デバッグ用）
       zoomLayerRectRef.current = {
         left: zoomLayerRect.left,
         top: zoomLayerRect.top,
@@ -97,9 +134,9 @@ export function usePinchZoom(
         y: zoomLayerRect.y,
       } as DOMRect;
       
-      // ピンチ中心をCanvasZoomLayerのローカル座標に変換（キャッシュされたrectを使用）
-      const centerXLocal = centerXViewport - zoomLayerRectRef.current.left;
-      const centerYLocal = centerYViewport - zoomLayerRectRef.current.top;
+      // ピンチ中心をCanvasZoomLayerのローカル座標に変換
+      const centerXLocal = centerXViewport - zoomLayerRect.left;
+      const centerYLocal = centerYViewport - zoomLayerRect.top;
 
       // ピンチ中フラグを設定
       setIsPinching(true);
@@ -136,6 +173,52 @@ export function usePinchZoom(
       // ピンチ開始時の中心をstartMatrixで変換した座標（これが不動点になる）
       const pivotPoint = new DOMPoint(centerXLocal, centerYLocal).matrixTransform(pinchStartMatrixRef.current);
       
+      // デバッグ情報を構築
+      const debugInfo = {
+        timestamp: performance.now(),
+        event: "pinch-start",
+        data: {
+          pinchStartCenter: {
+            viewport: { x: centerXViewport, y: centerYViewport },
+            local: { x: centerXLocal, y: centerYLocal },
+          },
+          pivot: {
+            x: pivotPoint.x,
+            y: pivotPoint.y,
+          },
+          zoomLayerRect: {
+            left: zoomLayerRect.left,
+            top: zoomLayerRect.top,
+            width: zoomLayerRect.width,
+            height: zoomLayerRect.height,
+            right: zoomLayerRect.right,
+            bottom: zoomLayerRect.bottom,
+            x: zoomLayerRect.x,
+            y: zoomLayerRect.y,
+          },
+          imageSize: {
+            natural: imageNaturalSize,
+            display: imageDisplaySize,
+          },
+          headerHeight: headerHeight,
+          viewportSize: viewportSize,
+          scrollPosition: scrollPosition,
+          pinchStartMatrix: {
+            a: pinchStartMatrixRef.current.a,
+            b: pinchStartMatrixRef.current.b,
+            c: pinchStartMatrixRef.current.c,
+            d: pinchStartMatrixRef.current.d,
+            e: pinchStartMatrixRef.current.e,
+            f: pinchStartMatrixRef.current.f,
+          },
+          initialDistance: distance,
+        },
+      };
+      
+      // デバッグログに追加
+      debugLogRef.current.push(debugInfo);
+      
+      // コンソールにも出力（開発用）
       console.log("[PinchStart] ===== ピンチ開始 =====", {
         pinchStartCenter: {
           x: centerXLocal.toFixed(2),
@@ -146,6 +229,19 @@ export function usePinchZoom(
           y: pivotPoint.y.toFixed(4),
         },
         説明: "ピンチ開始時の中心が不動点として機能します",
+        zoomLayerRect: {
+          left: zoomLayerRect.left.toFixed(2),
+          top: zoomLayerRect.top.toFixed(2),
+          width: zoomLayerRect.width.toFixed(2),
+          height: zoomLayerRect.height.toFixed(2),
+        },
+        imageSize: {
+          natural: imageNaturalSize,
+          display: imageDisplaySize,
+        },
+        headerHeight: headerHeight.toFixed(2),
+        viewportSize: viewportSize,
+        scrollPosition: scrollPosition,
         pinchStartMatrix: {
           a: pinchStartMatrixRef.current.a.toFixed(4),
           b: pinchStartMatrixRef.current.b.toFixed(4),
@@ -191,13 +287,17 @@ export function usePinchZoom(
         return;
       }
 
-      if (!canvasZoomLayerRef?.current || !zoomLayerRectRef.current) {
+      if (!canvasZoomLayerRef?.current) {
         return;
       }
 
       // 重要: ピンチ開始時の中心を不動点として使用（現在の中心ではなく）
       // これにより、ピンチ中に中心が移動しても、開始時の中心が常に不動点として機能する
       const pinchStartCenter = pinchStartCenterLocalRef.current;
+      
+      // 重要: ピンチ移動中も、現在のCanvasZoomLayerの位置を取得（レイアウト変更に対応）
+      // ただし、不動点の計算にはピンチ開始時の中心を使用する
+      const currentZoomLayerRect = canvasZoomLayerRef.current.getBoundingClientRect();
       
       // ピンチ開始時の中心をstartMatrixで変換した座標を取得（これが不動点）
       // この座標を基準にスケーリングすることで、開始時の中心が常に不動点になる
@@ -302,7 +402,93 @@ export function usePinchZoom(
         Math.abs(startMatrix.e) < 0.0001 &&
         Math.abs(startMatrix.f) < 0.0001;
       
-      // ログを詳細に出力（数値を展開して確認できるように）
+      // 現在のCanvasZoomLayerの位置とサイズを取得（ピンチ終了時）
+      const currentZoomLayerRect = canvasZoomLayerRef?.current?.getBoundingClientRect();
+      const currentImageElement = canvasZoomLayerRef?.current?.querySelector("img");
+      const currentImageSize = currentImageElement ? {
+        natural: { width: currentImageElement.naturalWidth, height: currentImageElement.naturalHeight },
+        display: { width: currentImageElement.offsetWidth, height: currentImageElement.offsetHeight },
+      } : null;
+      
+      // デバッグ情報を構築
+      const debugInfo = {
+        timestamp: performance.now(),
+        event: "pinch-end",
+        data: {
+          scaleRatio: scaleRatio,
+          pinchType: scaleRatio > 1 ? "OUT" : "IN",
+          isIdentity: isIdentity,
+          pinchStartCenter: {
+            x: startCenter.x,
+            y: startCenter.y,
+          },
+          pivot: {
+            x: pivotX,
+            y: pivotY,
+          },
+          startMatrix: {
+            a: startMatrix.a,
+            b: startMatrix.b,
+            c: startMatrix.c,
+            d: startMatrix.d,
+            e: startMatrix.e,
+            f: startMatrix.f,
+          },
+          finalMatrix: {
+            a: finalMatrix.a,
+            b: finalMatrix.b,
+            c: finalMatrix.c,
+            d: finalMatrix.d,
+            e: finalMatrix.e,
+            f: finalMatrix.f,
+          },
+          fixedPointVerification: {
+            pinchCenterStart: { x: pinchCenterStart.x, y: pinchCenterStart.y },
+            pinchCenterFinal: { x: pinchCenterFinal.x, y: pinchCenterFinal.y },
+            pinchCenterExpected: { x: pinchCenterExpected.x, y: pinchCenterExpected.y },
+            diff: { x: pinchCenterDiff.x, y: pinchCenterDiff.y },
+            distance: pinchCenterDistance,
+            satisfied: pinchCenterDistance < 0.1,
+          },
+          currentZoomLayerRect: currentZoomLayerRect ? {
+            left: currentZoomLayerRect.left,
+            top: currentZoomLayerRect.top,
+            width: currentZoomLayerRect.width,
+            height: currentZoomLayerRect.height,
+            right: currentZoomLayerRect.right,
+            bottom: currentZoomLayerRect.bottom,
+            x: currentZoomLayerRect.x,
+            y: currentZoomLayerRect.y,
+          } : null,
+          currentImageSize: currentImageSize,
+          viewportSize: {
+            width: window.innerWidth,
+            height: window.innerHeight,
+          },
+          scrollPosition: {
+            x: window.scrollX,
+            y: window.scrollY,
+          },
+        },
+      };
+      
+      // デバッグログに追加
+      debugLogRef.current.push(debugInfo);
+      
+      // ログが10件以上になったら、ファイルに保存してクリア
+      if (debugLogRef.current.length >= 10) {
+        const logData = JSON.stringify(debugLogRef.current, null, 2);
+        const blob = new Blob([logData], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `pinch-zoom-debug-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        debugLogRef.current = [];
+      }
+      
+      // コンソールにも出力（開発用）
       console.log("[PinchEnd] ===== ピンチ終了 =====");
       console.log("[PinchEnd] scaleRatio:", scaleRatio.toFixed(6));
       console.log("[PinchEnd] pinchType:", scaleRatio > 1 ? "OUT" : "IN");
@@ -525,6 +711,23 @@ export function usePinchZoom(
     pointerCountRef.current = count;
   }, []);
 
+  // デバッグログをダウンロードする関数
+  const downloadDebugLog = useCallback(() => {
+    if (debugLogRef.current.length === 0) {
+      console.warn("[PinchZoom] デバッグログが空です");
+      return;
+    }
+    const logData = JSON.stringify(debugLogRef.current, null, 2);
+    const blob = new Blob([logData], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `pinch-zoom-debug-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    debugLogRef.current = [];
+  }, []);
+
   return {
     transformString,
     transformOrigin,
@@ -534,5 +737,6 @@ export function usePinchZoom(
     handlePinchEnd,
     setEventSource,
     setPointerCount,
+    downloadDebugLog,
   };
 }
