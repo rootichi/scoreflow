@@ -41,7 +41,8 @@ export function usePinchZoom(
   
   const pinchStartDistanceRef = useRef<number | null>(null);
   const pinchStartMatrixRef = useRef<DOMMatrix | null>(null); // ピンチ開始時の基準行列（M_old）
-  const pinchStartCenterScreenRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の中心位置（screen座標で固定、変換しない）
+  const pinchStartCenterScreenRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の中心位置（screen座標）
+  const zoomLayerRectRef = useRef<DOMRect | null>(null); // ピンチ開始時のCanvasZoomLayerのrect（local座標変換用）
   
   // フレーム単位ログ用のref
   const frameIdRef = useRef<number>(0);
@@ -117,8 +118,18 @@ export function usePinchZoom(
         y: window.scrollY,
       };
       
-      // デバッグ用: CanvasZoomLayerの位置とサイズを取得
+      // 重要: CanvasZoomLayerの位置とサイズを取得（local座標変換用）
       const zoomLayerRect = canvasZoomLayerRef.current.getBoundingClientRect();
+      zoomLayerRectRef.current = {
+        left: zoomLayerRect.left,
+        top: zoomLayerRect.top,
+        width: zoomLayerRect.width,
+        height: zoomLayerRect.height,
+        right: zoomLayerRect.right,
+        bottom: zoomLayerRect.bottom,
+        x: zoomLayerRect.x,
+        y: zoomLayerRect.y,
+      } as DOMRect;
 
       // ピンチ中フラグを設定
       setIsPinching(true);
@@ -145,7 +156,8 @@ export function usePinchZoom(
         currentMatrix.e, currentMatrix.f
       ]);
       
-      // 重要: pivot は screen 座標で固定（変換しない）
+      // 重要: pivot は screen 座標で取得・保持
+      // DOMMatrixに渡す前にlocal座標に変換する
       pinchStartDistanceRef.current = distance;
       pinchStartCenterScreenRef.current = { x: centerXScreen, y: centerYScreen };
       
@@ -253,20 +265,26 @@ export function usePinchZoom(
         return;
       }
 
-      if (!canvasZoomLayerRef?.current) {
+      if (!canvasZoomLayerRef?.current || !zoomLayerRectRef.current) {
         return;
       }
 
-      // 重要: pivot は screen 座標で固定（変換しない）
-      const pivotX = pinchStartCenterScreenRef.current.x;
-      const pivotY = pinchStartCenterScreenRef.current.y;
+      // 重要: pivot は screen 座標で取得するが、
+      // DOMMatrix に渡す前に zoomLayer の local 座標へ変換する必要がある
+      // DOMMatrix は transform 対象要素の local 座標系で解釈されるため
+      const pivotScreenX = pinchStartCenterScreenRef.current.x;
+      const pivotScreenY = pinchStartCenterScreenRef.current.y;
       
-      // 重要: M_new = T(pivot) * S(scaleRatio) * T(-pivot) * M_old
+      // screen座標からlocal座標へ変換
+      const pivotLocalX = pivotScreenX - zoomLayerRectRef.current.left;
+      const pivotLocalY = pivotScreenY - zoomLayerRectRef.current.top;
+      
+      // 重要: M_new = T(pivotLocal) * S(scaleRatio) * T(-pivotLocal) * M_old
       // DOMMatrix のメソッドは右から左に適用されるため、順序に注意
       // 1. M_old から開始
-      // 2. T(-pivot) を適用
+      // 2. T(-pivotLocal) を適用
       // 3. S(scaleRatio) を適用
-      // 4. T(pivot) を適用
+      // 4. T(pivotLocal) を適用
       const newMatrix = new DOMMatrix([
         pinchStartMatrixRef.current.a,
         pinchStartMatrixRef.current.b,
@@ -275,9 +293,9 @@ export function usePinchZoom(
         pinchStartMatrixRef.current.e,
         pinchStartMatrixRef.current.f,
       ])
-        .translate(-pivotX, -pivotY)  // T(-pivot)
-        .scale(scaleRatio, scaleRatio) // S(scaleRatio)
-        .translate(pivotX, pivotY);     // T(pivot)
+        .translate(-pivotLocalX, -pivotLocalY)  // T(-pivotLocal)
+        .scale(scaleRatio, scaleRatio)          // S(scaleRatio)
+        .translate(pivotLocalX, pivotLocalY);    // T(pivotLocal)
       
       // eventSourceを設定（transformMatrixを更新したフレームのみ）
       currentEventSourceRef.current = "pinch-move";
@@ -327,15 +345,26 @@ export function usePinchZoom(
       const finalScale = Math.sqrt(finalMatrix.a * finalMatrix.a + finalMatrix.b * finalMatrix.b);
       const scaleRatio = finalScale / startScale;
       
-      // 重要: pivot は screen 座標で固定（変換しない）
-      const pivotX = startCenterScreen.x;
-      const pivotY = startCenterScreen.y;
+      // 重要: pivot は screen 座標で取得するが、
+      // DOMMatrix に渡す前に local 座標へ変換する必要がある
+      const pivotScreenX = startCenterScreen.x;
+      const pivotScreenY = startCenterScreen.y;
+      
+      // 現在のCanvasZoomLayerの位置とサイズを取得（ピンチ終了時）
+      const currentZoomLayerRect = canvasZoomLayerRef?.current?.getBoundingClientRect();
+      if (!currentZoomLayerRect) {
+        return;
+      }
       
       // 不動点条件の検証: screen座標のpivotが、transform適用後も同じscreen座標に表示されるか
-      // pivotをstartMatrixで変換した座標
-      const pivotStartTransformed = new DOMPoint(pivotX, pivotY).matrixTransform(startMatrix);
-      // pivotをfinalMatrixで変換した座標
-      const pivotFinalTransformed = new DOMPoint(pivotX, pivotY).matrixTransform(finalMatrix);
+      // 検証のため、pivotをlocal座標に変換してからstartMatrixで変換
+      const pivotLocalX = pivotScreenX - currentZoomLayerRect.left;
+      const pivotLocalY = pivotScreenY - currentZoomLayerRect.top;
+      
+      // pivot（local座標）をstartMatrixで変換した座標
+      const pivotStartTransformed = new DOMPoint(pivotLocalX, pivotLocalY).matrixTransform(startMatrix);
+      // pivot（local座標）をfinalMatrixで変換した座標
+      const pivotFinalTransformed = new DOMPoint(pivotLocalX, pivotLocalY).matrixTransform(finalMatrix);
       // 期待値: pivotStartTransformed * scaleRatio（不動点条件により、この点が不動点になる）
       const pivotExpected = new DOMPoint(
         pivotStartTransformed.x * scaleRatio,
@@ -359,9 +388,6 @@ export function usePinchZoom(
         Math.abs(startMatrix.d - 1) < 0.0001 &&
         Math.abs(startMatrix.e) < 0.0001 &&
         Math.abs(startMatrix.f) < 0.0001;
-      
-      // 現在のCanvasZoomLayerの位置とサイズを取得（ピンチ終了時）
-      const currentZoomLayerRect = canvasZoomLayerRef?.current?.getBoundingClientRect();
       const currentImageElement = canvasZoomLayerRef?.current?.querySelector("img");
       const currentImageSize = currentImageElement ? {
         natural: { width: currentImageElement.naturalWidth, height: currentImageElement.naturalHeight },
@@ -378,9 +404,11 @@ export function usePinchZoom(
           isIdentity: isIdentity,
           pinchStartCenter: {
             screen: { x: startCenterScreen.x, y: startCenterScreen.y },
+            local: { x: pivotLocalX, y: pivotLocalY },
           },
           pivot: {
-            screen: { x: pivotX, y: pivotY },
+            screen: { x: pivotScreenX, y: pivotScreenY },
+            local: { x: pivotLocalX, y: pivotLocalY },
           },
           startMatrix: {
             a: startMatrix.a,
@@ -450,7 +478,8 @@ export function usePinchZoom(
       console.log("[PinchEnd] pinchType:", scaleRatio > 1 ? "OUT" : "IN");
       console.log("[PinchEnd] isIdentity:", isIdentity);
       console.log("[PinchEnd] pinchStartCenter (screen座標):", { x: startCenterScreen.x.toFixed(2), y: startCenterScreen.y.toFixed(2) });
-      console.log("[PinchEnd] pivot (screen座標、変換なし):", { x: pivotX.toFixed(4), y: pivotY.toFixed(4) });
+      console.log("[PinchEnd] pivot (screen座標):", { x: pivotScreenX.toFixed(4), y: pivotScreenY.toFixed(4) });
+      console.log("[PinchEnd] pivot (local座標):", { x: pivotLocalX.toFixed(4), y: pivotLocalY.toFixed(4) });
       console.log("[PinchEnd] startMatrix:", {
         a: startMatrix.a.toFixed(4),
         b: startMatrix.b.toFixed(4),
@@ -468,11 +497,11 @@ export function usePinchZoom(
         f: finalMatrix.f.toFixed(4),
       });
       console.log("[PinchEnd] === 不動点条件の検証 ===");
-      console.log("[PinchEnd] pivot (screen座標)をstartMatrixで変換:", {
+      console.log("[PinchEnd] pivot (local座標)をstartMatrixで変換:", {
         x: pivotStartTransformed.x.toFixed(4),
         y: pivotStartTransformed.y.toFixed(4),
       });
-      console.log("[PinchEnd] pivot (screen座標)をfinalMatrixで変換:", {
+      console.log("[PinchEnd] pivot (local座標)をfinalMatrixで変換:", {
         x: pivotFinalTransformed.x.toFixed(4),
         y: pivotFinalTransformed.y.toFixed(4),
       });
@@ -509,6 +538,7 @@ export function usePinchZoom(
     pinchStartDistanceRef.current = null;
     pinchStartMatrixRef.current = null;
     pinchStartCenterScreenRef.current = null;
+    zoomLayerRectRef.current = null;
     
     // 重要: DOMへの再適用は不要（既にpinch-moveで適用済み）
     // CSS transformを再適用しない
