@@ -131,6 +131,40 @@ export function usePinchZoom(
       ]);
       pinchStartDistanceRef.current = distance; // baseScaleDistance
       pinchStartCenterLocalRef.current = { x: centerXLocal, y: centerYLocal }; // basePinchCenter
+      
+      // デバッグ: ピンチ開始時の状態を記録
+      const isIdentity = 
+        Math.abs(pinchStartMatrixRef.current.a - 1) < 0.0001 &&
+        Math.abs(pinchStartMatrixRef.current.b) < 0.0001 &&
+        Math.abs(pinchStartMatrixRef.current.c) < 0.0001 &&
+        Math.abs(pinchStartMatrixRef.current.d - 1) < 0.0001 &&
+        Math.abs(pinchStartMatrixRef.current.e) < 0.0001 &&
+        Math.abs(pinchStartMatrixRef.current.f) < 0.0001;
+      
+      console.log("[PinchStart] ===== ピンチ開始 =====", {
+        pinchCenterScreen: {
+          x: centerXLocal.toFixed(2),
+          y: centerYLocal.toFixed(2),
+        },
+        pinchStartMatrix: {
+          a: pinchStartMatrixRef.current.a.toFixed(4),
+          b: pinchStartMatrixRef.current.b.toFixed(4),
+          c: pinchStartMatrixRef.current.c.toFixed(4),
+          d: pinchStartMatrixRef.current.d.toFixed(4),
+          e: pinchStartMatrixRef.current.e.toFixed(4),
+          f: pinchStartMatrixRef.current.f.toFixed(4),
+        },
+        pinchStartMatrixInverse: {
+          a: pinchStartMatrixInverseRef.current.a.toFixed(4),
+          b: pinchStartMatrixInverseRef.current.b.toFixed(4),
+          c: pinchStartMatrixInverseRef.current.c.toFixed(4),
+          d: pinchStartMatrixInverseRef.current.d.toFixed(4),
+          e: pinchStartMatrixInverseRef.current.e.toFixed(4),
+          f: pinchStartMatrixInverseRef.current.f.toFixed(4),
+        },
+        isIdentity: isIdentity,
+        initialDistance: distance.toFixed(2),
+      });
     },
     [transformMatrix, canvasZoomLayerRef, isPinching]
   );
@@ -259,61 +293,8 @@ export function usePinchZoom(
       const diffTx = actualTx - expectedTx;
       const diffTy = actualTy - expectedTy;
       
-      // デバッグ: ピンチ中心の座標変換と行列合成を確認
-      console.log("[PinchMove] Matrix composition debug:", {
-        scaleRatio: scaleRatio.toFixed(6),
-        pinchType: scaleRatio > 1 ? "OUT" : "IN",
-        isIdentity: isIdentity,
-        useScreenCoordinates: USE_SCREEN_COORDINATES,
-        pinchCenterScreen: {
-          x: currentCenterXLocal.toFixed(2),
-          y: currentCenterYLocal.toFixed(2),
-        },
-        pinchCenterWorld: {
-          x: worldPoint.x.toFixed(2),
-          y: worldPoint.y.toFixed(2),
-        },
-        pinchCenterUsed: {
-          x: cx.toFixed(2),
-          y: cy.toFixed(2),
-        },
-        pinchStartMatrix: {
-          a: pinchStartMatrixRef.current.a.toFixed(4),
-          b: pinchStartMatrixRef.current.b.toFixed(4),
-          c: pinchStartMatrixRef.current.c.toFixed(4),
-          d: pinchStartMatrixRef.current.d.toFixed(4),
-          e: pinchStartMatrixRef.current.e.toFixed(4),
-          f: pinchStartMatrixRef.current.f.toFixed(4),
-        },
-        pinchStartMatrixInverse: {
-          a: pinchStartMatrixInverseRef.current.a.toFixed(4),
-          b: pinchStartMatrixInverseRef.current.b.toFixed(4),
-          c: pinchStartMatrixInverseRef.current.c.toFixed(4),
-          d: pinchStartMatrixInverseRef.current.d.toFixed(4),
-          e: pinchStartMatrixInverseRef.current.e.toFixed(4),
-          f: pinchStartMatrixInverseRef.current.f.toFixed(4),
-        },
-        expectedTranslate: {
-          x: expectedTx.toFixed(4),
-          y: expectedTy.toFixed(4),
-        },
-        actualTranslate: {
-          x: actualTx.toFixed(4),
-          y: actualTy.toFixed(4),
-        },
-        diffTranslate: {
-          x: diffTx.toFixed(4),
-          y: diffTy.toFixed(4),
-        },
-        nextMatrix: {
-          a: newMatrix.a.toFixed(4),
-          b: newMatrix.b.toFixed(4),
-          c: newMatrix.c.toFixed(4),
-          d: newMatrix.d.toFixed(4),
-          e: newMatrix.e.toFixed(4),
-          f: newMatrix.f.toFixed(4),
-        },
-      });
+      // デバッグ: pinch-move中のログは削除（ログが多すぎるため）
+      // ピンチ終了時に最終的な値を出力する
       
       // eventSourceを設定（transformMatrixを更新したフレームのみ）
       currentEventSourceRef.current = "pinch-move";
@@ -350,6 +331,92 @@ export function usePinchZoom(
   const handlePinchEnd = useCallback(() => {
     // 重要: ピンチ終了時はrefから最新の値を取得（pinch-moveの最終フレームで確定した値）
     const finalMatrix = transformMatrixRef.current;
+    
+    // デバッグ: ピンチ終了時の状態を記録
+    // ピンチ開始時の値と比較するため、クリアする前に記録
+    const startMatrix = pinchStartMatrixRef.current;
+    const startInverse = pinchStartMatrixInverseRef.current;
+    const startCenter = pinchStartCenterLocalRef.current;
+    
+    if (startMatrix && startInverse && startCenter) {
+      // 最終的なスケール比を計算（開始時の距離と終了時の距離の比）
+      // ただし、終了時には距離が取得できないため、行列からスケールを計算
+      const startScale = Math.sqrt(startMatrix.a * startMatrix.a + startMatrix.b * startMatrix.b);
+      const finalScale = Math.sqrt(finalMatrix.a * finalMatrix.a + finalMatrix.b * finalMatrix.b);
+      const scaleRatio = finalScale / startScale;
+      
+      // ピンチ中心をworld座標に変換（開始時のinverseを使用）
+      const worldPoint = new DOMPoint(startCenter.x, startCenter.y).matrixTransform(startInverse);
+      
+      // 理論値の計算
+      const isIdentity = 
+        Math.abs(startMatrix.a - 1) < 0.0001 &&
+        Math.abs(startMatrix.b) < 0.0001 &&
+        Math.abs(startMatrix.c) < 0.0001 &&
+        Math.abs(startMatrix.d - 1) < 0.0001 &&
+        Math.abs(startMatrix.e) < 0.0001 &&
+        Math.abs(startMatrix.f) < 0.0001;
+      
+      let expectedTx: number;
+      let expectedTy: number;
+      
+      if (isIdentity) {
+        expectedTx = worldPoint.x * (1 - scaleRatio);
+        expectedTy = worldPoint.y * (1 - scaleRatio);
+      } else {
+        const baseTx = startMatrix.e;
+        const baseTy = startMatrix.f;
+        expectedTx = baseTx + worldPoint.x * (1 - scaleRatio) * startScale;
+        expectedTy = baseTy + worldPoint.y * (1 - scaleRatio) * startScale;
+      }
+      
+      const actualTx = finalMatrix.e;
+      const actualTy = finalMatrix.f;
+      const diffTx = actualTx - expectedTx;
+      const diffTy = actualTy - expectedTy;
+      
+      console.log("[PinchEnd] ===== ピンチ終了 =====", {
+        scaleRatio: scaleRatio.toFixed(6),
+        pinchType: scaleRatio > 1 ? "OUT" : "IN",
+        isIdentity: isIdentity,
+        pinchCenterScreen: {
+          x: startCenter.x.toFixed(2),
+          y: startCenter.y.toFixed(2),
+        },
+        pinchCenterWorld: {
+          x: worldPoint.x.toFixed(2),
+          y: worldPoint.y.toFixed(2),
+        },
+        startMatrix: {
+          a: startMatrix.a.toFixed(4),
+          b: startMatrix.b.toFixed(4),
+          c: startMatrix.c.toFixed(4),
+          d: startMatrix.d.toFixed(4),
+          e: startMatrix.e.toFixed(4),
+          f: startMatrix.f.toFixed(4),
+        },
+        finalMatrix: {
+          a: finalMatrix.a.toFixed(4),
+          b: finalMatrix.b.toFixed(4),
+          c: finalMatrix.c.toFixed(4),
+          d: finalMatrix.d.toFixed(4),
+          e: finalMatrix.e.toFixed(4),
+          f: finalMatrix.f.toFixed(4),
+        },
+        expectedTranslate: {
+          x: expectedTx.toFixed(4),
+          y: expectedTy.toFixed(4),
+        },
+        actualTranslate: {
+          x: actualTx.toFixed(4),
+          y: actualTy.toFixed(4),
+        },
+        diffTranslate: {
+          x: diffTx.toFixed(4),
+          y: diffTy.toFixed(4),
+        },
+      });
+    }
     
     // eventSourceを設定（次のフレームでログ出力）
     currentEventSourceRef.current = "pinch-end";
