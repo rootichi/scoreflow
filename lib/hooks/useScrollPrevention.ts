@@ -10,7 +10,8 @@ export function useScrollPrevention(
   isDrawing: boolean,
   draggingHandle: boolean,
   draggingMark: boolean,
-  canEdit?: () => boolean
+  canEdit?: () => boolean,
+  isPinching?: boolean // ピンチ中フラグを追加
 ) {
   const isEditingRef = useRef(false);
 
@@ -24,6 +25,11 @@ export function useScrollPrevention(
   }, [isDrawing, draggingHandle, draggingMark, canEdit]);
 
   useEffect(() => {
+    // ピンチ中はスクロール制御を行わない（レイアウト変更を防ぐため）
+    if (isPinching) {
+      return;
+    }
+
     // Canva風: 編集モードに基づいて判定
     const isEditing = canEdit ? canEdit() : (isDrawing || draggingHandle || draggingMark);
 
@@ -49,5 +55,5 @@ export function useScrollPrevention(
       document.body.style.width = "";
       document.body.style.height = "";
     }
-  }, [isDrawing, draggingHandle, draggingMark, canEdit]);
+  }, [isDrawing, draggingHandle, draggingMark, canEdit, isPinching]);
 }

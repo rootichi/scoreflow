@@ -26,6 +26,7 @@ export function usePinchZoom(
   const pinchStartDistanceRef = useRef<number | null>(null);
   const pinchStartMatrixRef = useRef<DOMMatrix | null>(null); // ピンチ開始時の基準行列（baseMatrix）
   const pinchStartCenterLocalRef = useRef<{ x: number; y: number } | null>(null); // ピンチ開始時の基準中心位置（basePinchCenter）
+  const zoomLayerRectRef = useRef<DOMRect | null>(null); // ピンチ開始時のCanvasZoomLayerのrect（レイアウト変更を防ぐため）
 
   /**
    * ピンチ開始
@@ -56,12 +57,22 @@ export function usePinchZoom(
 
       console.log("[PinchStart] Center point (viewport):", { x: centerXViewport, y: centerYViewport });
 
-      // CanvasZoomLayerの位置とサイズを取得
+      // CanvasZoomLayerの位置とサイズを取得（ピンチ開始時にキャッシュ）
       const zoomLayerRect = canvasZoomLayerRef.current.getBoundingClientRect();
+      zoomLayerRectRef.current = {
+        left: zoomLayerRect.left,
+        top: zoomLayerRect.top,
+        width: zoomLayerRect.width,
+        height: zoomLayerRect.height,
+        right: zoomLayerRect.right,
+        bottom: zoomLayerRect.bottom,
+        x: zoomLayerRect.x,
+        y: zoomLayerRect.y,
+      } as DOMRect;
       
-      // ピンチ中心をCanvasZoomLayerのローカル座標に変換
-      const centerXLocal = centerXViewport - zoomLayerRect.left;
-      const centerYLocal = centerYViewport - zoomLayerRect.top;
+      // ピンチ中心をCanvasZoomLayerのローカル座標に変換（キャッシュされたrectを使用）
+      const centerXLocal = centerXViewport - zoomLayerRectRef.current.left;
+      const centerYLocal = centerYViewport - zoomLayerRectRef.current.top;
 
       console.log("[PinchStart] Center point (local):", { x: centerXLocal, y: centerYLocal });
       console.log("[PinchStart] ZoomLayer rect:", {
@@ -157,14 +168,15 @@ export function usePinchZoom(
         return;
       }
 
-      if (!canvasZoomLayerRef?.current) {
+      if (!canvasZoomLayerRef?.current || !zoomLayerRectRef.current) {
         return;
       }
 
-      // 現在のピンチ中心をCanvasZoomLayerのローカル座標に変換（検証用）
-      const zoomLayerRect = canvasZoomLayerRef.current.getBoundingClientRect();
-      const currentCenterXLocal = currentCenterXViewport - zoomLayerRect.left;
-      const currentCenterYLocal = currentCenterYViewport - zoomLayerRect.top;
+      // 現在のピンチ中心をCanvasZoomLayerのローカル座標に変換（キャッシュされたrectを使用）
+      // 重要: getBoundingClientRect()を呼ばず、ピンチ開始時にキャッシュしたrectを使用
+      // これにより、レイアウト変更（useScrollPreventionなど）による影響を防ぐ
+      const currentCenterXLocal = currentCenterXViewport - zoomLayerRectRef.current.left;
+      const currentCenterYLocal = currentCenterYViewport - zoomLayerRectRef.current.top;
       
       console.log("[PinchMove] Current center point (local):", { x: currentCenterXLocal, y: currentCenterYLocal });
       console.log("[PinchMove] Base center point (local):", pinchStartCenterLocalRef.current);
@@ -223,7 +235,7 @@ export function usePinchZoom(
       
       console.log("[PinchMove] =====================");
     },
-    [canvasZoomLayerRef, isPinching]
+    [canvasZoomLayerRef, isPinching, transformMatrix]
   );
 
   /**
@@ -263,6 +275,7 @@ export function usePinchZoom(
     pinchStartDistanceRef.current = null;
     pinchStartMatrixRef.current = null;
     pinchStartCenterLocalRef.current = null;
+    zoomLayerRectRef.current = null;
     
     // 重要: transformMatrixは一切更新しない
     // setTransformMatrix()を呼ばない

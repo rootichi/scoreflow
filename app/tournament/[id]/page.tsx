@@ -81,7 +81,6 @@ export default function TournamentEditPage() {
   
   // カスタムフック
   const { imageContainerRef, imageScale } = useImageScale();
-  useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark, editMode.canEdit);
   const { getRelativeCoordinates } = useCanvasCoordinates(canvasRef);
   const {
     transformString,
@@ -91,6 +90,8 @@ export default function TournamentEditPage() {
     handlePinchMove,
     handlePinchEnd,
   } = usePinchZoom(imageContainerRef, initialImageSizeRef, canvasRef, canvasZoomLayerRef);
+  // ピンチ中はスクロール制御を行わない（レイアウト変更を防ぐため）
+  useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark, editMode.canEdit, isPinching);
   
   // 編集モードと選択状態を同期
   useEffect(() => {
