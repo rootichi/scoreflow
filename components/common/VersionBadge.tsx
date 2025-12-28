@@ -1,13 +1,19 @@
 "use client";
 
-import { BUILD_TIME } from "@/lib/build-time";
-
 /**
  * 画面左下にデプロイ時刻を表示するコンポーネント
  */
 export function VersionBadge() {
   // デプロイ時刻を取得（ビルド時に生成されたファイルから）
-  const deployTime = BUILD_TIME;
+  // フォールバック: ファイルが存在しない場合は現在時刻を使用
+  let deployTime: string;
+  try {
+    const buildTimeModule = require("@/lib/build-time");
+    deployTime = buildTimeModule.BUILD_TIME || new Date().toISOString();
+  } catch (e) {
+    // ビルド時にファイルが生成されていない場合のフォールバック
+    deployTime = new Date().toISOString();
+  }
   
   // 時刻をフォーマット（YYYY-MM-DD HH:MM:SS形式）
   const formatDeployTime = (isoString: string | undefined) => {
