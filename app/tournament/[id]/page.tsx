@@ -1056,12 +1056,10 @@ export default function TournamentEditPage() {
           }
         }
       `}</style>
-      {/* 統合ヘッダー */}
+      {/* UIレイヤー: ヘッダー（固定表示、ブラウザピンチズームの影響を受けない） */}
       <TournamentHeader tournament={tournament} />
       
-      <div className="min-h-screen bg-gray-50" style={{ touchAction: "manipulation" }}>
-
-      {/* 2段目: 編集ツールバー */}
+      {/* UIレイヤー: 編集ツールバー（固定表示、ブラウザピンチズームの影響を受けない） */}
       <EditToolbar
         mode={mode}
         scoreValue={scoreValue}
@@ -1087,8 +1085,9 @@ export default function TournamentEditPage() {
         onEditModeSelectObject={editMode.selectObject}
       />
 
-      {/* メインコンテンツ */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pt-[calc(4rem+3rem+3.5rem+1rem)] pt-[calc(4rem+3rem+3rem+1rem)]" style={{ touchAction: "pan-x pan-y manipulation" }}>
+      {/* 編集レイヤー: メインコンテンツ（ブラウザピンチズームの対象、UIレイヤーの下に配置） */}
+      <div className="min-h-screen bg-gray-50" style={{ touchAction: "auto" }}>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pt-[calc(4rem+3rem+3.5rem+1rem)] pt-[calc(4rem+3rem+3rem+1rem)]" style={{ touchAction: "auto", zIndex: 10 }}>
 
         <div style={{ touchAction: "pan-x pan-y manipulation" }}>
           {/* Canva方式: 画像コンテナを独立したスクロール領域として実装 */}
@@ -1473,8 +1472,9 @@ export default function TournamentEditPage() {
           </div>
         </div>
       </main>
+      </div>
 
-      {/* 大会削除ボタン（画面右下固定） */}
+      {/* UIレイヤー: 大会削除ボタン（画面右下固定、ブラウザピンチズームの影響を受けない） */}
       <button
         onClick={async () => {
           if (showConfirm("この大会を完全に削除しますか？この操作は取り消せません。")) {
@@ -1487,7 +1487,8 @@ export default function TournamentEditPage() {
             }
           }
         }}
-        className="fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-lg transition bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 flex items-center justify-center"
+        className="fixed bottom-6 right-6 z-[80] p-4 rounded-full shadow-lg transition bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 flex items-center justify-center"
+        style={{ touchAction: "none" }}
         title="大会削除"
         type="button"
       >
@@ -1569,7 +1570,6 @@ export default function TournamentEditPage() {
           />
         </div>
       )} */}
-    </div>
     </>
   );
 }
