@@ -1052,11 +1052,11 @@ export default function TournamentEditPage() {
       />
 
       {/* 編集レイヤー: メインコンテンツ（v0仕様: ブラウザピンチズームは無効化、UIレイヤーの下に配置） */}
-      <div className="min-h-screen bg-gray-50" style={{ touchAction: "manipulation" }}>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pt-[calc(4rem+3rem+3.5rem+1rem)] pt-[calc(4rem+3rem+3rem+1rem)]" style={{ touchAction: "manipulation", zIndex: 10 }}>
+      <div className="bg-gray-50" style={{ touchAction: "manipulation", overflow: "hidden", height: "100vh", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, paddingTop: "calc(4rem + 3rem)" }}>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full" style={{ touchAction: "manipulation", zIndex: 10, overflow: "hidden", height: "100%" }}>
 
-        <div style={{ touchAction: "manipulation" }}>
-          {/* Canva方式: 画像コンテナを独立したスクロール領域として実装 */}
+        <div style={{ touchAction: "manipulation", overflow: "hidden", height: "100%" }}>
+          {/* v0仕様: 画像コンテナ（スクロール無効化） */}
           <div
             ref={imageContainerRef}
             data-canvas-container
@@ -1064,12 +1064,10 @@ export default function TournamentEditPage() {
             style={{
               // 画面サイズに合わせた固定サイズ（ヘッダーとツールバーを除く）
               width: "100%",
-              // ヘッダー(4rem) + ツールバー(3rem) + mainの上下パディング(2rem) = 9rem
-              height: "calc(100vh - 9rem)",
-              overflow: "hidden", // CanvasViewportで制御するため、ここではhidden
+              height: "100%",
+              overflow: "hidden", // v0仕様: スクロールを完全に無効化
               touchAction: "manipulation", // v0仕様: ブラウザ標準のピンチズームを無効化
-              overscrollBehavior: "contain", // スクロールの伝播を制御
-              WebkitOverflowScrolling: "touch", // iOSの慣性スクロールを有効化
+              overscrollBehavior: "none", // v0仕様: スクロールの伝播を完全に無効化
               WebkitTouchCallout: "none", // iOSの長押しメニューを無効化
               userSelect: "none", // テキスト選択を無効化
               position: "relative", // 相対位置指定
