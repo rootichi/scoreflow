@@ -1261,7 +1261,7 @@ export default function TournamentEditPage() {
               viewBox="0 0 100 100"
               preserveAspectRatio="none"
             >
-              {(draggingMark || draggingHandle ? localMarks : marks)
+              {(draggingMark || draggingHandle || draggingCrossArrow ? localMarks : marks)
                 .filter((m) => m.type === "line")
                 .map((mark) => {
                   const foundMark = (draggingMark || draggingHandle || draggingCrossArrow ? localMarks : marks).find((m) => m.id === mark.id) || mark;
