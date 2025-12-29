@@ -1264,7 +1264,7 @@ export default function TournamentEditPage() {
               {(draggingMark || draggingHandle ? localMarks : marks)
                 .filter((m) => m.type === "line")
                 .map((mark) => {
-                  const foundMark = (draggingMark || draggingHandle ? localMarks : marks).find((m) => m.id === mark.id) || mark;
+                  const foundMark = (draggingMark || draggingHandle || draggingCrossArrow ? localMarks : marks).find((m) => m.id === mark.id) || mark;
                   const displayMark = foundMark as LineMark & { id: string };
                   return (
                   <g key={mark.id}>
@@ -1485,7 +1485,9 @@ export default function TournamentEditPage() {
             </svg>
             {/* 十字矢印UI（Canvaスマホ版風） - 選択されたラインの少し下に表示 */}
             {selectedMarkId && mode === null && !draggingHandle && !draggingMark && (() => {
-              const selectedMark = marks.find((m) => m.id === selectedMarkId);
+              // ドラッグ中はlocalMarksから、そうでない場合はmarksから取得
+              const displayMarks = draggingCrossArrow ? localMarks : marks;
+              const selectedMark = displayMarks.find((m) => m.id === selectedMarkId);
               if (selectedMark && selectedMark.type === "line") {
                 const lineMark = selectedMark as LineMark & { id: string };
                 // ラインの中央座標を計算（相対座標系: 0-1）
