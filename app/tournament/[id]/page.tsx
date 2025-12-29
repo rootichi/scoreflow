@@ -1052,7 +1052,7 @@ export default function TournamentEditPage() {
       />
 
       {/* 編集レイヤー: メインコンテンツ（v0仕様: ブラウザピンチズームは無効化、UIレイヤーの下に配置） */}
-      <div className="bg-gray-50" style={{ touchAction: "manipulation", overflow: "hidden", height: "100vh", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, paddingTop: "calc(4rem + 3rem)" }}>
+      <div className="bg-gray-50" style={{ touchAction: "manipulation", overflow: "hidden", height: "100vh", position: "fixed", top: "calc(4rem + 3rem)", left: 0, right: 0, bottom: 0 }}>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full" style={{ touchAction: "manipulation", zIndex: 10, overflow: "hidden", height: "100%" }}>
 
         <div style={{ touchAction: "manipulation", overflow: "hidden", height: "100%" }}>
