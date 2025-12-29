@@ -1484,7 +1484,7 @@ export default function TournamentEditPage() {
                 })}
             </svg>
             {/* 十字矢印UI（Canvaスマホ版風） - 選択されたラインの少し下に表示 */}
-            {selectedMarkId && mode === null && !draggingHandle && !draggingMark && !draggingCrossArrow && (() => {
+            {selectedMarkId && mode === null && !draggingHandle && !draggingMark && (() => {
               const selectedMark = marks.find((m) => m.id === selectedMarkId);
               if (selectedMark && selectedMark.type === "line") {
                 const lineMark = selectedMark as LineMark & { id: string };
@@ -1517,6 +1517,7 @@ export default function TournamentEditPage() {
                       }}
                       onMouseDown={(e) => {
                         e.stopPropagation();
+                        e.preventDefault();
                         const coords = getRelativeCoordinates(e);
                         setLocalMarks(marks);
                         setDraggingCrossArrow({
@@ -1524,6 +1525,21 @@ export default function TournamentEditPage() {
                           startY: coords.y,
                         });
                         editMode.startEdit();
+                      }}
+                      onMouseMove={(e) => {
+                        if (draggingCrossArrow) {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleCanvasMove(e);
+                        }
+                      }}
+                      onMouseUp={(e) => {
+                        if (draggingCrossArrow) {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleMarkDragEnd();
+                          editMode.endEdit();
+                        }
                       }}
                       onTouchStart={(e) => {
                         e.stopPropagation();
@@ -1538,6 +1554,21 @@ export default function TournamentEditPage() {
                         });
                         editMode.startEdit();
                         e.preventDefault();
+                      }}
+                      onTouchMove={(e) => {
+                        if (draggingCrossArrow) {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleCanvasMove(e);
+                        }
+                      }}
+                      onTouchEnd={(e) => {
+                        if (draggingCrossArrow) {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleMarkDragEnd();
+                          editMode.endEdit();
+                        }
                       }}
                     >
                       {/* 十字矢印UI */}
