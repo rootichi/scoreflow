@@ -71,6 +71,7 @@ export default function TournamentEditPage() {
   const [snapGuide, setSnapGuide] = useState<SnapGuide | null>(null); // スナップガイドライン（x: 垂直線、y: 水平線）
   const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null); // タッチ開始位置（スクロール判定用）
   const [isTouchDragging, setIsTouchDragging] = useState(false); // タッチドラッグ中かどうか
+  const [draggingCrossArrow, setDraggingCrossArrow] = useState<{ startX: number; startY: number } | null>(null); // 十字矢印UIのドラッグ開始位置
   // v1仕様: ブラウザ標準のピンチズームのみを使用するため、ピンチ操作中のタッチポイント視覚化は無効化
   // const [pinchTouchPoints, setPinchTouchPoints] = useState<{ touch1: { x: number; y: number } | null; touch2: { x: number; y: number } | null } | null>(null); // ピンチ操作中のタッチポイント（視覚化用）
   
@@ -102,7 +103,7 @@ export default function TournamentEditPage() {
   const isPinching = false; // 常にfalse（独自実装のピンチズームは使用しない）
   
   // ピンチ中はスクロール制御を行わない（レイアウト変更を防ぐため）
-  useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark, editMode.canEdit, isPinching);
+  useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark || !!draggingCrossArrow, editMode.canEdit, isPinching);
 
   // v0仕様: ブラウザ標準のピンチズームを完全に無効化
   useEffect(() => {
@@ -170,7 +171,7 @@ export default function TournamentEditPage() {
     // passive: falseを指定することで、preventDefaultが有効になる
     const preventPullToRefresh = (e: TouchEvent) => {
       // 編集操作中は無効化しない（編集ロジックに影響を与えない）
-      if (isDrawing || draggingHandle || draggingMark) {
+      if (isDrawing || draggingHandle || draggingMark || draggingCrossArrow) {
         return;
       }
 
@@ -233,10 +234,10 @@ export default function TournamentEditPage() {
   useEffect(() => {
     if (mode === "line" && isDrawing) {
       editMode.startDrawing();
-    } else if (mode === null && !isDrawing && !draggingMark && !draggingHandle) {
+    } else if (mode === null && !isDrawing && !draggingMark && !draggingHandle && !draggingCrossArrow) {
       editMode.endDrawing();
     }
-  }, [mode, isDrawing, draggingMark, draggingHandle, editMode]);
+  }, [mode, isDrawing, draggingMark, draggingHandle, draggingCrossArrow, editMode]);
 
   useEffect(() => {
     if (!user || !tournamentId) return;
@@ -438,6 +439,64 @@ export default function TournamentEditPage() {
         return m;
       });
       setLocalMarks(updatedMarks);
+    } else if (draggingCrossArrow) {
+      // 十字矢印UIのドラッグ処理（既存のdraggingMarkロジックを使用）
+      if (selectedMarkId) {
+        const selectedMark = marks.find((m) => m.id === selectedMarkId);
+        if (selectedMark && selectedMark.type === "line") {
+          const dx = coords.x - draggingCrossArrow.startX;
+          const dy = coords.y - draggingCrossArrow.startY;
+          
+          // 既存のdraggingMarkロジックを使用してラインを移動
+          const original = selectedMark as LineMark & { id: string };
+          const updatedMarks = localMarks.map((m) => {
+            if (m.id === selectedMarkId) {
+              if (isHorizontalLine(original)) {
+                const movedLine = updateMarkCoordinates(original, dx, dy) as LineMark & { id: string };
+                if (canvasRef.current) {
+                  const rect = canvasRef.current.getBoundingClientRect();
+                  const { adjustedLine, snapGuide: guide } = handleHorizontalLineDragSnap(
+                    coords,
+                    rect.width,
+                    rect.height,
+                    marks,
+                    movedLine
+                  );
+                  setSnapGuide(guide);
+                  return {
+                    ...m,
+                    ...adjustedLine,
+                  } as Mark & { id: string };
+                }
+                return movedLine;
+              } else if (isVerticalLine(original)) {
+                const movedLine = updateMarkCoordinates(original, dx, dy) as LineMark & { id: string };
+                if (canvasRef.current) {
+                  const rect = canvasRef.current.getBoundingClientRect();
+                  const { adjustedLine, snapGuide: guide } = handleVerticalLineDragSnap(
+                    coords,
+                    rect.width,
+                    rect.height,
+                    marks,
+                    movedLine
+                  );
+                  setSnapGuide(guide);
+                  return {
+                    ...m,
+                    ...adjustedLine,
+                  } as Mark & { id: string };
+                }
+                return movedLine;
+              } else {
+                setSnapGuide(null);
+                return updateMarkCoordinates(original, dx, dy);
+              }
+            }
+            return m;
+          });
+          setLocalMarks(updatedMarks);
+        }
+      }
     } else if (draggingMark) {
       // ドラッグ中のマークをローカル状態で更新
       const dx = coords.x - draggingMark.startX;
@@ -523,6 +582,7 @@ export default function TournamentEditPage() {
     lineStart,
     draggingHandle,
     draggingMark,
+    draggingCrossArrow,
     marks,
     localMarks,
     getRelativeCoordinates,
@@ -547,7 +607,7 @@ export default function TournamentEditPage() {
     
     
     // パンモードで、編集操作中でない場合は、ネイティブ処理に委譲
-    if (editMode.canPan() && !isDrawing && !draggingHandle && !draggingMark && !editMode.isObjectSelected) {
+    if (editMode.canPan() && !isDrawing && !draggingHandle && !draggingMark && !draggingCrossArrow && !editMode.isObjectSelected) {
       // ネイティブスクロールを許可（何も処理しない）
       return;
     }
@@ -556,7 +616,7 @@ export default function TournamentEditPage() {
     touchGestures.handleTouchMove(e);
     
     // 編集操作中は常にpreventDefaultして処理を続行
-    if (isDrawing || draggingHandle || draggingMark) {
+    if (isDrawing || draggingHandle || draggingMark || draggingCrossArrow) {
       e.preventDefault();
       e.stopPropagation();
       setIsTouchDragging(true);
@@ -579,7 +639,7 @@ export default function TournamentEditPage() {
       // オブジェクトが選択されていない場合はパン操作を許可
       // preventDefaultしない（パン操作を許可）
     }
-  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, handleCanvasMove, touchGestures, editMode]);
+  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, draggingCrossArrow, handleCanvasMove, touchGestures, editMode]);
 
   // スコア追加の共通処理
   const handleAddScore = useCallback(async (coords: { x: number; y: number }) => {
@@ -709,6 +769,34 @@ export default function TournamentEditPage() {
   });
 
   const handleMarkDragEnd = async () => {
+    // 十字矢印UIのドラッグ終了処理
+    if (draggingCrossArrow) {
+      if (selectedMarkId) {
+        const updatedMark = localMarks.find((m) => m.id === selectedMarkId);
+        if (updatedMark) {
+          const existingMark = marks.find((m) => m.id === selectedMarkId);
+          if (existingMark) {
+            const originalMark = existingMark;
+            const updateData = createMarkUpdateData(updatedMark);
+            const success = await updateMarkSafely(tournamentId, selectedMarkId, updateData);
+            
+            if (success) {
+              // 履歴に追加（変更前と変更後のマーク情報を保存）
+              addAction({
+                type: "update",
+                markId: selectedMarkId,
+                mark: originalMark,
+                updatedMark: updatedMark,
+              });
+            }
+          }
+        }
+      }
+      setDraggingCrossArrow(null);
+      setLocalMarks(marks); // ローカル状態をリセット
+      return;
+    }
+    
     if (!draggingMark) return;
     
     const updatedMark = localMarks.find((m) => m.id === draggingMark.id);
@@ -899,7 +987,7 @@ export default function TournamentEditPage() {
     if (!tournament || !user) return;
 
     // ドラッグ中やハンドル操作中はクリックを無視
-    if (draggingMark || draggingHandle) {
+    if (draggingMark || draggingHandle || draggingCrossArrow) {
       return;
     }
 
@@ -1395,6 +1483,112 @@ export default function TournamentEditPage() {
                 );
                 })}
             </svg>
+            {/* 十字矢印UI（Canvaスマホ版風） - 選択されたラインの中央に表示 */}
+            {selectedMarkId && mode === null && !draggingHandle && !draggingMark && !draggingCrossArrow && (() => {
+              const selectedMark = marks.find((m) => m.id === selectedMarkId);
+              if (selectedMark && selectedMark.type === "line") {
+                const lineMark = selectedMark as LineMark & { id: string };
+                // ラインの中央座標を計算（相対座標系: 0-1）
+                const centerX = (lineMark.x1 + lineMark.x2) / 2;
+                const centerY = (lineMark.y1 + lineMark.y2) / 2;
+                
+                // キャンバスのサイズを取得して絶対座標に変換
+                if (canvasRef.current) {
+                  const rect = canvasRef.current.getBoundingClientRect();
+                  const absoluteX = centerX * rect.width;
+                  const absoluteY = centerY * rect.height;
+                  
+                  return (
+                    <div
+                      className="absolute pointer-events-auto"
+                      style={{
+                        left: `${absoluteX}px`,
+                        top: `${absoluteY}px`,
+                        transform: "translate(-50%, -50%)",
+                        zIndex: 20,
+                        width: "48px",
+                        height: "48px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "move",
+                      }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        const coords = getRelativeCoordinates(e);
+                        setLocalMarks(marks);
+                        setDraggingCrossArrow({
+                          startX: coords.x,
+                          startY: coords.y,
+                        });
+                        editMode.startEdit();
+                      }}
+                      onTouchStart={(e) => {
+                        e.stopPropagation();
+                        const touch = e.touches[0];
+                        setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+                        setIsTouchDragging(false);
+                        const coords = getRelativeCoordinates(e as any);
+                        setLocalMarks(marks);
+                        setDraggingCrossArrow({
+                          startX: coords.x,
+                          startY: coords.y,
+                        });
+                        editMode.startEdit();
+                        e.preventDefault();
+                      }}
+                    >
+                      {/* 十字矢印UI */}
+                      <svg
+                        width="48"
+                        height="48"
+                        viewBox="0 0 48 48"
+                        style={{ pointerEvents: "none" }}
+                      >
+                        {/* 上矢印 */}
+                        <path
+                          d="M 24 8 L 20 16 L 24 12 L 28 16 Z"
+                          fill="#3b82f6"
+                          stroke="#ffffff"
+                          strokeWidth="1"
+                        />
+                        {/* 下矢印 */}
+                        <path
+                          d="M 24 40 L 20 32 L 24 36 L 28 32 Z"
+                          fill="#3b82f6"
+                          stroke="#ffffff"
+                          strokeWidth="1"
+                        />
+                        {/* 左矢印 */}
+                        <path
+                          d="M 8 24 L 16 20 L 12 24 L 16 28 Z"
+                          fill="#3b82f6"
+                          stroke="#ffffff"
+                          strokeWidth="1"
+                        />
+                        {/* 右矢印 */}
+                        <path
+                          d="M 40 24 L 32 20 L 36 24 L 32 28 Z"
+                          fill="#3b82f6"
+                          stroke="#ffffff"
+                          strokeWidth="1"
+                        />
+                        {/* 中央の円 */}
+                        <circle
+                          cx="24"
+                          cy="24"
+                          r="6"
+                          fill="#3b82f6"
+                          stroke="#ffffff"
+                          strokeWidth="2"
+                        />
+                      </svg>
+                    </div>
+                  );
+                }
+              }
+              return null;
+            })()}
             {/* スコアマーク */}
             {(draggingMark ? localMarks : marks)
               .filter((m) => m.type === "score")
