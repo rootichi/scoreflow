@@ -4,10 +4,26 @@
 
 html {
   scroll-behavior: smooth;
+  /* v0仕様: ブラウザの再読み込みジェスチャー（Pull to Refresh / Edge Swipe）を無効化 */
+  overflow: hidden;
+  overscroll-behavior: none;
+  /* iOS Safari対策: 画面端からのスワイプを無効化 */
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
 }
 
 body {
   @apply bg-gray-50 text-gray-900;
+  /* v0仕様: ブラウザの再読み込みジェスチャー（Pull to Refresh / Edge Swipe）を無効化 */
+  overflow: hidden;
+  overscroll-behavior: none;
+  /* iOS Safari対策: 画面端からのスワイプを無効化 */
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
+  /* 画面固定: 再読み込みジェスチャーを防ぐため */
+  position: fixed;
+  width: 100%;
+  height: 100%;
 }
 
 

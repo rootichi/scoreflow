@@ -27,12 +27,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" style={{ touchAction: "manipulation" }}>
+    <html lang="ja" style={{ touchAction: "manipulation", overflow: "hidden", overscrollBehavior: "none" }}>
       <head>
         {/* v0仕様: ブラウザ標準のピンチズームを完全に無効化 */}
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
       </head>
-      <body style={{ touchAction: "manipulation" }}>
+      <body style={{ touchAction: "manipulation", overflow: "hidden", overscrollBehavior: "none", position: "fixed", width: "100%", height: "100%" }}>
         <ErudaLoader />
         {children}
         <VersionBadge />

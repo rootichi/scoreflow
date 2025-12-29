@@ -151,6 +151,58 @@ export default function TournamentEditPage() {
       document.removeEventListener("touchend", preventDoubleTapZoom);
     };
   }, []);
+
+  // v0仕様: ブラウザの再読み込みジェスチャー（Pull to Refresh / Edge Swipe）を無効化
+  useEffect(() => {
+    // タッチ開始位置を記録（再読み込みジェスチャーの検出用）
+    let touchStartY = 0;
+    let touchStartX = 0;
+
+    // touchstartイベントで開始位置を記録
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        touchStartY = e.touches[0].clientY;
+        touchStartX = e.touches[0].clientX;
+      }
+    };
+
+    // iOS Safari / Android Chrome対策: touchmoveイベントでpreventDefaultを実行
+    // passive: falseを指定することで、preventDefaultが有効になる
+    const preventPullToRefresh = (e: TouchEvent) => {
+      // 編集操作中は無効化しない（編集ロジックに影響を与えない）
+      if (isDrawing || draggingHandle || draggingMark) {
+        return;
+      }
+
+      // 画面の上端（y < 20px）から下方向へのスワイプを検出（Pull to Refresh）
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const deltaY = touch.clientY - touchStartY;
+        const deltaX = Math.abs(touch.clientX - touchStartX);
+
+        // 上端付近から下方向へのスワイプを無効化
+        if (touchStartY < 20 && deltaY > 0 && deltaY > deltaX) {
+          e.preventDefault();
+        }
+
+        // 画面の左端（x < 20px）からのスワイプを無効化（Edge Swipe）
+        if (touchStartX < 20 && deltaX > 10) {
+          e.preventDefault();
+        }
+      }
+    };
+
+    // touchstartイベントで開始位置を記録
+    document.addEventListener("touchstart", handleTouchStart, { passive: true });
+    // touchmoveイベントで再読み込みジェスチャーを無効化
+    // passive: falseを指定することで、preventDefaultが有効になる
+    document.addEventListener("touchmove", preventPullToRefresh, { passive: false });
+
+    return () => {
+      document.removeEventListener("touchstart", handleTouchStart);
+      document.removeEventListener("touchmove", preventPullToRefresh);
+    };
+  }, [isDrawing, draggingHandle, draggingMark]);
   
   // v1仕様: ブラウザ標準のピンチズームのみを使用するため、独自実装のtransform適用は無効化
   // 重要: transformの適用経路を1系統に統一
