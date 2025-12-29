@@ -1483,7 +1483,7 @@ export default function TournamentEditPage() {
                 );
                 })}
             </svg>
-            {/* 十字矢印UI（Canvaスマホ版風） - 選択されたラインの中央に表示 */}
+            {/* 十字矢印UI（Canvaスマホ版風） - 選択されたラインの少し下に表示 */}
             {selectedMarkId && mode === null && !draggingHandle && !draggingMark && !draggingCrossArrow && (() => {
               const selectedMark = marks.find((m) => m.id === selectedMarkId);
               if (selectedMark && selectedMark.type === "line") {
@@ -1496,7 +1496,9 @@ export default function TournamentEditPage() {
                 if (canvasRef.current) {
                   const rect = canvasRef.current.getBoundingClientRect();
                   const absoluteX = centerX * rect.width;
-                  const absoluteY = centerY * rect.height;
+                  // ラインの少し下に表示（相対座標で0.05、約5%下にオフセット）
+                  const offsetY = 0.05; // 相対座標でのオフセット
+                  const absoluteY = (centerY + offsetY) * rect.height;
                   
                   return (
                     <div
