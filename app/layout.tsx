@@ -18,8 +18,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" style={{ touchAction: "manipulation" }}>
-      <body style={{ touchAction: "manipulation" }}>
+    <html lang="ja" style={{ touchAction: "auto" }}>
+      <body style={{ touchAction: "auto" }}>
         <ErudaLoader />
         {children}
         <VersionBadge />
