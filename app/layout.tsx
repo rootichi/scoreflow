@@ -12,14 +12,27 @@ export const metadata: Metadata = {
   },
 };
 
+// v0仕様: ブラウザ標準のピンチズームを完全に無効化
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  minimumScale: 1,
+  userScalable: false,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" style={{ touchAction: "auto" }}>
-      <body style={{ touchAction: "auto" }}>
+    <html lang="ja" style={{ touchAction: "manipulation" }}>
+      <head>
+        {/* v0仕様: ブラウザ標準のピンチズームを完全に無効化 */}
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+      </head>
+      <body style={{ touchAction: "manipulation" }}>
         <ErudaLoader />
         {children}
         <VersionBadge />

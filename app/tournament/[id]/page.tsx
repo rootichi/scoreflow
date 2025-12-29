@@ -103,6 +103,54 @@ export default function TournamentEditPage() {
   
   // ピンチ中はスクロール制御を行わない（レイアウト変更を防ぐため）
   useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark, editMode.canEdit, isPinching);
+
+  // v0仕様: ブラウザ標準のピンチズームを完全に無効化
+  useEffect(() => {
+    // ジェスチャーイベント（iOS Safari）を無効化
+    const preventGesture = (e: Event) => {
+      e.preventDefault();
+    };
+
+    // ホイールズーム（Ctrl+ホイール、デスクトップ）を無効化
+    const preventWheelZoom = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+      }
+    };
+
+    // タッチイベントでピンチズームを無効化
+    const preventPinchZoom = (e: TouchEvent) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    // ダブルタップズームを無効化
+    let lastTouchEnd = 0;
+    const preventDoubleTapZoom = (e: TouchEvent) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
+    };
+
+    document.addEventListener("gesturestart", preventGesture);
+    document.addEventListener("gesturechange", preventGesture);
+    document.addEventListener("gestureend", preventGesture);
+    document.addEventListener("wheel", preventWheelZoom, { passive: false });
+    document.addEventListener("touchstart", preventPinchZoom, { passive: false });
+    document.addEventListener("touchend", preventDoubleTapZoom, { passive: false });
+
+    return () => {
+      document.removeEventListener("gesturestart", preventGesture);
+      document.removeEventListener("gesturechange", preventGesture);
+      document.removeEventListener("gestureend", preventGesture);
+      document.removeEventListener("wheel", preventWheelZoom);
+      document.removeEventListener("touchstart", preventPinchZoom);
+      document.removeEventListener("touchend", preventDoubleTapZoom);
+    };
+  }, []);
   
   // v1仕様: ブラウザ標準のピンチズームのみを使用するため、独自実装のtransform適用は無効化
   // 重要: transformの適用経路を1系統に統一
@@ -437,44 +485,14 @@ export default function TournamentEditPage() {
     // pointerCountを更新
     // setPointerCount(e.touches.length);
     
-    // 複数のタッチポイントがある場合（ピンチ操作）
+    // v0仕様: ブラウザ標準のピンチズームを完全に無効化
+    // 複数のタッチポイントがある場合（ピンチ操作）は無効化
     if (e.touches.length > 1) {
-      // v1仕様: ブラウザ標準のピンチズームのみを使用するため、独自実装のピンチズーム処理は無効化
-      // 編集操作中はピンチ操作を無効化（ブラウザ標準のピンチズームも無効化）
-      if (isDrawing || draggingHandle || draggingMark) {
-        e.preventDefault();
-        e.stopPropagation();
-        // setEventSource("touch-move-skip");
-        return;
-      }
-      
-      // v1仕様: ブラウザ標準のピンチズームに委ねるため、カスタムピンチズーム処理は無効化
-      // カスタムピンチズームを処理
-      // e.preventDefault();
-      // e.stopPropagation();
-      // 
-      // if (e.touches.length >= 2) {
-      //   handlePinchMove(e.touches[0], e.touches[1]);
-      //   // 視覚化用にタッチポイントを更新
-      //   setPinchTouchPoints({
-      //     touch1: { x: e.touches[0].clientX, y: e.touches[0].clientY },
-      //     touch2: { x: e.touches[1].clientX, y: e.touches[1].clientY },
-      //   });
-      // }
-      
-      // ブラウザ標準のピンチズームに委ねる（何も処理しない）
+      e.preventDefault();
+      e.stopPropagation();
       return;
     }
     
-    // v1仕様: 独自実装のピンチズームは使用しないため、isPinchingは常にfalse
-    // ピンチ中またはピンチ終了直後のフレームでは、pan/drag処理を一切発火しない
-    // if (isPinching) {
-    //   setEventSource("touch-move-skip-pinching");
-    //   return;
-    // }
-    
-    // v1仕様: setEventSourceは不要（ピンチズーム関連のデバッグログは無効化）
-    // setEventSource("touch-move-pan");
     
     // パンモードで、編集操作中でない場合は、ネイティブ処理に委譲
     if (editMode.canPan() && !isDrawing && !draggingHandle && !draggingMark && !editMode.isObjectSelected) {
@@ -694,32 +712,11 @@ export default function TournamentEditPage() {
   const handleCanvasTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
     
-    // v1仕様: ブラウザ標準のピンチズームのみを使用するため、独自実装のピンチズーム処理は無効化
-    // 複数のタッチポイントがある場合（ピンチ操作）
-    // ブラウザ標準のピンチズームに委ねるため、preventDefaultしない
+    // v0仕様: ブラウザ標準のピンチズームを完全に無効化
+    // 複数のタッチポイントがある場合（ピンチ操作）は無効化
     if (e.touches.length > 1) {
-      // 編集操作中はピンチ操作を無効化（ブラウザ標準のピンチズームも無効化）
-      if (isDrawing || draggingHandle || draggingMark) {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-      
-      // v1仕様: ブラウザ標準のピンチズームに委ねるため、カスタムピンチズーム処理は無効化
-      // カスタムピンチズームを開始
-      // e.preventDefault();
-      // e.stopPropagation();
-      // 
-      // if (e.touches.length >= 2) {
-      //   handlePinchStart(e.touches[0], e.touches[1]);
-      //   // 視覚化用にタッチポイントを記録
-      //   setPinchTouchPoints({
-      //     touch1: { x: e.touches[0].clientX, y: e.touches[0].clientY },
-      //     touch2: { x: e.touches[1].clientX, y: e.touches[1].clientY },
-      //   });
-      // }
-      
-      // ブラウザ標準のピンチズームに委ねる（何も処理しない）
+      e.preventDefault();
+      e.stopPropagation();
       return;
     }
     
@@ -864,46 +861,15 @@ export default function TournamentEditPage() {
   const handleCanvasTouchEnd = async (e: React.TouchEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
 
-    // v1仕様: ブラウザ標準のピンチズームのみを使用するため、独自実装のピンチズーム関連処理は無効化
-    // pointerCountを更新
-    // setPointerCount(e.touches.length);
-    // setEventSource("touch-end");
+    // v0仕様: ブラウザ標準のピンチズームを完全に無効化
+    // 複数のタッチポイントがある場合（ピンチ操作）は無効化
+    if (e.touches.length > 1) {
+      e.preventDefault();
+      e.stopPropagation();
+      setTouchStartPos(null);
+      return;
+    }
 
-    // v1仕様: ブラウザ標準のピンチズームに委ねるため、カスタムピンチズーム終了処理は無効化
-    // ピンチ操作が終了した場合、リセット
-    // if (e.touches.length < 2) {
-    //   // ピンチ終了処理（isPinchingをfalseに設定するが、transformMatrixは変更しない）
-    //   handlePinchEnd();
-    //   
-    //   // 視覚化用のタッチポイントをクリア（requestAnimationFrameで遅延させて再レンダリングのタイミングを調整）
-    //   // これにより、transformの適用タイミングと再レンダリングのタイミングを分離
-    //   requestAnimationFrame(() => {
-    //     setPinchTouchPoints(null);
-    //     setEventSource("touch-end-after-pinch");
-    //     // 次のフレームでeventSourceをリセット（無限ログを防ぐ）
-    //     requestAnimationFrame(() => {
-    //       setEventSource("none");
-    //     });
-    //   });
-    //   
-    //   // ピンチ終了フレームでは、pan/drag関連の処理を一切発火しない
-    //   // 重要: ピンチ終了フレームは「無操作フレーム」として扱う
-    //   // タッチ開始位置をリセット（これは安全）
-    //   setTouchStartPos(null);
-    //   return;
-    // }
-
-    // v1仕様: 独自実装のピンチズームは使用しないため、isPinchingは常にfalse
-    // ピンチ中は、pan/drag関連の処理を一切発火しない
-    // if (isPinching) {
-    //   setEventSource("touch-end-skip-pinching");
-    //   // タッチ開始位置をリセット（これは安全）
-    //   setTouchStartPos(null);
-    //   return;
-    // }
-    
-    // v1仕様: setEventSourceは不要（ピンチズーム関連のデバッグログは無効化）
-    // setEventSource("touch-end-pan");
 
     // タッチジェスチャーを処理
     touchGestures.handleTouchEnd(e);
@@ -1085,11 +1051,11 @@ export default function TournamentEditPage() {
         onEditModeSelectObject={editMode.selectObject}
       />
 
-      {/* 編集レイヤー: メインコンテンツ（ブラウザピンチズームの対象、UIレイヤーの下に配置） */}
-      <div className="min-h-screen bg-gray-50" style={{ touchAction: "auto" }}>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pt-[calc(4rem+3rem+3.5rem+1rem)] pt-[calc(4rem+3rem+3rem+1rem)]" style={{ touchAction: "auto", zIndex: 10 }}>
+      {/* 編集レイヤー: メインコンテンツ（v0仕様: ブラウザピンチズームは無効化、UIレイヤーの下に配置） */}
+      <div className="min-h-screen bg-gray-50" style={{ touchAction: "manipulation" }}>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:pt-[calc(4rem+3rem+3.5rem+1rem)] pt-[calc(4rem+3rem+3rem+1rem)]" style={{ touchAction: "manipulation", zIndex: 10 }}>
 
-        <div style={{ touchAction: "pan-x pan-y manipulation" }}>
+        <div style={{ touchAction: "manipulation" }}>
           {/* Canva方式: 画像コンテナを独立したスクロール領域として実装 */}
           <div
             ref={imageContainerRef}
@@ -1101,7 +1067,7 @@ export default function TournamentEditPage() {
               // ヘッダー(4rem) + ツールバー(3rem) + mainの上下パディング(2rem) = 9rem
               height: "calc(100vh - 9rem)",
               overflow: "hidden", // CanvasViewportで制御するため、ここではhidden
-              touchAction: "auto", // v1仕様: ブラウザ標準のピンチズームを許可
+              touchAction: "manipulation", // v0仕様: ブラウザ標準のピンチズームを無効化
               overscrollBehavior: "contain", // スクロールの伝播を制御
               WebkitOverflowScrolling: "touch", // iOSの慣性スクロールを有効化
               WebkitTouchCallout: "none", // iOSの長押しメニューを無効化
@@ -1116,14 +1082,14 @@ export default function TournamentEditPage() {
             onTouchMove={handleCanvasTouchMove}
             onTouchEnd={handleCanvasTouchEnd}
           >
-            {/* v1仕様: CanvasZoomLayerを削除し、canvasRefを直接使用（ブラウザ標準のピンチズームに委ねる） */}
+            {/* v0仕様: ブラウザ標準のピンチズームは無効化 */}
             {/* CanvasViewport: 表示領域（固定サイズ） */}
             <div
               style={{
                 width: "100%",
                 height: "100%",
                 position: "relative",
-                overflow: "auto", // v1仕様: ブラウザ標準のピンチズームを許可するため、overflow: autoに変更
+                overflow: "hidden", // v0仕様: ブラウザ標準のピンチズームを無効化
               }}
             >
               {/* キャンバス要素（画像とSVGを含む） */}
