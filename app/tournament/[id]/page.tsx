@@ -40,8 +40,6 @@ import { useCanvasCoordinates } from "@/lib/hooks/useCanvasCoordinates";
 import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
 import { useEditMode } from "@/lib/hooks/useEditMode";
 import { useTouchGestures } from "@/lib/hooks/useTouchGestures";
-// v1仕様: ブラウザ標準のピンチズームのみを使用するため、独自実装のピンチズームは無効化
-// import { usePinchZoom } from "@/lib/hooks/usePinchZoom";
 import { handleErrorWithNotification } from "@/lib/utils/errorHandler";
 import type { DraggingMark, DraggingHandle, SnapGuide, EditMode } from "@/lib/types/canvas";
 import { TournamentHeader } from "@/components/tournament/TournamentHeader";
@@ -71,14 +69,8 @@ export default function TournamentEditPage() {
   const [snapGuide, setSnapGuide] = useState<SnapGuide | null>(null); // スナップガイドライン（x: 垂直線、y: 水平線）
   const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null); // タッチ開始位置（スクロール判定用）
   const [isTouchDragging, setIsTouchDragging] = useState(false); // タッチドラッグ中かどうか
-  const [draggingCrossArrow, setDraggingCrossArrow] = useState<{ startX: number; startY: number } | null>(null); // 十字矢印UIのドラッグ開始位置
-  const [selectedPosition, setSelectedPosition] = useState<{ x: number; y: number } | null>(null); // 選択時の位置（十字矢印UIの表示位置計算用）
-  // v1仕様: ブラウザ標準のピンチズームのみを使用するため、ピンチ操作中のタッチポイント視覚化は無効化
-  // const [pinchTouchPoints, setPinchTouchPoints] = useState<{ touch1: { x: number; y: number } | null; touch2: { x: number; y: number } | null } | null>(null); // ピンチ操作中のタッチポイント（視覚化用）
-  
-  // v1仕様: ブラウザ標準のピンチズームのみを使用するため、独自実装のピンチズーム関連のrefとフックは無効化
-  // const canvasZoomLayerRef = useRef<HTMLDivElement>(null); // CanvasZoomLayerのref
-  // const initialImageSizeRef = useRef<{ width: number; height: number } | null>(null); // 初期画像サイズ（canvasScale=1.0の状態）
+  const [draggingCrossArrow, setDraggingCrossArrow] = useState<{ startX: number; startY: number } | null>(null);
+  const [selectedPosition, setSelectedPosition] = useState<{ x: number; y: number } | null>(null);
   
   // Canva風の編集モード管理
   const editMode = useEditMode();
@@ -88,20 +80,8 @@ export default function TournamentEditPage() {
   const { imageContainerRef, imageScale } = useImageScale();
   const { getRelativeCoordinates } = useCanvasCoordinates(canvasRef);
   
-  // v1仕様: ブラウザ標準のピンチズームのみを使用するため、独自実装のピンチズームフックは無効化
-  // const {
-  //   transformString,
-  //   transformOrigin,
-  //   isPinching,
-  //   handlePinchStart,
-  //   handlePinchMove,
-  //   handlePinchEnd,
-  //   setEventSource,
-  //   setPointerCount,
-  // } = usePinchZoom(imageContainerRef, initialImageSizeRef, canvasRef, canvasZoomLayerRef);
-  
-  // v1仕様: ピンチズーム関連の状態は不要（ブラウザ標準のピンチズームに委ねる）
-  const isPinching = false; // 常にfalse（独自実装のピンチズームは使用しない）
+  // v0仕様: ピンチズームは完全に無効化
+  const isPinching = false;
   
   // ピンチ中はスクロール制御を行わない（レイアウト変更を防ぐため）
   useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark || !!draggingCrossArrow, editMode.canEdit, isPinching);
@@ -156,11 +136,9 @@ export default function TournamentEditPage() {
 
   // v0仕様: ブラウザの再読み込みジェスチャー（Pull to Refresh / Edge Swipe）を無効化
   useEffect(() => {
-    // タッチ開始位置を記録（再読み込みジェスチャーの検出用）
     let touchStartY = 0;
     let touchStartX = 0;
 
-    // touchstartイベントで開始位置を記録
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 1) {
         touchStartY = e.touches[0].clientY;
@@ -168,63 +146,34 @@ export default function TournamentEditPage() {
       }
     };
 
-    // iOS Safari / Android Chrome対策: touchmoveイベントでpreventDefaultを実行
-    // passive: falseを指定することで、preventDefaultが有効になる
     const preventPullToRefresh = (e: TouchEvent) => {
-      // 編集操作中は無効化しない（編集ロジックに影響を与えない）
       if (isDrawing || draggingHandle || draggingMark || draggingCrossArrow) {
         return;
       }
 
-      // 画面の上端（y < 20px）から下方向へのスワイプを検出（Pull to Refresh）
       if (e.touches.length === 1) {
         const touch = e.touches[0];
         const deltaY = touch.clientY - touchStartY;
         const deltaX = Math.abs(touch.clientX - touchStartX);
 
-        // 上端付近から下方向へのスワイプを無効化
         if (touchStartY < 20 && deltaY > 0 && deltaY > deltaX) {
           e.preventDefault();
         }
 
-        // 画面の左端（x < 20px）からのスワイプを無効化（Edge Swipe）
         if (touchStartX < 20 && deltaX > 10) {
           e.preventDefault();
         }
       }
     };
 
-    // touchstartイベントで開始位置を記録
     document.addEventListener("touchstart", handleTouchStart, { passive: true });
-    // touchmoveイベントで再読み込みジェスチャーを無効化
-    // passive: falseを指定することで、preventDefaultが有効になる
     document.addEventListener("touchmove", preventPullToRefresh, { passive: false });
 
     return () => {
       document.removeEventListener("touchstart", handleTouchStart);
       document.removeEventListener("touchmove", preventPullToRefresh);
     };
-  }, [isDrawing, draggingHandle, draggingMark]);
-  
-  // v1仕様: ブラウザ標準のピンチズームのみを使用するため、独自実装のtransform適用は無効化
-  // 重要: transformの適用経路を1系統に統一
-  // ピンチ中はhandlePinchMoveでDOMに直接適用される（Reactのrender/re-renderを経由しない）
-  // ピンチ中でない場合のみ、Reactのrender/re-renderでtransformを適用
-  // useEffect(() => {
-  //   if (!canvasZoomLayerRef.current) {
-  //     return;
-  //   }
-  //   
-  //   // ピンチ中は何もしない（handlePinchMoveでDOMに直接適用済み）
-  //   if (isPinching) {
-  //     return;
-  //   }
-  //   
-  //   // ピンチ中でない場合のみ、Reactのrender/re-renderでtransformを適用
-  //   // 初期化時やピンチ終了後のrender/re-renderでtransformを同期
-  //   canvasZoomLayerRef.current.style.transform = transformString;
-  //   canvasZoomLayerRef.current.style.transformOrigin = transformOrigin;
-  // }, [transformString, transformOrigin, isPinching]);
+  }, [isDrawing, draggingHandle, draggingMark, draggingCrossArrow]);
   
   // 編集モードと選択状態を同期
   useEffect(() => {
@@ -279,35 +228,6 @@ export default function TournamentEditPage() {
 
     return () => unsubscribe();
   }, [tournamentId, reset]);
-
-  // v1仕様: ブラウザ標準のピンチズームのみを使用するため、初期画像サイズの記録は不要
-  // 初期画像サイズを記録（canvasScale=1.0の状態）
-  // useEffect(() => {
-  //   const recordInitialImageSize = () => {
-  //     if (!imageContainerRef.current || !tournament) return;
-  //     
-  //     const imgElement = imageContainerRef.current.querySelector("img");
-  //     if (!imgElement || !imgElement.naturalWidth || !imgElement.naturalHeight) return;
-  //     
-  //     // 初期画像サイズを記録（canvasScale=1.0の状態）
-  //     const imageDisplayWidth = imgElement.offsetWidth;
-  //     const imageDisplayHeight = imgElement.offsetHeight;
-  //     
-  //     if (imageDisplayWidth > 0 && imageDisplayHeight > 0) {
-  //       initialImageSizeRef.current = {
-  //         width: imageDisplayWidth,
-  //         height: imageDisplayHeight,
-  //       };
-  //     }
-  //   };
-  //   
-  //   recordInitialImageSize();
-  //   const imgElement = imageContainerRef.current?.querySelector("img");
-  //   if (imgElement) {
-  //     imgElement.onload = recordInitialImageSize;
-  //   }
-  // }, [tournament]);
-
 
   const handleCanvasMove = useCallback((e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     const coords = getRelativeCoordinates(e);
@@ -619,22 +539,15 @@ export default function TournamentEditPage() {
   }, [handleCanvasMove]);
 
   const handleCanvasTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    // v1仕様: setPointerCountは不要（ピンチズーム関連のデバッグログは無効化）
-    // pointerCountを更新
-    // setPointerCount(e.touches.length);
-    
     // v0仕様: ブラウザ標準のピンチズームを完全に無効化
-    // 複数のタッチポイントがある場合（ピンチ操作）は無効化
     if (e.touches.length > 1) {
       e.preventDefault();
       e.stopPropagation();
       return;
     }
     
-    
     // パンモードで、編集操作中でない場合は、ネイティブ処理に委譲
     if (editMode.canPan() && !isDrawing && !draggingHandle && !draggingMark && !draggingCrossArrow && !editMode.isObjectSelected) {
-      // ネイティブスクロールを許可（何も処理しない）
       return;
     }
     
@@ -662,10 +575,8 @@ export default function TournamentEditPage() {
         handleCanvasMove(e);
         return;
       }
-      // オブジェクトが選択されていない場合はパン操作を許可
-      // preventDefaultしない（パン操作を許可）
     }
-  }, [touchStartPos, isDrawing, draggingHandle, draggingMark, draggingCrossArrow, handleCanvasMove, touchGestures, editMode]);
+  }, [isDrawing, draggingHandle, draggingMark, draggingCrossArrow, handleCanvasMove, touchGestures, editMode]);
 
   // スコア追加の共通処理
   const handleAddScore = useCallback(async (coords: { x: number; y: number }) => {
@@ -1807,79 +1718,6 @@ export default function TournamentEditPage() {
         </svg>
       </button>
 
-      {/* v1仕様: ブラウザ標準のピンチズームのみを使用するため、ピンチ操作の視覚化は無効化 */}
-      {/* ピンチ操作の視覚化（デバッグ用） */}
-      {/* {pinchTouchPoints && pinchTouchPoints.touch1 && pinchTouchPoints.touch2 && (
-        <div
-          className="fixed top-0 left-0 w-full h-full pointer-events-none"
-          style={{ zIndex: 9998 }}
-        >
-          <div
-            className="absolute rounded-full border-4"
-            style={{
-              left: `${pinchTouchPoints.touch1.x}px`,
-              top: `${pinchTouchPoints.touch1.y}px`,
-              width: '40px',
-              height: '40px',
-              marginLeft: '-20px',
-              marginTop: '-20px',
-              borderColor: 'rgba(59, 130, 246, 0.6)',
-              backgroundColor: 'rgba(59, 130, 246, 0.2)',
-            }}
-          />
-          <div
-            className="absolute rounded-full border-4"
-            style={{
-              left: `${pinchTouchPoints.touch2.x}px`,
-              top: `${pinchTouchPoints.touch2.y}px`,
-              width: '40px',
-              height: '40px',
-              marginLeft: '-20px',
-              marginTop: '-20px',
-              borderColor: 'rgba(59, 130, 246, 0.6)',
-              backgroundColor: 'rgba(59, 130, 246, 0.2)',
-            }}
-          />
-          <svg
-            className="absolute top-0 left-0 w-full h-full"
-            style={{ pointerEvents: 'none' }}
-          >
-            <line
-              x1={pinchTouchPoints.touch1.x}
-              y1={pinchTouchPoints.touch1.y}
-              x2={pinchTouchPoints.touch2.x}
-              y2={pinchTouchPoints.touch2.y}
-              stroke="rgba(59, 130, 246, 0.4)"
-              strokeWidth="3"
-              strokeDasharray="5,5"
-            />
-          </svg>
-          <div
-            className="absolute border-2"
-            style={{
-              left: `${Math.min(pinchTouchPoints.touch1.x, pinchTouchPoints.touch2.x)}px`,
-              top: `${Math.min(pinchTouchPoints.touch1.y, pinchTouchPoints.touch2.y)}px`,
-              width: `${Math.abs(pinchTouchPoints.touch2.x - pinchTouchPoints.touch1.x)}px`,
-              height: `${Math.abs(pinchTouchPoints.touch2.y - pinchTouchPoints.touch1.y)}px`,
-              borderColor: 'rgba(59, 130, 246, 0.5)',
-              backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            }}
-          />
-          <div
-            className="absolute rounded-full"
-            style={{
-              left: `${(pinchTouchPoints.touch1.x + pinchTouchPoints.touch2.x) / 2}px`,
-              top: `${(pinchTouchPoints.touch1.y + pinchTouchPoints.touch2.y) / 2}px`,
-              width: '20px',
-              height: '20px',
-              marginLeft: '-10px',
-              marginTop: '-10px',
-              backgroundColor: 'rgba(59, 130, 246, 0.8)',
-              border: '2px solid white',
-            }}
-          />
-        </div>
-      )} */}
     </>
   );
 }
