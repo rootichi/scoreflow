@@ -176,13 +176,13 @@ export function EditToolbar({
   }`;
 
   // v2仕様: visualViewport APIを使用してズーム時の位置とスケールを計算
-  const [position, setPosition] = useState({ bottom: 0, scale: 1 });
+  const [position, setPosition] = useState({ left: 0, bottom: 0, width: 0, scale: 1 });
   
   useEffect(() => {
     // visualViewport APIが利用可能か確認
     if (typeof window === 'undefined' || !window.visualViewport) {
       // フォールバック: 通常のfixed位置
-      setPosition({ bottom: 0, scale: 1 });
+      setPosition({ left: 0, bottom: 0, width: window.innerWidth || 0, scale: 1 });
       return;
     }
 
@@ -192,8 +192,11 @@ export function EditToolbar({
       const vp = window.visualViewport;
       if (!vp) return;
 
-      // 画面下部からの距離を計算
+      // 画面左下の位置を計算（ズーム中に左右にピンした際も固定位置に表示）
+      const left = vp.pageLeft;
       const bottom = window.innerHeight - (vp.pageTop + vp.height);
+      // ビューポートの幅を取得（ズーム中も画面幅に合わせる）
+      const width = vp.width;
       // ズームスケールを取得（ユーザー視点でサイズを一定に保つため）
       const scale = vp.scale || 1;
 
@@ -203,7 +206,7 @@ export function EditToolbar({
       }
       
       rafId = requestAnimationFrame(() => {
-        setPosition({ bottom, scale });
+        setPosition({ left, bottom, width, scale });
         rafId = null;
       });
     };
@@ -228,24 +231,22 @@ export function EditToolbar({
 
   return (
     <div 
-      className="fixed left-0 right-0 z-[90] bg-white border-t border-gray-200" 
+      className="fixed z-[90]" 
       style={{ 
         position: 'fixed',
+        left: position.left,
         bottom: position.bottom,
-        left: 0,
-        right: 0,
+        width: position.width || '100vw',
         zIndex: 90,
         touchAction: "none",
         // v2仕様: ズーム時に逆スケーリングを適用して、ユーザー視点でサイズを一定に保つ
         transform: `scale(${1 / position.scale})`,
-        transformOrigin: 'bottom center', // 下部中央を基準にスケーリング
+        transformOrigin: 'bottom left', // 左下を基準にスケーリング
       }}
     >
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-        <div className="bg-white">
-          {/* スマホ版 */}
-          <div className="md:hidden overflow-x-auto">
-            <div className="flex items-center justify-between gap-2 py-2">
+      {/* スマホ版 */}
+      <div className="md:hidden">
+        <div className="flex items-center justify-between gap-2 px-2 py-2">
               <div className="flex items-center gap-2 min-w-max">
                 <button
                   onClick={onUndo}
@@ -329,8 +330,8 @@ export function EditToolbar({
             )}
           </div>
 
-          {/* PC版 */}
-          <div className="hidden md:flex justify-between items-center gap-2 py-2">
+      {/* PC版 */}
+      <div className="hidden md:flex justify-between items-center gap-2 px-2 py-2">
             <div className="flex items-center gap-2">
               <button
                 onClick={onUndo}
@@ -401,8 +402,6 @@ export function EditToolbar({
               </button>
             </div>
           </div>
-        </div>
-      </div>
     </div>
   );
 }
