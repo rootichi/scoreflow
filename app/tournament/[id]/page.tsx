@@ -1516,7 +1516,7 @@ export default function TournamentEditPage() {
                 })}
             </svg>
             {/* 十字矢印UI（Canvaスマホ版風） */}
-            {selectedMarkId && mode === null && !draggingHandle && !draggingMark && selectedPosition && (() => {
+            {selectedMarkId && mode === null && !draggingHandle && selectedPosition && (() => {
               // ドラッグ中はlocalMarksから、そうでない場合はmarksから取得
               const displayMarks = draggingCrossArrow ? localMarks : marks;
               const selectedMark = displayMarks.find((m) => m.id === selectedMarkId);
@@ -1717,18 +1717,21 @@ export default function TournamentEditPage() {
               );
             })()}
             {/* スコアマーク */}
-            {(draggingMark ? localMarks : marks)
+            {(draggingMark || draggingCrossArrow ? localMarks : marks)
               .filter((m) => m.type === "score")
-              .map((mark) => (
+              .map((mark) => {
+                const foundMark = (draggingMark || draggingCrossArrow ? localMarks : marks).find((m) => m.id === mark.id) || mark;
+                const displayMark = foundMark as ScoreMark & { id: string };
+                return (
                 <div
                   key={mark.id}
                   className="absolute"
                   style={{
-                    left: `${mark.x * 100}%`,
-                    top: `${mark.y * 100}%`,
+                    left: `${displayMark.x * 100}%`,
+                    top: `${displayMark.y * 100}%`,
                     transform: "translate(-50%, -50%)",
-                    fontSize: `${mark.fontSize * imageScale}px`,
-                    color: selectedMarkId === mark.id && mode === null ? SELECTED_COLOR : mark.color,
+                    fontSize: `${displayMark.fontSize * imageScale}px`,
+                    color: selectedMarkId === mark.id && mode === null ? SELECTED_COLOR : displayMark.color,
                     fontWeight: "bold",
                     zIndex: 10,
                     cursor: mode === null ? "move" : "default",
@@ -1746,7 +1749,7 @@ export default function TournamentEditPage() {
                         type: "score",
                         startX: coords.x,
                         startY: coords.y,
-                        originalMark: mark,
+                        originalMark: displayMark,
                       });
                       editMode.startEdit();
                     }
@@ -1767,15 +1770,16 @@ export default function TournamentEditPage() {
                         type: "score",
                         startX: coords.x,
                         startY: coords.y,
-                        originalMark: mark,
+                        originalMark: displayMark,
                       });
                       e.preventDefault(); // スクロールを防止
                     }
                   }}
                 >
-                  {mark.value}
+                  {displayMark.value}
                 </div>
-              ))}
+              );
+              })}
             {/* 描画中のライン（プレビュー） */}
             {isDrawing && lineStart && lineEnd && (
               <svg
