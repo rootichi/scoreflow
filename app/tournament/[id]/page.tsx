@@ -80,100 +80,8 @@ export default function TournamentEditPage() {
   const { imageContainerRef, imageScale } = useImageScale();
   const { getRelativeCoordinates } = useCanvasCoordinates(canvasRef);
   
-  // v0仕様: ピンチズームは完全に無効化
-  const isPinching = false;
-  
-  // ピンチ中はスクロール制御を行わない（レイアウト変更を防ぐため）
-  useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark || !!draggingCrossArrow, editMode.canEdit, isPinching);
-
-  // v0仕様: ブラウザ標準のピンチズームを完全に無効化
-  useEffect(() => {
-    // ジェスチャーイベント（iOS Safari）を無効化
-    const preventGesture = (e: Event) => {
-      e.preventDefault();
-    };
-
-    // ホイールズーム（Ctrl+ホイール、デスクトップ）を無効化
-    const preventWheelZoom = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-      }
-    };
-
-    // タッチイベントでピンチズームを無効化
-    const preventPinchZoom = (e: TouchEvent) => {
-      if (e.touches.length > 1) {
-        e.preventDefault();
-      }
-    };
-
-    // ダブルタップズームを無効化
-    let lastTouchEnd = 0;
-    const preventDoubleTapZoom = (e: TouchEvent) => {
-      const now = Date.now();
-      if (now - lastTouchEnd <= 300) {
-        e.preventDefault();
-      }
-      lastTouchEnd = now;
-    };
-
-    document.addEventListener("gesturestart", preventGesture);
-    document.addEventListener("gesturechange", preventGesture);
-    document.addEventListener("gestureend", preventGesture);
-    document.addEventListener("wheel", preventWheelZoom, { passive: false });
-    document.addEventListener("touchstart", preventPinchZoom, { passive: false });
-    document.addEventListener("touchend", preventDoubleTapZoom, { passive: false });
-
-    return () => {
-      document.removeEventListener("gesturestart", preventGesture);
-      document.removeEventListener("gesturechange", preventGesture);
-      document.removeEventListener("gestureend", preventGesture);
-      document.removeEventListener("wheel", preventWheelZoom);
-      document.removeEventListener("touchstart", preventPinchZoom);
-      document.removeEventListener("touchend", preventDoubleTapZoom);
-    };
-  }, []);
-
-  // v0仕様: ブラウザの再読み込みジェスチャー（Pull to Refresh / Edge Swipe）を無効化
-  useEffect(() => {
-    let touchStartY = 0;
-    let touchStartX = 0;
-
-    const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 1) {
-        touchStartY = e.touches[0].clientY;
-        touchStartX = e.touches[0].clientX;
-      }
-    };
-
-    const preventPullToRefresh = (e: TouchEvent) => {
-      if (isDrawing || draggingHandle || draggingMark || draggingCrossArrow) {
-        return;
-      }
-
-      if (e.touches.length === 1) {
-        const touch = e.touches[0];
-        const deltaY = touch.clientY - touchStartY;
-        const deltaX = Math.abs(touch.clientX - touchStartX);
-
-        if (touchStartY < 20 && deltaY > 0 && deltaY > deltaX) {
-          e.preventDefault();
-        }
-
-        if (touchStartX < 20 && deltaX > 10) {
-          e.preventDefault();
-        }
-      }
-    };
-
-    document.addEventListener("touchstart", handleTouchStart, { passive: true });
-    document.addEventListener("touchmove", preventPullToRefresh, { passive: false });
-
-    return () => {
-      document.removeEventListener("touchstart", handleTouchStart);
-      document.removeEventListener("touchmove", preventPullToRefresh);
-    };
-  }, [isDrawing, draggingHandle, draggingMark, draggingCrossArrow]);
+  // v1仕様: 素材選択時のみスクロールを無効化
+  useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark || !!draggingCrossArrow, editMode.canEdit, false, !!selectedMarkId);
   
   // 編集モードと選択状態を同期
   useEffect(() => {
@@ -539,8 +447,8 @@ export default function TournamentEditPage() {
   }, [handleCanvasMove]);
 
   const handleCanvasTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    // v0仕様: ブラウザ標準のピンチズームを完全に無効化
-    if (e.touches.length > 1) {
+    // v1仕様: 編集操作中のみピンチズームを無効化（通常時は許可）
+    if ((isDrawing || draggingHandle || draggingMark || draggingCrossArrow) && e.touches.length > 1) {
       e.preventDefault();
       e.stopPropagation();
       return;
@@ -791,9 +699,8 @@ export default function TournamentEditPage() {
   const handleCanvasTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
     
-    // v0仕様: ブラウザ標準のピンチズームを完全に無効化
-    // 複数のタッチポイントがある場合（ピンチ操作）は無効化
-    if (e.touches.length > 1) {
+    // v1仕様: 編集操作中のみピンチズームを無効化（通常時は許可）
+    if ((mode === "line" || selectedMarkId) && e.touches.length > 1) {
       e.preventDefault();
       e.stopPropagation();
       return;
@@ -942,9 +849,8 @@ export default function TournamentEditPage() {
   const handleCanvasTouchEnd = async (e: React.TouchEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
 
-    // v0仕様: ブラウザ標準のピンチズームを完全に無効化
-    // 複数のタッチポイントがある場合（ピンチ操作）は無効化
-    if (e.touches.length > 1) {
+    // v1仕様: 編集操作中のみピンチズームを無効化（通常時は許可）
+    if ((isDrawing || draggingHandle || draggingMark || draggingCrossArrow) && e.touches.length > 1) {
       e.preventDefault();
       e.stopPropagation();
       setTouchStartPos(null);
@@ -1134,25 +1040,21 @@ export default function TournamentEditPage() {
 
       {/* 編集レイヤー: メインコンテンツ（v0仕様: ブラウザピンチズームは無効化、UIレイヤーの下に配置） */}
       {/* ヘッダー(4rem + 3rem) + ツールバー(約3rem) + 余白(0.5rem) = 約10.5remの下から開始 */}
-      <div className="bg-gray-50" style={{ touchAction: "manipulation", overflow: "hidden", height: "calc(100vh - 4rem - 3rem - 3rem - 0.5rem)", position: "fixed", top: "calc(4rem + 3rem + 3rem + 0.5rem)", left: 0, right: 0, bottom: 0 }}>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full" style={{ touchAction: "manipulation", zIndex: 10, overflow: "hidden", height: "100%" }}>
+      <div className="bg-gray-50" style={{ height: "calc(100vh - 4rem - 3rem - 3rem - 0.5rem)", position: "fixed", top: "calc(4rem + 3rem + 3rem + 0.5rem)", left: 0, right: 0, bottom: 0 }}>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full" style={{ zIndex: 10, height: "100%" }}>
 
-        <div style={{ touchAction: "manipulation", overflow: "hidden", height: "100%" }}>
-          {/* v0仕様: 画像コンテナ（スクロール無効化） */}
+        <div style={{ height: "100%" }}>
+          {/* v1仕様: 画像コンテナ（スクロール有効化） */}
           <div
             ref={imageContainerRef}
             data-canvas-container
             className={`relative ${mode === "line" ? "cursor-crosshair" : ""}`}
             style={{
-              // 画面サイズに合わせた固定サイズ（ヘッダーとツールバーを除く）
               width: "100%",
               height: "100%",
-              overflow: "hidden", // v0仕様: スクロールを完全に無効化
-              touchAction: "manipulation", // v0仕様: ブラウザ標準のピンチズームを無効化
-              overscrollBehavior: "none", // v0仕様: スクロールの伝播を完全に無効化
               WebkitTouchCallout: "none", // iOSの長押しメニューを無効化
               userSelect: "none", // テキスト選択を無効化
-              position: "relative", // 相対位置指定
+              position: "relative",
             }}
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleCanvasMouseMove}
@@ -1162,14 +1064,12 @@ export default function TournamentEditPage() {
             onTouchMove={handleCanvasTouchMove}
             onTouchEnd={handleCanvasTouchEnd}
           >
-            {/* v0仕様: ブラウザ標準のピンチズームは無効化 */}
-            {/* CanvasViewport: 表示領域（固定サイズ） */}
+            {/* v1仕様: ブラウザ標準のピンチズームを有効化 */}
             <div
               style={{
                 width: "100%",
                 height: "100%",
                 position: "relative",
-                overflow: "hidden", // v0仕様: ブラウザ標準のピンチズームを無効化
               }}
             >
               {/* キャンバス要素（画像とSVGを含む） */}
