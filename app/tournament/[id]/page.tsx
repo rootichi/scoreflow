@@ -1525,22 +1525,12 @@ export default function TournamentEditPage() {
                 return null;
               }
 
-              // 画像の中心を取得
-              const imgElement = canvasRef.current.querySelector("img");
-              if (!imgElement) {
-                return null;
-              }
-              const imageRect = imgElement.getBoundingClientRect();
               const canvasRect = canvasRef.current.getBoundingClientRect();
-              const imageCenterX = (imageRect.left + imageRect.right) / 2;
-              const imageCenterY = (imageRect.top + imageRect.bottom) / 2;
-              const imageCenterXRelative = (imageCenterX - canvasRect.left) / canvasRect.width;
-              const imageCenterYRelative = (imageCenterY - canvasRect.top) / canvasRect.height;
+              const offset = 0.05; // 相対座標でのオフセット（約5%）
 
               // 十字矢印UIの表示位置を計算
               let absoluteX = 0;
               let absoluteY = 0;
-              const offset = 0.05; // 相対座標でのオフセット（約5%）
 
               if (selectedMark.type === "line") {
                 const lineMark = selectedMark as LineMark & { id: string };
@@ -1552,47 +1542,23 @@ export default function TournamentEditPage() {
                 const centerY = (lineMark.y1 + lineMark.y2) / 2;
                 
                 if (isHorizontal) {
-                  // 並行ライン（水平ライン）
-                  // 選択位置が画像の中心よりも下かどうか
-                  if (selectedPosition.y > imageCenterYRelative) {
-                    // 選択素材の上に表示
-                    absoluteX = centerX * canvasRect.width;
-                    absoluteY = (centerY - offset) * canvasRect.height;
-                  } else {
-                    // 選択素材の下に表示
-                    absoluteX = centerX * canvasRect.width;
-                    absoluteY = (centerY + offset) * canvasRect.height;
-                  }
+                  // 並行ライン（水平ライン）: 選択素材の下に表示
+                  absoluteX = centerX * canvasRect.width;
+                  absoluteY = (centerY + offset) * canvasRect.height;
                 } else if (isVertical) {
-                  // 垂直ライン
-                  // 選択位置が画像の中心よりも右かどうか
-                  if (selectedPosition.x > imageCenterXRelative) {
-                    // 選択素材の左に表示
-                    absoluteX = (centerX - offset) * canvasRect.width;
-                    absoluteY = centerY * canvasRect.height;
-                  } else {
-                    // 選択素材の右に表示
-                    absoluteX = (centerX + offset) * canvasRect.width;
-                    absoluteY = centerY * canvasRect.height;
-                  }
+                  // 垂直ライン: 選択素材の右に表示
+                  absoluteX = (centerX + offset) * canvasRect.width;
+                  absoluteY = centerY * canvasRect.height;
                 } else {
                   // 斜めのライン（フォールバック: 中央の少し下）
                   absoluteX = centerX * canvasRect.width;
                   absoluteY = (centerY + offset) * canvasRect.height;
                 }
               } else if (selectedMark.type === "score") {
-                // スコアの場合
+                // スコア: 選択素材の下に表示
                 const scoreMark = selectedMark as ScoreMark & { id: string };
-                // 選択位置が画像の中心よりも下かどうか
-                if (selectedPosition.y > imageCenterYRelative) {
-                  // 選択素材の上に表示
-                  absoluteX = scoreMark.x * canvasRect.width;
-                  absoluteY = (scoreMark.y - offset) * canvasRect.height;
-                } else {
-                  // 選択素材の下に表示
-                  absoluteX = scoreMark.x * canvasRect.width;
-                  absoluteY = (scoreMark.y + offset) * canvasRect.height;
-                }
+                absoluteX = scoreMark.x * canvasRect.width;
+                absoluteY = (scoreMark.y + offset) * canvasRect.height;
               } else {
                 return null;
               }
