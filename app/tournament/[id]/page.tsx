@@ -713,18 +713,9 @@ export default function TournamentEditPage() {
       return;
     }
     
-    // v1仕様: 素材選択時はパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
-    if (selectedMarkId && mode !== "line") {
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
-    
-    // パンモードで、ライン追加モードでもない場合は、ネイティブ処理に委譲
-    if (editMode.canPan() && mode !== "line" && !isDrawing && !draggingHandle && !draggingMark) {
-      // ネイティブスクロールを許可（何も処理しない）
-      return;
-    }
+    // v1仕様: 常にパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
+    e.preventDefault();
+    e.stopPropagation();
     
     // タッチジェスチャーを処理（単一タッチの場合のみ）
     touchGestures.handleTouchStart(e);
