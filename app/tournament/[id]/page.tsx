@@ -80,8 +80,8 @@ export default function TournamentEditPage() {
   const { imageContainerRef, imageScale } = useImageScale();
   const { getRelativeCoordinates } = useCanvasCoordinates(canvasRef);
   
-  // v1仕様: 素材選択時のみスクロールを無効化
-  useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark || !!draggingCrossArrow, editMode.canEdit, false, !!selectedMarkId);
+  // v1仕様: 編集操作中のみスクロールを無効化（素材選択時はスクロールを許可）
+  useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark || !!draggingCrossArrow, editMode.canEdit, false);
   
   // 編集モードと選択状態を同期
   useEffect(() => {
@@ -454,6 +454,13 @@ export default function TournamentEditPage() {
       return;
     }
     
+    // v1仕様: 素材選択時はパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
+    if (selectedMarkId) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
     // パンモードで、編集操作中でない場合は、ネイティブ処理に委譲
     if (editMode.canPan() && !isDrawing && !draggingHandle && !draggingMark && !draggingCrossArrow && !editMode.isObjectSelected) {
       return;
@@ -484,7 +491,7 @@ export default function TournamentEditPage() {
         return;
       }
     }
-  }, [isDrawing, draggingHandle, draggingMark, draggingCrossArrow, handleCanvasMove, touchGestures, editMode]);
+  }, [isDrawing, draggingHandle, draggingMark, draggingCrossArrow, selectedMarkId, handleCanvasMove, touchGestures, editMode]);
 
   // スコア追加の共通処理
   const handleAddScore = useCallback(async (coords: { x: number; y: number }) => {
@@ -701,6 +708,13 @@ export default function TournamentEditPage() {
     
     // v1仕様: 編集操作中のみピンチズームを無効化（通常時は許可）
     if ((mode === "line" || selectedMarkId) && e.touches.length > 1) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
+    // v1仕様: 素材選択時はパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
+    if (selectedMarkId && mode !== "line") {
       e.preventDefault();
       e.stopPropagation();
       return;

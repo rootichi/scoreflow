@@ -1,17 +1,16 @@
 import { useEffect, useRef } from "react";
 
 /**
- * 編集操作中または素材選択中にスクロールを無効化するカスタムフック
+ * 編集操作中にスクロールを無効化するカスタムフック
  * 
- * v1仕様: 素材選択時もスクロールを無効化
+ * v1仕様: 編集操作中のみスクロールを無効化（素材選択時はスクロールを許可）
  */
 export function useScrollPrevention(
   isDrawing: boolean,
   draggingHandle: boolean,
   draggingMark: boolean,
   canEdit?: () => boolean,
-  isPinching?: boolean,
-  isSelected?: boolean // v1仕様: 素材選択中フラグ
+  isPinching?: boolean
 ) {
   useEffect(() => {
     // ピンチ中はスクロール制御を行わない（レイアウト変更を防ぐため）
@@ -19,11 +18,10 @@ export function useScrollPrevention(
       return;
     }
 
-    // v1仕様: 編集操作中または素材選択中にスクロールを無効化
+    // v1仕様: 編集操作中のみスクロールを無効化
     const isEditing = canEdit ? canEdit() : (isDrawing || draggingHandle || draggingMark);
-    const shouldPreventScroll = isEditing || isSelected;
 
-    if (shouldPreventScroll) {
+    if (isEditing) {
       document.body.style.overflow = "hidden";
       document.body.style.position = "fixed";
       document.body.style.width = "100%";
@@ -42,5 +40,5 @@ export function useScrollPrevention(
       document.body.style.width = "";
       document.body.style.height = "";
     }
-  }, [isDrawing, draggingHandle, draggingMark, canEdit, isPinching, isSelected]);
+  }, [isDrawing, draggingHandle, draggingMark, canEdit, isPinching]);
 }
