@@ -1045,7 +1045,7 @@ export default function TournamentEditPage() {
             style={{
               width: "100%",
               height: "100%",
-              touchAction: "pinch-zoom", // v1仕様: パン操作を無効化、ピンチズームのみ許可
+              touchAction: selectedMarkId ? "pinch-zoom" : "pan-x pan-y pinch-zoom", // v1仕様: 素材選択時のみパン操作を無効化
               WebkitTouchCallout: "none", // iOSの長押しメニューを無効化
               userSelect: "none", // テキスト選択を無効化
               position: "relative",
