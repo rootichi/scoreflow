@@ -454,9 +454,11 @@ export default function TournamentEditPage() {
       return;
     }
     
-    // v1仕様: 常にパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
-    e.preventDefault();
-    e.stopPropagation();
+    // v1仕様: 素材選択時のみパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
+    if (selectedMarkId) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     
     // タッチジェスチャーを処理（単一タッチの場合のみ）
     touchGestures.handleTouchMove(e);
@@ -701,9 +703,11 @@ export default function TournamentEditPage() {
       return;
     }
     
-    // v1仕様: 常にパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
-    e.preventDefault();
-    e.stopPropagation();
+    // v1仕様: 素材選択時のみパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
+    if (selectedMarkId && mode !== "line") {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     
     // タッチジェスチャーを処理（単一タッチの場合のみ）
     touchGestures.handleTouchStart(e);
