@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { EditMode } from "@/lib/types/canvas";
 import { Mark, LineMark, ScoreMark } from "@/lib/firebase/types";
 import { Timestamp } from "firebase/firestore";
@@ -174,8 +175,72 @@ export function EditToolbar({
       : "bg-blue-50/30 text-blue-600/30"
   }`;
 
+  // v2仕様: visualViewport APIを使用してズーム時の位置とスケールを計算
+  const [position, setPosition] = useState({ bottom: 0, scale: 1 });
+  
+  useEffect(() => {
+    // visualViewport APIが利用可能か確認
+    if (typeof window === 'undefined' || !window.visualViewport) {
+      // フォールバック: 通常のfixed位置
+      setPosition({ bottom: 0, scale: 1 });
+      return;
+    }
+
+    let rafId: number | null = null;
+
+    const updatePosition = () => {
+      const vp = window.visualViewport;
+      if (!vp) return;
+
+      // 画面下部からの距離を計算
+      const bottom = window.innerHeight - (vp.pageTop + vp.height);
+      // ズームスケールを取得（ユーザー視点でサイズを一定に保つため）
+      const scale = vp.scale || 1;
+
+      // requestAnimationFrameでスムーズに更新（ブレを防止）
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      
+      rafId = requestAnimationFrame(() => {
+        setPosition({ bottom, scale });
+        rafId = null;
+      });
+    };
+
+    // 初回設定
+    updatePosition();
+
+    // visualViewportの変更を監視
+    window.visualViewport.addEventListener('resize', updatePosition);
+    window.visualViewport.addEventListener('scroll', updatePosition);
+
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updatePosition);
+        window.visualViewport.removeEventListener('scroll', updatePosition);
+      }
+    };
+  }, []);
+
   return (
-    <div className="fixed top-[calc(4rem+3rem)] left-0 right-0 z-[90] bg-white border-b border-gray-200" style={{ touchAction: "none" }}>
+    <div 
+      className="fixed left-0 right-0 z-[90] bg-white border-t border-gray-200" 
+      style={{ 
+        position: 'fixed',
+        bottom: position.bottom,
+        left: 0,
+        right: 0,
+        zIndex: 90,
+        touchAction: "none",
+        // v2仕様: ズーム時に逆スケーリングを適用して、ユーザー視点でサイズを一定に保つ
+        transform: `scale(${1 / position.scale})`,
+        transformOrigin: 'bottom center', // 下部中央を基準にスケーリング
+      }}
+    >
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         <div className="bg-white">
           {/* スマホ版 */}

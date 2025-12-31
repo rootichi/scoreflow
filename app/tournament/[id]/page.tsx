@@ -1009,7 +1009,7 @@ export default function TournamentEditPage() {
       {/* UIレイヤー: ヘッダー（固定表示、ブラウザピンチズームの影響を受けない） */}
       <TournamentHeader tournament={tournament} />
       
-      {/* UIレイヤー: 編集ツールバー（固定表示、ブラウザピンチズームの影響を受けない） */}
+      {/* UIレイヤー: 編集ツールバー（フッター風、ズーム時も位置とサイズを一定に保つ） */}
       <EditToolbar
         mode={mode}
         scoreValue={scoreValue}
@@ -1035,9 +1035,9 @@ export default function TournamentEditPage() {
         onEditModeSelectObject={editMode.selectObject}
       />
 
-      {/* 編集レイヤー: メインコンテンツ（v0仕様: ブラウザピンチズームは無効化、UIレイヤーの下に配置） */}
-      {/* ヘッダー(4rem + 3rem) + ツールバー(約3rem) + 余白(0.5rem) = 約10.5remの下から開始 */}
-      <div className="bg-gray-50" style={{ height: "calc(100vh - 4rem - 3rem - 3rem - 0.5rem)", position: "fixed", top: "calc(4rem + 3rem + 3rem + 0.5rem)", left: 0, right: 0, bottom: 0 }}>
+      {/* 編集レイヤー: メインコンテンツ（v2仕様: ヘッダーの下から開始、ツールバーは下部に配置） */}
+      {/* ヘッダー(4rem + 3rem) + 余白(0.5rem) = 約7.5remの下から開始、ツールバー(約3rem)の上まで */}
+      <div className="bg-gray-50" style={{ height: "calc(100vh - 4rem - 3rem - 0.5rem - 3rem)", position: "fixed", top: "calc(4rem + 3rem + 0.5rem)", left: 0, right: 0, bottom: "3rem" }}>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full" style={{ zIndex: 10, height: "100%" }}>
 
         <div style={{ height: "100%" }}>
