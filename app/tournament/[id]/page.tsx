@@ -45,6 +45,7 @@ import type { DraggingMark, DraggingHandle, SnapGuide, EditMode } from "@/lib/ty
 import { TournamentHeader } from "@/components/tournament/TournamentHeader";
 import { EditToolbar } from "@/components/tournament/EditToolbar";
 import { SnapGuideLines } from "@/components/tournament/SnapGuideLines";
+import { SideMenu } from "@/components/tournament/SideMenu";
 
 export default function TournamentEditPage() {
   const router = useRouter();
@@ -1009,6 +1010,21 @@ export default function TournamentEditPage() {
       {/* UIレイヤー: ヘッダー（固定表示、ブラウザピンチズームの影響を受けない） */}
       <TournamentHeader tournament={tournament} />
       
+      {/* UIレイヤー: サイドメニュー（右上、ズーム時も位置とサイズを一定に保つ） */}
+      <SideMenu
+        tournamentId={tournamentId}
+        publicUrlId={tournament.publicUrlId}
+        onDeleteTournament={async () => {
+          try {
+            await deleteTournament(tournamentId);
+            showSuccess("大会を削除しました");
+            router.push("/");
+          } catch (error) {
+            await handleErrorWithNotification(error, { operation: "deleteTournament", details: { tournamentId } }, "大会の削除に失敗しました");
+          }
+        }}
+      />
+      
       {/* UIレイヤー: 編集ツールバー（フッター風、ズーム時も位置とサイズを一定に保つ） */}
       <EditToolbar
         mode={mode}
@@ -1592,29 +1608,6 @@ export default function TournamentEditPage() {
         </div>
       </main>
       </div>
-
-      {/* UIレイヤー: 大会削除ボタン（画面右下固定、ブラウザピンチズームの影響を受けない） */}
-      <button
-        onClick={async () => {
-          if (showConfirm("この大会を完全に削除しますか？この操作は取り消せません。")) {
-            try {
-              await deleteTournament(tournamentId);
-              showSuccess("大会を削除しました");
-              router.push("/");
-            } catch (error) {
-              await handleErrorWithNotification(error, { operation: "deleteTournament", details: { tournamentId } }, "大会の削除に失敗しました");
-            }
-          }
-        }}
-        className="fixed bottom-6 right-6 z-[80] p-4 rounded-full shadow-lg transition bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 flex items-center justify-center"
-        style={{ touchAction: "none" }}
-        title="大会削除"
-        type="button"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-      </button>
 
     </>
   );
