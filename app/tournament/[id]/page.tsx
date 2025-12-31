@@ -45,7 +45,6 @@ import type { DraggingMark, DraggingHandle, SnapGuide, EditMode } from "@/lib/ty
 import { TournamentHeader } from "@/components/tournament/TournamentHeader";
 import { EditToolbar } from "@/components/tournament/EditToolbar";
 import { SnapGuideLines } from "@/components/tournament/SnapGuideLines";
-import { SideMenu } from "@/components/tournament/SideMenu";
 
 export default function TournamentEditPage() {
   const router = useRouter();
@@ -1008,12 +1007,9 @@ export default function TournamentEditPage() {
         }
       `}</style>
       {/* UIレイヤー: ヘッダー（固定表示、ブラウザピンチズームの影響を受けない） */}
-      <TournamentHeader tournament={tournament} />
-      
-      {/* UIレイヤー: サイドメニュー（右上、ズーム時も位置とサイズを一定に保つ） */}
-      <SideMenu
+      <TournamentHeader
+        tournament={tournament}
         tournamentId={tournamentId}
-        publicUrlId={tournament.publicUrlId}
         onDeleteTournament={async () => {
           try {
             await deleteTournament(tournamentId);
