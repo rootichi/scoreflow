@@ -14,28 +14,36 @@ export function VersionBadge() {
   const deployTime = BUILD_TIME;
   
   // v2仕様: visualViewport APIを使用してズーム時の位置を計算
-  const [position, setPosition] = useState({ left: 0, bottom: 0, scale: 1 });
+  const [position, setPosition] = useState({ left: 0, bottom: 0 });
   
   useEffect(() => {
     // visualViewport APIが利用可能か確認
     if (typeof window === 'undefined' || !window.visualViewport) {
       // フォールバック: 通常のfixed位置
-      setPosition({ left: 0, bottom: 0, scale: 1 });
+      setPosition({ left: 0, bottom: 0 });
       return;
     }
+
+    let rafId: number | null = null;
 
     const updatePosition = () => {
       const vp = window.visualViewport;
       if (!vp) return;
 
-      // visualViewportの左下座標を計算
-      // visualViewport.offsetLeft, visualViewport.offsetTopはビューポートの左上の位置
-      // visualViewport.heightはビューポートの高さ
-      const left = vp.offsetLeft;
-      const bottom = window.innerHeight - (vp.offsetTop + vp.height);
-      const scale = vp.scale;
+      // pageLeft/pageTopはページ座標系での位置（より正確）
+      // 左下座標を計算
+      const left = vp.pageLeft;
+      const bottom = window.innerHeight - (vp.pageTop + vp.height);
 
-      setPosition({ left, bottom, scale });
+      // requestAnimationFrameでスムーズに更新（ブレを防止）
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      
+      rafId = requestAnimationFrame(() => {
+        setPosition({ left, bottom });
+        rafId = null;
+      });
     };
 
     // 初回設定
@@ -46,6 +54,9 @@ export function VersionBadge() {
     window.visualViewport.addEventListener('scroll', updatePosition);
 
     return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
       if (window.visualViewport) {
         window.visualViewport.removeEventListener('resize', updatePosition);
         window.visualViewport.removeEventListener('scroll', updatePosition);
@@ -81,8 +92,8 @@ export function VersionBadge() {
         bottom: position.bottom,
         zIndex: 9999,
         pointerEvents: 'none',
-        transform: `scale(${1 / position.scale})`, // v2仕様: ズーム時に逆スケーリングを適用
-        transformOrigin: 'bottom left', // 左下を基準にスケーリング
+        // v2仕様: transform: scale()を使わない（ブレを防止）
+        // ズーム時はサイズも拡大されるが、位置は正確に保たれる
       }}
     >
       <div 
