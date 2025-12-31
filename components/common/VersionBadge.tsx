@@ -13,14 +13,14 @@ export function VersionBadge() {
   // デプロイ時刻を取得（ビルド時に生成されたファイルから）
   const deployTime = BUILD_TIME;
   
-  // v2仕様: visualViewport APIを使用してズーム時の位置を計算
-  const [position, setPosition] = useState({ left: 0, bottom: 0 });
+  // v2仕様: visualViewport APIを使用してズーム時の位置とスケールを計算
+  const [position, setPosition] = useState({ left: 0, bottom: 0, scale: 1 });
   
   useEffect(() => {
     // visualViewport APIが利用可能か確認
     if (typeof window === 'undefined' || !window.visualViewport) {
       // フォールバック: 通常のfixed位置
-      setPosition({ left: 0, bottom: 0 });
+      setPosition({ left: 0, bottom: 0, scale: 1 });
       return;
     }
 
@@ -34,6 +34,8 @@ export function VersionBadge() {
       // 左下座標を計算
       const left = vp.pageLeft;
       const bottom = window.innerHeight - (vp.pageTop + vp.height);
+      // ズームスケールを取得（ユーザー視点でサイズを一定に保つため）
+      const scale = vp.scale || 1;
 
       // requestAnimationFrameでスムーズに更新（ブレを防止）
       if (rafId !== null) {
@@ -41,7 +43,7 @@ export function VersionBadge() {
       }
       
       rafId = requestAnimationFrame(() => {
-        setPosition({ left, bottom });
+        setPosition({ left, bottom, scale });
         rafId = null;
       });
     };
@@ -92,8 +94,9 @@ export function VersionBadge() {
         bottom: position.bottom,
         zIndex: 9999,
         pointerEvents: 'none',
-        // v2仕様: transform: scale()を使わない（ブレを防止）
-        // ズーム時はサイズも拡大されるが、位置は正確に保たれる
+        // v2仕様: ズーム時に逆スケーリングを適用して、ユーザー視点でサイズを一定に保つ
+        transform: `scale(${1 / position.scale})`,
+        transformOrigin: 'bottom left', // 左下を基準にスケーリング
       }}
     >
       <div 
