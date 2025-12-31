@@ -72,6 +72,7 @@ export default function TournamentEditPage() {
   const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null); // タッチ開始位置（スクロール判定用）
   const [isTouchDragging, setIsTouchDragging] = useState(false); // タッチドラッグ中かどうか
   const [draggingCrossArrow, setDraggingCrossArrow] = useState<{ startX: number; startY: number } | null>(null); // 十字矢印UIのドラッグ開始位置
+  const [selectedPosition, setSelectedPosition] = useState<{ x: number; y: number } | null>(null); // 選択時の位置（十字矢印UIの表示位置計算用）
   // v1仕様: ブラウザ標準のピンチズームのみを使用するため、ピンチ操作中のタッチポイント視覚化は無効化
   // const [pinchTouchPoints, setPinchTouchPoints] = useState<{ touch1: { x: number; y: number } | null; touch2: { x: number; y: number } | null } | null>(null); // ピンチ操作中のタッチポイント（視覚化用）
   
@@ -443,53 +444,77 @@ export default function TournamentEditPage() {
       // 十字矢印UIのドラッグ処理（既存のdraggingMarkロジックを使用）
       if (selectedMarkId) {
         const selectedMark = marks.find((m) => m.id === selectedMarkId);
-        if (selectedMark && selectedMark.type === "line") {
+        if (selectedMark) {
           const dx = coords.x - draggingCrossArrow.startX;
           const dy = coords.y - draggingCrossArrow.startY;
           
-          // 既存のdraggingMarkロジックを使用してラインを移動
-          const original = selectedMark as LineMark & { id: string };
           const updatedMarks = localMarks.map((m) => {
             if (m.id === selectedMarkId) {
-              if (isHorizontalLine(original)) {
-                const movedLine = updateMarkCoordinates(original, dx, dy) as LineMark & { id: string };
+              if (selectedMark.type === "line") {
+                // 既存のdraggingMarkロジックを使用してラインを移動
+                const original = selectedMark as LineMark & { id: string };
+                if (isHorizontalLine(original)) {
+                  const movedLine = updateMarkCoordinates(original, dx, dy) as LineMark & { id: string };
+                  if (canvasRef.current) {
+                    const rect = canvasRef.current.getBoundingClientRect();
+                    const { adjustedLine, snapGuide: guide } = handleHorizontalLineDragSnap(
+                      coords,
+                      rect.width,
+                      rect.height,
+                      marks,
+                      movedLine
+                    );
+                    setSnapGuide(guide);
+                    return {
+                      ...m,
+                      ...adjustedLine,
+                    } as Mark & { id: string };
+                  }
+                  return movedLine;
+                } else if (isVerticalLine(original)) {
+                  const movedLine = updateMarkCoordinates(original, dx, dy) as LineMark & { id: string };
+                  if (canvasRef.current) {
+                    const rect = canvasRef.current.getBoundingClientRect();
+                    const { adjustedLine, snapGuide: guide } = handleVerticalLineDragSnap(
+                      coords,
+                      rect.width,
+                      rect.height,
+                      marks,
+                      movedLine
+                    );
+                    setSnapGuide(guide);
+                    return {
+                      ...m,
+                      ...adjustedLine,
+                    } as Mark & { id: string };
+                  }
+                  return movedLine;
+                } else {
+                  setSnapGuide(null);
+                  return updateMarkCoordinates(original, dx, dy);
+                }
+              } else if (selectedMark.type === "score") {
+                // スコアを移動
+                const original = selectedMark as ScoreMark & { id: string };
+                const movedScore = updateMarkCoordinates(original, dx, dy) as ScoreMark & { id: string };
+                
                 if (canvasRef.current) {
                   const rect = canvasRef.current.getBoundingClientRect();
-                  const { adjustedLine, snapGuide: guide } = handleHorizontalLineDragSnap(
-                    coords,
+                  const { adjustedScore, snapGuide: guide } = handleScoreDragSnap(
+                    movedScore,
                     rect.width,
                     rect.height,
                     marks,
-                    movedLine
+                    selectedMarkId
                   );
                   setSnapGuide(guide);
                   return {
                     ...m,
-                    ...adjustedLine,
+                    ...adjustedScore,
                   } as Mark & { id: string };
                 }
-                return movedLine;
-              } else if (isVerticalLine(original)) {
-                const movedLine = updateMarkCoordinates(original, dx, dy) as LineMark & { id: string };
-                if (canvasRef.current) {
-                  const rect = canvasRef.current.getBoundingClientRect();
-                  const { adjustedLine, snapGuide: guide } = handleVerticalLineDragSnap(
-                    coords,
-                    rect.width,
-                    rect.height,
-                    marks,
-                    movedLine
-                  );
-                  setSnapGuide(guide);
-                  return {
-                    ...m,
-                    ...adjustedLine,
-                  } as Mark & { id: string };
-                }
-                return movedLine;
-              } else {
-                setSnapGuide(null);
-                return updateMarkCoordinates(original, dx, dy);
+                
+                return movedScore;
               }
             }
             return m;
@@ -583,6 +608,7 @@ export default function TournamentEditPage() {
     draggingHandle,
     draggingMark,
     draggingCrossArrow,
+    selectedMarkId,
     marks,
     localMarks,
     getRelativeCoordinates,
@@ -842,9 +868,11 @@ export default function TournamentEditPage() {
       setLineStart(coords);
       setLineEnd(coords);
       setSelectedMarkId(null); // 新しい線を描画開始時は選択を解除
+      setSelectedPosition(null); // 選択位置をクリア
     } else if (mode === null && !draggingHandle && !draggingMark) {
       // 編集モードで空白をクリックした場合は選択を解除
       setSelectedMarkId(null);
+      setSelectedPosition(null); // 選択位置をクリア
       editMode.resetToPan();
     }
   };
@@ -881,11 +909,13 @@ export default function TournamentEditPage() {
       setLineStart(coords);
       setLineEnd(coords);
       setSelectedMarkId(null); // 新しい線を描画開始時は選択を解除
+      setSelectedPosition(null); // 選択位置をクリア
       editMode.startDrawing();
       e.preventDefault(); // スクロールを防止
     } else if (mode === null && !draggingHandle && !draggingMark) {
       // 編集モードで空白をタッチした場合は選択を解除
       setSelectedMarkId(null);
+      setSelectedPosition(null); // 選択位置をクリア
       editMode.resetToPan();
     }
   };
@@ -1293,6 +1323,7 @@ export default function TournamentEditPage() {
                           const coords = getRelativeCoordinates(e as any);
                           setLocalMarks(marks); // ローカル状態を初期化
                           setSelectedMarkId(mark.id);
+                          setSelectedPosition(coords); // 選択位置を記録
                           editMode.selectObject(mark.id);
                           setDraggingMark({
                             id: mark.id,
@@ -1313,6 +1344,7 @@ export default function TournamentEditPage() {
                           const coords = getRelativeCoordinates(e as any);
                           setLocalMarks(marks); // ローカル状態を初期化
                           setSelectedMarkId(mark.id);
+                          setSelectedPosition(coords); // 選択位置を記録
                           setDraggingMark({
                             id: mark.id,
                             type: "line",
@@ -1483,146 +1515,206 @@ export default function TournamentEditPage() {
                 );
                 })}
             </svg>
-            {/* 十字矢印UI（Canvaスマホ版風） - 選択されたラインの少し下に表示 */}
-            {selectedMarkId && mode === null && !draggingHandle && !draggingMark && (() => {
+            {/* 十字矢印UI（Canvaスマホ版風） */}
+            {selectedMarkId && mode === null && !draggingHandle && !draggingMark && selectedPosition && (() => {
               // ドラッグ中はlocalMarksから、そうでない場合はmarksから取得
               const displayMarks = draggingCrossArrow ? localMarks : marks;
               const selectedMark = displayMarks.find((m) => m.id === selectedMarkId);
-              if (selectedMark && selectedMark.type === "line") {
+              
+              if (!selectedMark || !canvasRef.current) {
+                return null;
+              }
+
+              // 画像の中心を取得
+              const imgElement = canvasRef.current.querySelector("img");
+              if (!imgElement) {
+                return null;
+              }
+              const imageRect = imgElement.getBoundingClientRect();
+              const canvasRect = canvasRef.current.getBoundingClientRect();
+              const imageCenterX = (imageRect.left + imageRect.right) / 2;
+              const imageCenterY = (imageRect.top + imageRect.bottom) / 2;
+              const imageCenterXRelative = (imageCenterX - canvasRect.left) / canvasRect.width;
+              const imageCenterYRelative = (imageCenterY - canvasRect.top) / canvasRect.height;
+
+              // 十字矢印UIの表示位置を計算
+              let absoluteX = 0;
+              let absoluteY = 0;
+              const offset = 0.05; // 相対座標でのオフセット（約5%）
+
+              if (selectedMark.type === "line") {
                 const lineMark = selectedMark as LineMark & { id: string };
+                const isHorizontal = isHorizontalLine(lineMark);
+                const isVertical = isVerticalLine(lineMark);
+                
                 // ラインの中央座標を計算（相対座標系: 0-1）
                 const centerX = (lineMark.x1 + lineMark.x2) / 2;
                 const centerY = (lineMark.y1 + lineMark.y2) / 2;
                 
-                // キャンバスのサイズを取得して絶対座標に変換
-                if (canvasRef.current) {
-                  const rect = canvasRef.current.getBoundingClientRect();
-                  const absoluteX = centerX * rect.width;
-                  // ラインの少し下に表示（相対座標で0.05、約5%下にオフセット）
-                  const offsetY = 0.05; // 相対座標でのオフセット
-                  const absoluteY = (centerY + offsetY) * rect.height;
-                  
-                  return (
-                    <div
-                      className="absolute pointer-events-auto"
-                      style={{
-                        left: `${absoluteX}px`,
-                        top: `${absoluteY}px`,
-                        transform: "translate(-50%, -50%)",
-                        zIndex: 20,
-                        width: "48px",
-                        height: "48px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "move",
-                      }}
-                      onMouseDown={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        const coords = getRelativeCoordinates(e);
-                        setLocalMarks(marks);
-                        setDraggingCrossArrow({
-                          startX: coords.x,
-                          startY: coords.y,
-                        });
-                        editMode.startEdit();
-                      }}
-                      onMouseMove={(e) => {
-                        if (draggingCrossArrow) {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          handleCanvasMove(e);
-                        }
-                      }}
-                      onMouseUp={(e) => {
-                        if (draggingCrossArrow) {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          handleMarkDragEnd();
-                          editMode.endEdit();
-                        }
-                      }}
-                      onTouchStart={(e) => {
-                        e.stopPropagation();
-                        const touch = e.touches[0];
-                        setTouchStartPos({ x: touch.clientX, y: touch.clientY });
-                        setIsTouchDragging(false);
-                        const coords = getRelativeCoordinates(e as any);
-                        setLocalMarks(marks);
-                        setDraggingCrossArrow({
-                          startX: coords.x,
-                          startY: coords.y,
-                        });
-                        editMode.startEdit();
-                        e.preventDefault();
-                      }}
-                      onTouchMove={(e) => {
-                        if (draggingCrossArrow) {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          handleCanvasMove(e);
-                        }
-                      }}
-                      onTouchEnd={(e) => {
-                        if (draggingCrossArrow) {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          handleMarkDragEnd();
-                          editMode.endEdit();
-                        }
-                      }}
-                    >
-                      {/* 十字矢印UI */}
-                      <svg
-                        width="48"
-                        height="48"
-                        viewBox="0 0 48 48"
-                        style={{ pointerEvents: "none" }}
-                      >
-                        {/* 上矢印 */}
-                        <path
-                          d="M 24 8 L 20 16 L 24 12 L 28 16 Z"
-                          fill="#3b82f6"
-                          stroke="#ffffff"
-                          strokeWidth="1"
-                        />
-                        {/* 下矢印 */}
-                        <path
-                          d="M 24 40 L 20 32 L 24 36 L 28 32 Z"
-                          fill="#3b82f6"
-                          stroke="#ffffff"
-                          strokeWidth="1"
-                        />
-                        {/* 左矢印 */}
-                        <path
-                          d="M 8 24 L 16 20 L 12 24 L 16 28 Z"
-                          fill="#3b82f6"
-                          stroke="#ffffff"
-                          strokeWidth="1"
-                        />
-                        {/* 右矢印 */}
-                        <path
-                          d="M 40 24 L 32 20 L 36 24 L 32 28 Z"
-                          fill="#3b82f6"
-                          stroke="#ffffff"
-                          strokeWidth="1"
-                        />
-                        {/* 中央の円 */}
-                        <circle
-                          cx="24"
-                          cy="24"
-                          r="6"
-                          fill="#3b82f6"
-                          stroke="#ffffff"
-                          strokeWidth="2"
-                        />
-                      </svg>
-                    </div>
-                  );
+                if (isHorizontal) {
+                  // 並行ライン（水平ライン）
+                  // 選択位置が画像の中心よりも下かどうか
+                  if (selectedPosition.y > imageCenterYRelative) {
+                    // 選択素材の上に表示
+                    absoluteX = centerX * canvasRect.width;
+                    absoluteY = (centerY - offset) * canvasRect.height;
+                  } else {
+                    // 選択素材の下に表示
+                    absoluteX = centerX * canvasRect.width;
+                    absoluteY = (centerY + offset) * canvasRect.height;
+                  }
+                } else if (isVertical) {
+                  // 垂直ライン
+                  // 選択位置が画像の中心よりも右かどうか
+                  if (selectedPosition.x > imageCenterXRelative) {
+                    // 選択素材の左に表示
+                    absoluteX = (centerX - offset) * canvasRect.width;
+                    absoluteY = centerY * canvasRect.height;
+                  } else {
+                    // 選択素材の右に表示
+                    absoluteX = (centerX + offset) * canvasRect.width;
+                    absoluteY = centerY * canvasRect.height;
+                  }
+                } else {
+                  // 斜めのライン（フォールバック: 中央の少し下）
+                  absoluteX = centerX * canvasRect.width;
+                  absoluteY = (centerY + offset) * canvasRect.height;
                 }
+              } else if (selectedMark.type === "score") {
+                // スコアの場合
+                const scoreMark = selectedMark as ScoreMark & { id: string };
+                // 選択位置が画像の中心よりも下かどうか
+                if (selectedPosition.y > imageCenterYRelative) {
+                  // 選択素材の上に表示
+                  absoluteX = scoreMark.x * canvasRect.width;
+                  absoluteY = (scoreMark.y - offset) * canvasRect.height;
+                } else {
+                  // 選択素材の下に表示
+                  absoluteX = scoreMark.x * canvasRect.width;
+                  absoluteY = (scoreMark.y + offset) * canvasRect.height;
+                }
+              } else {
+                return null;
               }
-              return null;
+              
+              return (
+                <div
+                  className="absolute pointer-events-auto"
+                  style={{
+                    left: `${absoluteX}px`,
+                    top: `${absoluteY}px`,
+                    transform: "translate(-50%, -50%)",
+                    zIndex: 20,
+                    width: "48px",
+                    height: "48px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "move",
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const coords = getRelativeCoordinates(e);
+                    setLocalMarks(marks);
+                    setDraggingCrossArrow({
+                      startX: coords.x,
+                      startY: coords.y,
+                    });
+                    editMode.startEdit();
+                  }}
+                  onMouseMove={(e) => {
+                    if (draggingCrossArrow) {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleCanvasMove(e);
+                    }
+                  }}
+                  onMouseUp={async (e) => {
+                    if (draggingCrossArrow) {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      await handleMarkDragEnd();
+                      editMode.endEdit();
+                    }
+                  }}
+                  onTouchStart={(e) => {
+                    e.stopPropagation();
+                    const touch = e.touches[0];
+                    setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+                    setIsTouchDragging(false);
+                    const coords = getRelativeCoordinates(e as any);
+                    setLocalMarks(marks);
+                    setDraggingCrossArrow({
+                      startX: coords.x,
+                      startY: coords.y,
+                    });
+                    editMode.startEdit();
+                    e.preventDefault();
+                  }}
+                  onTouchMove={(e) => {
+                    if (draggingCrossArrow) {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleCanvasMove(e);
+                    }
+                  }}
+                  onTouchEnd={async (e) => {
+                    if (draggingCrossArrow) {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      await handleMarkDragEnd();
+                      editMode.endEdit();
+                    }
+                  }}
+                >
+                  {/* 十字矢印UI */}
+                  <svg
+                    width="48"
+                    height="48"
+                    viewBox="0 0 48 48"
+                    style={{ pointerEvents: "none" }}
+                  >
+                    {/* 上矢印 */}
+                    <path
+                      d="M 24 8 L 20 16 L 24 12 L 28 16 Z"
+                      fill="#3b82f6"
+                      stroke="#ffffff"
+                      strokeWidth="1"
+                    />
+                    {/* 下矢印 */}
+                    <path
+                      d="M 24 40 L 20 32 L 24 36 L 28 32 Z"
+                      fill="#3b82f6"
+                      stroke="#ffffff"
+                      strokeWidth="1"
+                    />
+                    {/* 左矢印 */}
+                    <path
+                      d="M 8 24 L 16 20 L 12 24 L 16 28 Z"
+                      fill="#3b82f6"
+                      stroke="#ffffff"
+                      strokeWidth="1"
+                    />
+                    {/* 右矢印 */}
+                    <path
+                      d="M 40 24 L 32 20 L 36 24 L 32 28 Z"
+                      fill="#3b82f6"
+                      stroke="#ffffff"
+                      strokeWidth="1"
+                    />
+                    {/* 中央の円 */}
+                    <circle
+                      cx="24"
+                      cy="24"
+                      r="6"
+                      fill="#3b82f6"
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                </div>
+              );
             })()}
             {/* スコアマーク */}
             {(draggingMark ? localMarks : marks)
@@ -1647,6 +1739,7 @@ export default function TournamentEditPage() {
                       const coords = getRelativeCoordinates(e as any);
                       setLocalMarks(marks); // ローカル状態を初期化
                       setSelectedMarkId(mark.id);
+                      setSelectedPosition(coords); // 選択位置を記録
                       editMode.selectObject(mark.id);
                       setDraggingMark({
                         id: mark.id,
@@ -1667,6 +1760,7 @@ export default function TournamentEditPage() {
                       const coords = getRelativeCoordinates(e as any);
                       setLocalMarks(marks); // ローカル状態を初期化
                       setSelectedMarkId(mark.id);
+                      setSelectedPosition(coords); // 選択位置を記録
                       editMode.selectObject(mark.id);
                       setDraggingMark({
                         id: mark.id,
