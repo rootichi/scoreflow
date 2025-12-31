@@ -461,10 +461,8 @@ export default function TournamentEditPage() {
     // タッチジェスチャーを処理（単一タッチの場合のみ）
     touchGestures.handleTouchMove(e);
     
-    // 編集操作中は常にpreventDefaultして処理を続行
+    // 編集操作中は処理を続行
     if (isDrawing || draggingHandle || draggingMark || draggingCrossArrow) {
-      e.preventDefault();
-      e.stopPropagation();
       setIsTouchDragging(true);
       editMode.startEdit();
       handleCanvasMove(e);
@@ -475,8 +473,6 @@ export default function TournamentEditPage() {
     if (touchGestures.gesture?.type === "drag") {
       // オブジェクトが選択されている場合は編集操作
       if (editMode.isObjectSelected) {
-        e.preventDefault();
-        e.stopPropagation();
         setIsTouchDragging(true);
         editMode.startEdit();
         handleCanvasMove(e);
