@@ -1,15 +1,57 @@
 "use client";
 
+import { useEffect, useState } from "react";
 // ビルド時に生成されるデプロイ時刻をインポート
 // フォールバック: ファイルが存在しない場合は現在時刻を使用
 import { BUILD_TIME } from "@/lib/build-time";
 
 /**
  * 画面左下にデプロイ時刻を表示するコンポーネント
+ * v2仕様: ブラウザ標準のピンチズームをしても、常に画面左下に表示される
  */
 export function VersionBadge() {
   // デプロイ時刻を取得（ビルド時に生成されたファイルから）
   const deployTime = BUILD_TIME;
+  
+  // v2仕様: visualViewport APIを使用してズーム時の位置を計算
+  const [position, setPosition] = useState({ left: 0, bottom: 0, scale: 1 });
+  
+  useEffect(() => {
+    // visualViewport APIが利用可能か確認
+    if (typeof window === 'undefined' || !window.visualViewport) {
+      // フォールバック: 通常のfixed位置
+      setPosition({ left: 0, bottom: 0, scale: 1 });
+      return;
+    }
+
+    const updatePosition = () => {
+      const vp = window.visualViewport;
+      if (!vp) return;
+
+      // visualViewportの左下座標を計算
+      // visualViewport.offsetLeft, visualViewport.offsetTopはビューポートの左上の位置
+      // visualViewport.heightはビューポートの高さ
+      const left = vp.offsetLeft;
+      const bottom = window.innerHeight - (vp.offsetTop + vp.height);
+      const scale = vp.scale;
+
+      setPosition({ left, bottom, scale });
+    };
+
+    // 初回設定
+    updatePosition();
+
+    // visualViewportの変更を監視
+    window.visualViewport.addEventListener('resize', updatePosition);
+    window.visualViewport.addEventListener('scroll', updatePosition);
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updatePosition);
+        window.visualViewport.removeEventListener('scroll', updatePosition);
+      }
+    };
+  }, []);
   
   // 時刻をフォーマット（YYYY-MM-DD HH:MM:SS形式）
   const formatDeployTime = (isoString: string | undefined) => {
@@ -32,13 +74,15 @@ export function VersionBadge() {
 
   return (
     <div 
-      className="fixed bottom-0 left-0 z-[9999] p-2 pointer-events-none"
+      className="fixed z-[9999] p-2 pointer-events-none"
       style={{ 
         position: 'fixed',
-        bottom: 0,
-        left: 0,
+        left: position.left,
+        bottom: position.bottom,
         zIndex: 9999,
-        pointerEvents: 'none'
+        pointerEvents: 'none',
+        transform: `scale(${1 / position.scale})`, // v2仕様: ズーム時に逆スケーリングを適用
+        transformOrigin: 'bottom left', // 左下を基準にスケーリング
       }}
     >
       <div 
