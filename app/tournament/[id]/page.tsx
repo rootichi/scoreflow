@@ -704,9 +704,6 @@ export default function TournamentEditPage() {
       return;
     }
     
-    // タッチジェスチャーを処理（単一タッチの場合のみ）
-    touchGestures.handleTouchStart(e);
-    
     // タッチ開始位置を記録（スクロール判定用）
     const touch = e.touches[0];
     setTouchStartPos({ x: touch.clientX, y: touch.clientY });
@@ -734,6 +731,7 @@ export default function TournamentEditPage() {
             
             if (distance < touchThreshold && coords.x >= x1 && coords.x <= x2) {
               // ライン上をタッチした場合 - 即座にpreventDefault()を呼び出してパンを無効化
+              // touchGestures.handleTouchStart()を呼ぶ前にpreventDefault()を呼び出す
               e.preventDefault();
               e.stopPropagation();
               setLocalMarks(marks);
@@ -748,6 +746,8 @@ export default function TournamentEditPage() {
                 originalMark: lineMark,
               });
               editMode.startEdit();
+              // タッチジェスチャーを処理（preventDefault()の後でも呼び出し可能）
+              touchGestures.handleTouchStart(e);
               return;
             }
           } else {
@@ -759,6 +759,7 @@ export default function TournamentEditPage() {
             
             if (distance < touchThreshold && coords.y >= y1 && coords.y <= y2) {
               // ライン上をタッチした場合 - 即座にpreventDefault()を呼び出してパンを無効化
+              // touchGestures.handleTouchStart()を呼ぶ前にpreventDefault()を呼び出す
               e.preventDefault();
               e.stopPropagation();
               setLocalMarks(marks);
@@ -773,12 +774,17 @@ export default function TournamentEditPage() {
                 originalMark: lineMark,
               });
               editMode.startEdit();
+              // タッチジェスチャーを処理（preventDefault()の後でも呼び出し可能）
+              touchGestures.handleTouchStart(e);
               return;
             }
           }
         }
       }
     }
+    
+    // タッチジェスチャーを処理（単一タッチの場合のみ）
+    touchGestures.handleTouchStart(e);
     
     // v2仕様: 素材選択時、ライン追加中、またはドラッグ中はパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
     if ((selectedMarkId || isDrawing || draggingMark) && mode !== "line") {
@@ -1227,6 +1233,8 @@ export default function TournamentEditPage() {
                       }}
                       onTouchStart={(e) => {
                         if (mode === null && !draggingHandle) {
+                          // 即座にpreventDefault()を呼び出してパンを無効化（状態更新前に実行）
+                          e.preventDefault();
                           e.stopPropagation();
                           const touch = e.touches[0];
                           setTouchStartPos({ x: touch.clientX, y: touch.clientY });
@@ -1235,6 +1243,7 @@ export default function TournamentEditPage() {
                           setLocalMarks(marks); // ローカル状態を初期化
                           setSelectedMarkId(mark.id);
                           setSelectedPosition(coords); // 選択位置を記録
+                          editMode.selectObject(mark.id);
                           setDraggingMark({
                             id: mark.id,
                             type: "line",
@@ -1242,7 +1251,7 @@ export default function TournamentEditPage() {
                             startY: coords.y,
                             originalMark: displayMark,
                           });
-                          e.preventDefault(); // スクロールを防止
+                          editMode.startEdit();
                         }
                       }}
                     />
@@ -1406,7 +1415,7 @@ export default function TournamentEditPage() {
                 })}
             </svg>
             {/* 十字矢印UI（Canvaスマホ版風） */}
-            {selectedMarkId && mode === null && !draggingHandle && selectedPosition && (() => {
+            {selectedMarkId && mode === null && !draggingHandle && !draggingMark && selectedPosition && (() => {
               // ドラッグ中はlocalMarksから、そうでない場合はmarksから取得
               const displayMarks = draggingCrossArrow ? localMarks : marks;
               const selectedMark = displayMarks.find((m) => m.id === selectedMarkId);
@@ -1612,6 +1621,8 @@ export default function TournamentEditPage() {
                   }}
                   onTouchStart={(e) => {
                     if (mode === null) {
+                      // 即座にpreventDefault()を呼び出してパンを無効化（状態更新前に実行）
+                      e.preventDefault();
                       e.stopPropagation();
                       const touch = e.touches[0];
                       setTouchStartPos({ x: touch.clientX, y: touch.clientY });
@@ -1628,7 +1639,7 @@ export default function TournamentEditPage() {
                         startY: coords.y,
                         originalMark: displayMark,
                       });
-                      e.preventDefault(); // スクロールを防止
+                      editMode.startEdit();
                     }
                   }}
                 >
