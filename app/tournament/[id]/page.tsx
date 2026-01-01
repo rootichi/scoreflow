@@ -78,8 +78,9 @@ export default function TournamentEditPage() {
       snapGuideVisible: snapGuide?.visible,
       draggingMark: !!draggingMark,
       draggingHandle: !!draggingHandle,
+      draggingCrossArrow: !!draggingCrossArrow,
     });
-  }, [snapGuide, draggingMark, draggingHandle]);
+  }, [snapGuide, draggingMark, draggingHandle, draggingCrossArrow]);
   const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null); // タッチ開始位置（スクロール判定用）
   const [isTouchDragging, setIsTouchDragging] = useState(false); // タッチドラッグ中かどうか
   const [draggingCrossArrow, setDraggingCrossArrow] = useState<{ startX: number; startY: number } | null>(null);
