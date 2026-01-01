@@ -33,6 +33,7 @@ import {
   MIN_LINE_LENGTH,
   COPY_OFFSET,
   SELECTED_COLOR,
+  SNAP_DISTANCE_PX,
 } from "@/lib/constants";
 import { useImageScale } from "@/lib/hooks/useImageScale";
 import { useScrollPrevention } from "@/lib/hooks/useScrollPrevention";
@@ -460,6 +461,19 @@ export default function TournamentEditPage() {
       e.stopPropagation();
     }
     
+    // タッチ開始位置から一定距離以上動いた場合はドラッグと判定
+    if (touchStartPos && e.touches[0]) {
+      const touch = e.touches[0];
+      const dx = touch.clientX - touchStartPos.x;
+      const dy = touch.clientY - touchStartPos.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const DRAG_THRESHOLD = 10; // 10px以上動いた場合はドラッグと判定
+      
+      if (distance > DRAG_THRESHOLD) {
+        setIsTouchDragging(true);
+      }
+    }
+    
     // タッチジェスチャーを処理（単一タッチの場合のみ）
     touchGestures.handleTouchMove(e);
     
@@ -481,7 +495,7 @@ export default function TournamentEditPage() {
         return;
       }
     }
-  }, [isDrawing, draggingHandle, draggingMark, draggingCrossArrow, selectedMarkId, handleCanvasMove, touchGestures, editMode]);
+  }, [isDrawing, draggingHandle, draggingMark, draggingCrossArrow, selectedMarkId, handleCanvasMove, touchGestures, editMode, touchStartPos]);
 
   // スコア追加の共通処理
   const handleAddScore = useCallback(async (coords: { x: number; y: number }) => {
@@ -858,8 +872,11 @@ export default function TournamentEditPage() {
     // タッチジェスチャーを処理
     touchGestures.handleTouchEnd(e);
     
-    // タッチ開始位置をリセット
-    setTouchStartPos(null);
+    // タッチ終了位置を取得（選択判定用）
+    const touchEndCoords = e.changedTouches[0] ? getRelativeCoordinates({
+      ...e,
+      touches: [e.changedTouches[0]],
+    } as any) : null;
 
     // タップジェスチャーの場合
     if (touchGestures.gesture?.type === "tap") {
@@ -869,6 +886,7 @@ export default function TournamentEditPage() {
         await handleAddScore(coords);
         setIsTouchDragging(false);
         touchGestures.clearGesture();
+        setTouchStartPos(null);
         return;
       }
     }
@@ -879,8 +897,83 @@ export default function TournamentEditPage() {
       await handleAddScore(coords);
       setIsTouchDragging(false);
       touchGestures.clearGesture();
+      setTouchStartPos(null);
       return;
     }
+
+    // タッチ終了時にラインやスコアを選択する処理（タッチ中に指を動かしていない場合のみ）
+    if (!isTouchDragging && !draggingMark && !draggingHandle && mode === null && touchEndCoords && canvasRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const touchThreshold = SNAP_DISTANCE_PX / Math.max(rect.width, rect.height); // 正規化座標でのタッチ判定距離
+      
+      // すべてのラインをチェック
+      for (const mark of marks) {
+        if (mark.type === "line") {
+          const lineMark = mark as LineMark & { id: string };
+          const isHorizontal = Math.abs(lineMark.x2 - lineMark.x1) > Math.abs(lineMark.y2 - lineMark.y1);
+          
+          if (isHorizontal) {
+            // 水平線の場合
+            const y = lineMark.y1;
+            const x1 = Math.min(lineMark.x1, lineMark.x2);
+            const x2 = Math.max(lineMark.x1, lineMark.x2);
+            const distance = Math.abs(touchEndCoords.y - y);
+            
+            if (distance < touchThreshold && touchEndCoords.x >= x1 && touchEndCoords.x <= x2) {
+              // ライン上をタッチした場合 - 選択する
+              setLocalMarks(marks);
+              setSelectedMarkId(mark.id);
+              setSelectedPosition(touchEndCoords);
+              editMode.selectObject(mark.id);
+              touchGestures.clearGesture();
+              setTouchStartPos(null);
+              return;
+            }
+          } else {
+            // 垂直線の場合
+            const x = lineMark.x1;
+            const y1 = Math.min(lineMark.y1, lineMark.y2);
+            const y2 = Math.max(lineMark.y1, lineMark.y2);
+            const distance = Math.abs(touchEndCoords.x - x);
+            
+            if (distance < touchThreshold && touchEndCoords.y >= y1 && touchEndCoords.y <= y2) {
+              // ライン上をタッチした場合 - 選択する
+              setLocalMarks(marks);
+              setSelectedMarkId(mark.id);
+              setSelectedPosition(touchEndCoords);
+              editMode.selectObject(mark.id);
+              touchGestures.clearGesture();
+              setTouchStartPos(null);
+              return;
+            }
+          }
+        }
+      }
+      
+      // すべてのスコアをチェック
+      for (const mark of marks) {
+        if (mark.type === "score") {
+          const scoreMark = mark as ScoreMark & { id: string };
+          const distance = Math.sqrt(
+            Math.pow(touchEndCoords.x - scoreMark.x, 2) + Math.pow(touchEndCoords.y - scoreMark.y, 2)
+          );
+          
+          if (distance < touchThreshold) {
+            // スコア上をタッチした場合 - 選択する
+            setLocalMarks(marks);
+            setSelectedMarkId(mark.id);
+            setSelectedPosition(touchEndCoords);
+            editMode.selectObject(mark.id);
+            touchGestures.clearGesture();
+            setTouchStartPos(null);
+            return;
+          }
+        }
+      }
+    }
+    
+    // タッチ開始位置をリセット
+    setTouchStartPos(null);
 
     // ハンドルのドラッグ終了
     if (draggingHandle) {
@@ -1157,23 +1250,13 @@ export default function TournamentEditPage() {
                         }
                       }}
                       onTouchStart={(e) => {
+                        // タッチ開始時は選択処理を行わない（タッチ終了時に選択判定を行う）
+                        // タッチ開始位置を記録するだけ
                         if (mode === null && !draggingHandle) {
                           e.stopPropagation();
                           const touch = e.touches[0];
                           setTouchStartPos({ x: touch.clientX, y: touch.clientY });
                           setIsTouchDragging(false);
-                          const coords = getRelativeCoordinates(e as any);
-                          setLocalMarks(marks); // ローカル状態を初期化
-                          setSelectedMarkId(mark.id);
-                          setSelectedPosition(coords); // 選択位置を記録
-                          setDraggingMark({
-                            id: mark.id,
-                            type: "line",
-                            startX: coords.x,
-                            startY: coords.y,
-                            originalMark: displayMark,
-                          });
-                          e.preventDefault(); // スクロールを防止
                         }
                       }}
                     />
@@ -1542,24 +1625,13 @@ export default function TournamentEditPage() {
                     }
                   }}
                   onTouchStart={(e) => {
+                    // タッチ開始時は選択処理を行わない（タッチ終了時に選択判定を行う）
+                    // タッチ開始位置を記録するだけ
                     if (mode === null) {
                       e.stopPropagation();
                       const touch = e.touches[0];
                       setTouchStartPos({ x: touch.clientX, y: touch.clientY });
                       setIsTouchDragging(false);
-                      const coords = getRelativeCoordinates(e as any);
-                      setLocalMarks(marks); // ローカル状態を初期化
-                      setSelectedMarkId(mark.id);
-                      setSelectedPosition(coords); // 選択位置を記録
-                      editMode.selectObject(mark.id);
-                      setDraggingMark({
-                        id: mark.id,
-                        type: "score",
-                        startX: coords.x,
-                        startY: coords.y,
-                        originalMark: displayMark,
-                      });
-                      e.preventDefault(); // スクロールを防止
                     }
                   }}
                 >
