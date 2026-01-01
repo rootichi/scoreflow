@@ -33,6 +33,7 @@ import {
   MIN_LINE_LENGTH,
   COPY_OFFSET,
   SELECTED_COLOR,
+  SNAP_DISTANCE_PX,
 } from "@/lib/constants";
 import { useImageScale } from "@/lib/hooks/useImageScale";
 import { useScrollPrevention } from "@/lib/hooks/useScrollPrevention";
@@ -716,6 +717,73 @@ export default function TournamentEditPage() {
     const touch = e.touches[0];
     setTouchStartPos({ x: touch.clientX, y: touch.clientY });
     setIsTouchDragging(false);
+    
+    // v2仕様: ライン上をタッチした場合は即座にselectedMarkIdを設定（ワンタップして指を離さないまま移動させた場合でもピンを無効化するため）
+    if (mode === null && !draggingHandle && !draggingMark && canvasRef.current) {
+      const coords = getRelativeCoordinates(e);
+      const rect = canvasRef.current.getBoundingClientRect();
+      const touchThreshold = SNAP_DISTANCE_PX / Math.max(rect.width, rect.height); // 正規化座標でのタッチ判定距離
+      
+      // すべてのラインをチェック
+      for (const mark of marks) {
+        if (mark.type === "line") {
+          const lineMark = mark as LineMark & { id: string };
+          const isHorizontal = Math.abs(lineMark.x2 - lineMark.x1) > Math.abs(lineMark.y2 - lineMark.y1);
+          
+          if (isHorizontal) {
+            // 水平線の場合
+            const y = lineMark.y1;
+            const x1 = Math.min(lineMark.x1, lineMark.x2);
+            const x2 = Math.max(lineMark.x1, lineMark.x2);
+            const distance = Math.abs(coords.y - y);
+            
+            if (distance < touchThreshold && coords.x >= x1 && coords.x <= x2) {
+              // ライン上をタッチした場合
+              setLocalMarks(marks);
+              setSelectedMarkId(mark.id);
+              setSelectedPosition(coords);
+              editMode.selectObject(mark.id);
+              setDraggingMark({
+                id: mark.id,
+                type: "line",
+                startX: coords.x,
+                startY: coords.y,
+                originalMark: lineMark,
+              });
+              editMode.startEdit();
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+          } else {
+            // 垂直線の場合
+            const x = lineMark.x1;
+            const y1 = Math.min(lineMark.y1, lineMark.y2);
+            const y2 = Math.max(lineMark.y1, lineMark.y2);
+            const distance = Math.abs(coords.x - x);
+            
+            if (distance < touchThreshold && coords.y >= y1 && coords.y <= y2) {
+              // ライン上をタッチした場合
+              setLocalMarks(marks);
+              setSelectedMarkId(mark.id);
+              setSelectedPosition(coords);
+              editMode.selectObject(mark.id);
+              setDraggingMark({
+                id: mark.id,
+                type: "line",
+                startX: coords.x,
+                startY: coords.y,
+                originalMark: lineMark,
+              });
+              editMode.startEdit();
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+          }
+        }
+      }
+    }
     
     // ハンドルやマークのタッチでない場合のみ処理
     if (mode === "line" && !isDrawing && !draggingHandle && !draggingMark) {
