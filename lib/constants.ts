@@ -5,7 +5,7 @@ export const DEFAULT_SCORE_FONT_SIZE = 24;
 export const DEFAULT_PAGE_NUMBER = 1;
 
 // スナップ設定
-export const SNAP_DISTANCE_PX = 2;
+export const SNAP_DISTANCE_PX = 8;
 export const MIN_LINE_LENGTH = 0.01;
 
 // コピー時のオフセット

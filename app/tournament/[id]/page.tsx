@@ -33,7 +33,6 @@ import {
   MIN_LINE_LENGTH,
   COPY_OFFSET,
   SELECTED_COLOR,
-  SNAP_DISTANCE_PX,
 } from "@/lib/constants";
 import { useImageScale } from "@/lib/hooks/useImageScale";
 import { useScrollPrevention } from "@/lib/hooks/useScrollPrevention";
@@ -58,8 +57,6 @@ export default function TournamentEditPage() {
   const [scoreValue, setScoreValue] = useState("");
   const canvasRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  // v2仕様: ドラッグ中フラグ（状態更新を待たずに即座に反映するため）
-  const isDraggingMarkRef = useRef(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [lineStart, setLineStart] = useState<{ x: number; y: number } | null>(null);
   const [lineEnd, setLineEnd] = useState<{ x: number; y: number } | null>(null);
@@ -457,9 +454,8 @@ export default function TournamentEditPage() {
       return;
     }
     
-    // v2仕様: 素材選択時、ライン追加中、またはドラッグ中はパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
-    // isDraggingMarkRefを参照して、状態更新を待たずに即座にパンを無効化
-    if (selectedMarkId || isDrawing || draggingMark || isDraggingMarkRef.current) {
+    // v1仕様: 素材選択時のみパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
+    if (selectedMarkId) {
       e.preventDefault();
       e.stopPropagation();
     }
@@ -648,12 +644,6 @@ export default function TournamentEditPage() {
     const updatedMark = localMarks.find((m) => m.id === draggingMark.id);
     if (!updatedMark) {
       setDraggingMark(null);
-      // v2仕様: useRefフラグをリセット
-      isDraggingMarkRef.current = false;
-      // v2仕様: DOM要素のtouchActionを元に戻す
-      if (imageContainerRef.current) {
-        imageContainerRef.current.style.touchAction = selectedMarkId ? "pinch-zoom" : "pan-x pan-y pinch-zoom";
-      }
       return;
     }
 
@@ -661,12 +651,6 @@ export default function TournamentEditPage() {
     const existingMark = marks.find((m) => m.id === draggingMark.id);
     if (!existingMark) {
       setDraggingMark(null);
-      // v2仕様: useRefフラグをリセット
-      isDraggingMarkRef.current = false;
-      // v2仕様: DOM要素のtouchActionを元に戻す
-      if (imageContainerRef.current) {
-        imageContainerRef.current.style.touchAction = selectedMarkId ? "pinch-zoom" : "pan-x pan-y pinch-zoom";
-      }
       return;
     }
 
@@ -687,12 +671,6 @@ export default function TournamentEditPage() {
     }
 
     setDraggingMark(null);
-    // v2仕様: useRefフラグをリセット
-    isDraggingMarkRef.current = false;
-    // v2仕様: DOM要素のtouchActionを元に戻す
-    if (imageContainerRef.current) {
-      imageContainerRef.current.style.touchAction = selectedMarkId ? "pinch-zoom" : "pan-x pan-y pinch-zoom";
-    }
   };
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -725,106 +703,19 @@ export default function TournamentEditPage() {
       return;
     }
     
-    // タッチ開始位置を記録（スクロール判定用）
-    const touch = e.touches[0];
-    setTouchStartPos({ x: touch.clientX, y: touch.clientY });
-    setIsTouchDragging(false);
-    
-    // v2仕様: ライン上をタッチした場合は即座にselectedMarkIdを設定（ワンタップして指を離さないまま移動させた場合でもピンを無効化するため）
-    // この処理を先に実行して、状態更新前にpreventDefault()を呼び出す
-    if (mode === null && !draggingHandle && !draggingMark && canvasRef.current) {
-      const coords = getRelativeCoordinates(e);
-      const rect = canvasRef.current.getBoundingClientRect();
-      const touchThreshold = SNAP_DISTANCE_PX / Math.max(rect.width, rect.height); // 正規化座標でのタッチ判定距離
-      
-      // すべてのラインをチェック
-      for (const mark of marks) {
-        if (mark.type === "line") {
-          const lineMark = mark as LineMark & { id: string };
-          const isHorizontal = Math.abs(lineMark.x2 - lineMark.x1) > Math.abs(lineMark.y2 - lineMark.y1);
-          
-          if (isHorizontal) {
-            // 水平線の場合
-            const y = lineMark.y1;
-            const x1 = Math.min(lineMark.x1, lineMark.x2);
-            const x2 = Math.max(lineMark.x1, lineMark.x2);
-            const distance = Math.abs(coords.y - y);
-            
-            if (distance < touchThreshold && coords.x >= x1 && coords.x <= x2) {
-              // ライン上をタッチした場合 - 即座にpreventDefault()を呼び出してパンを無効化
-              // touchGestures.handleTouchStart()を呼ぶ前にpreventDefault()を呼び出す
-              e.preventDefault();
-              e.stopPropagation();
-              // v2仕様: DOM要素のtouchActionを直接変更（状態更新を待たずに即座に反映）
-              if (imageContainerRef.current) {
-                imageContainerRef.current.style.touchAction = "pinch-zoom";
-              }
-              // v2仕様: useRefで即座にフラグを設定（状態更新を待たずに反映）
-              isDraggingMarkRef.current = true;
-              setLocalMarks(marks);
-              setSelectedMarkId(mark.id);
-              setSelectedPosition(coords);
-              editMode.selectObject(mark.id);
-              setDraggingMark({
-                id: mark.id,
-                type: "line",
-                startX: coords.x,
-                startY: coords.y,
-                originalMark: lineMark,
-              });
-              editMode.startEdit();
-              // タッチジェスチャーを処理（preventDefault()の後でも呼び出し可能）
-              touchGestures.handleTouchStart(e);
-              return;
-            }
-          } else {
-            // 垂直線の場合
-            const x = lineMark.x1;
-            const y1 = Math.min(lineMark.y1, lineMark.y2);
-            const y2 = Math.max(lineMark.y1, lineMark.y2);
-            const distance = Math.abs(coords.x - x);
-            
-            if (distance < touchThreshold && coords.y >= y1 && coords.y <= y2) {
-              // ライン上をタッチした場合 - 即座にpreventDefault()を呼び出してパンを無効化
-              // touchGestures.handleTouchStart()を呼ぶ前にpreventDefault()を呼び出す
-              e.preventDefault();
-              e.stopPropagation();
-              // v2仕様: DOM要素のtouchActionを直接変更（状態更新を待たずに即座に反映）
-              if (imageContainerRef.current) {
-                imageContainerRef.current.style.touchAction = "pinch-zoom";
-              }
-              // v2仕様: useRefで即座にフラグを設定（状態更新を待たずに反映）
-              isDraggingMarkRef.current = true;
-              setLocalMarks(marks);
-              setSelectedMarkId(mark.id);
-              setSelectedPosition(coords);
-              editMode.selectObject(mark.id);
-              setDraggingMark({
-                id: mark.id,
-                type: "line",
-                startX: coords.x,
-                startY: coords.y,
-                originalMark: lineMark,
-              });
-              editMode.startEdit();
-              // タッチジェスチャーを処理（preventDefault()の後でも呼び出し可能）
-              touchGestures.handleTouchStart(e);
-              return;
-            }
-          }
-        }
-      }
+    // v1仕様: 素材選択時のみパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
+    if (selectedMarkId && mode !== "line") {
+      e.preventDefault();
+      e.stopPropagation();
     }
     
     // タッチジェスチャーを処理（単一タッチの場合のみ）
     touchGestures.handleTouchStart(e);
     
-    // v2仕様: 素材選択時、ライン追加中、またはドラッグ中はパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
-    // isDraggingMarkRefを参照して、状態更新を待たずに即座にパンを無効化
-    if ((selectedMarkId || isDrawing || draggingMark || isDraggingMarkRef.current) && mode !== "line") {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+    // タッチ開始位置を記録（スクロール判定用）
+    const touch = e.touches[0];
+    setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+    setIsTouchDragging(false);
     
     // ハンドルやマークのタッチでない場合のみ処理
     if (mode === "line" && !isDrawing && !draggingHandle && !draggingMark) {
@@ -875,7 +766,7 @@ export default function TournamentEditPage() {
     }
 
     // マークのドラッグ終了
-    if (draggingMark || isDraggingMarkRef.current) {
+    if (draggingMark) {
       await handleMarkDragEnd();
       editMode.endEdit();
       return;
@@ -1021,15 +912,11 @@ export default function TournamentEditPage() {
     }
 
     // マークのドラッグ終了
-    if (draggingMark || isDraggingMarkRef.current) {
+    if (draggingMark) {
       await handleMarkDragEnd();
       setIsTouchDragging(false);
       editMode.endEdit();
       touchGestures.clearGesture();
-      // v2仕様: DOM要素のtouchActionを元に戻す（handleMarkDragEnd内でも処理されるが、念のため）
-      if (imageContainerRef.current) {
-        imageContainerRef.current.style.touchAction = selectedMarkId ? "pinch-zoom" : "pan-x pan-y pinch-zoom";
-      }
       return;
     }
 
@@ -1174,7 +1061,7 @@ export default function TournamentEditPage() {
             style={{
               width: "100%",
               height: "100%",
-              touchAction: (selectedMarkId || isDrawing || draggingMark || isDraggingMarkRef.current) ? "pinch-zoom" : "pan-x pan-y pinch-zoom", // v2仕様: 素材選択時、ライン追加中、またはドラッグ中はパン操作を無効化（useRefで即座に反映）
+              touchAction: selectedMarkId ? "pinch-zoom" : "pan-x pan-y pinch-zoom", // v1仕様: 素材選択時のみパン操作を無効化
               WebkitTouchCallout: "none", // iOSの長押しメニューを無効化
               userSelect: "none", // テキスト選択を無効化
               position: "relative",
@@ -1271,15 +1158,7 @@ export default function TournamentEditPage() {
                       }}
                       onTouchStart={(e) => {
                         if (mode === null && !draggingHandle) {
-                          // 即座にpreventDefault()を呼び出してパンを無効化（状態更新前に実行）
-                          e.preventDefault();
                           e.stopPropagation();
-                          // v2仕様: DOM要素のtouchActionを直接変更（状態更新を待たずに即座に反映）
-                          if (imageContainerRef.current) {
-                            imageContainerRef.current.style.touchAction = "pinch-zoom";
-                          }
-                          // v2仕様: useRefで即座にフラグを設定（状態更新を待たずに反映）
-                          isDraggingMarkRef.current = true;
                           const touch = e.touches[0];
                           setTouchStartPos({ x: touch.clientX, y: touch.clientY });
                           setIsTouchDragging(false);
@@ -1287,7 +1166,6 @@ export default function TournamentEditPage() {
                           setLocalMarks(marks); // ローカル状態を初期化
                           setSelectedMarkId(mark.id);
                           setSelectedPosition(coords); // 選択位置を記録
-                          editMode.selectObject(mark.id);
                           setDraggingMark({
                             id: mark.id,
                             type: "line",
@@ -1295,7 +1173,7 @@ export default function TournamentEditPage() {
                             startY: coords.y,
                             originalMark: displayMark,
                           });
-                          editMode.startEdit();
+                          e.preventDefault(); // スクロールを防止
                         }
                       }}
                     />
@@ -1665,15 +1543,7 @@ export default function TournamentEditPage() {
                   }}
                   onTouchStart={(e) => {
                     if (mode === null) {
-                      // 即座にpreventDefault()を呼び出してパンを無効化（状態更新前に実行）
-                      e.preventDefault();
                       e.stopPropagation();
-                      // v2仕様: DOM要素のtouchActionを直接変更（状態更新を待たずに即座に反映）
-                      if (imageContainerRef.current) {
-                        imageContainerRef.current.style.touchAction = "pinch-zoom";
-                      }
-                      // v2仕様: useRefで即座にフラグを設定（状態更新を待たずに反映）
-                      isDraggingMarkRef.current = true;
                       const touch = e.touches[0];
                       setTouchStartPos({ x: touch.clientX, y: touch.clientY });
                       setIsTouchDragging(false);
@@ -1689,7 +1559,7 @@ export default function TournamentEditPage() {
                         startY: coords.y,
                         originalMark: displayMark,
                       });
-                      editMode.startEdit();
+                      e.preventDefault(); // スクロールを防止
                     }
                   }}
                 >
