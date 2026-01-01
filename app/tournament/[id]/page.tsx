@@ -454,8 +454,8 @@ export default function TournamentEditPage() {
       return;
     }
     
-    // v1仕様: 素材選択時のみパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
-    if (selectedMarkId) {
+    // v2仕様: 素材選択時またはライン追加中はパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
+    if (selectedMarkId || isDrawing) {
       e.preventDefault();
       e.stopPropagation();
     }
@@ -703,8 +703,8 @@ export default function TournamentEditPage() {
       return;
     }
     
-    // v1仕様: 素材選択時のみパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
-    if (selectedMarkId && mode !== "line") {
+    // v2仕様: 素材選択時またはライン追加中はパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
+    if ((selectedMarkId || isDrawing) && mode !== "line") {
       e.preventDefault();
       e.stopPropagation();
     }
@@ -1061,7 +1061,7 @@ export default function TournamentEditPage() {
             style={{
               width: "100%",
               height: "100%",
-              touchAction: selectedMarkId ? "pinch-zoom" : "pan-x pan-y pinch-zoom", // v1仕様: 素材選択時のみパン操作を無効化
+              touchAction: (selectedMarkId || isDrawing) ? "pinch-zoom" : "pan-x pan-y pinch-zoom", // v2仕様: 素材選択時またはライン追加中はパン操作を無効化
               WebkitTouchCallout: "none", // iOSの長押しメニューを無効化
               userSelect: "none", // テキスト選択を無効化
               position: "relative",
