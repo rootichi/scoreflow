@@ -455,8 +455,8 @@ export default function TournamentEditPage() {
       return;
     }
     
-    // v2仕様: 素材選択時またはライン追加中はパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
-    if (selectedMarkId || isDrawing) {
+    // v2仕様: 素材選択時、ライン追加中、またはドラッグ中はパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
+    if (selectedMarkId || isDrawing || draggingMark) {
       e.preventDefault();
       e.stopPropagation();
     }
@@ -704,12 +704,6 @@ export default function TournamentEditPage() {
       return;
     }
     
-    // v2仕様: 素材選択時またはライン追加中はパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
-    if ((selectedMarkId || isDrawing) && mode !== "line") {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    
     // タッチジェスチャーを処理（単一タッチの場合のみ）
     touchGestures.handleTouchStart(e);
     
@@ -719,6 +713,7 @@ export default function TournamentEditPage() {
     setIsTouchDragging(false);
     
     // v2仕様: ライン上をタッチした場合は即座にselectedMarkIdを設定（ワンタップして指を離さないまま移動させた場合でもピンを無効化するため）
+    // この処理を先に実行して、状態更新前にpreventDefault()を呼び出す
     if (mode === null && !draggingHandle && !draggingMark && canvasRef.current) {
       const coords = getRelativeCoordinates(e);
       const rect = canvasRef.current.getBoundingClientRect();
@@ -738,7 +733,9 @@ export default function TournamentEditPage() {
             const distance = Math.abs(coords.y - y);
             
             if (distance < touchThreshold && coords.x >= x1 && coords.x <= x2) {
-              // ライン上をタッチした場合
+              // ライン上をタッチした場合 - 即座にpreventDefault()を呼び出してパンを無効化
+              e.preventDefault();
+              e.stopPropagation();
               setLocalMarks(marks);
               setSelectedMarkId(mark.id);
               setSelectedPosition(coords);
@@ -751,8 +748,6 @@ export default function TournamentEditPage() {
                 originalMark: lineMark,
               });
               editMode.startEdit();
-              e.preventDefault();
-              e.stopPropagation();
               return;
             }
           } else {
@@ -763,7 +758,9 @@ export default function TournamentEditPage() {
             const distance = Math.abs(coords.x - x);
             
             if (distance < touchThreshold && coords.y >= y1 && coords.y <= y2) {
-              // ライン上をタッチした場合
+              // ライン上をタッチした場合 - 即座にpreventDefault()を呼び出してパンを無効化
+              e.preventDefault();
+              e.stopPropagation();
               setLocalMarks(marks);
               setSelectedMarkId(mark.id);
               setSelectedPosition(coords);
@@ -776,13 +773,17 @@ export default function TournamentEditPage() {
                 originalMark: lineMark,
               });
               editMode.startEdit();
-              e.preventDefault();
-              e.stopPropagation();
               return;
             }
           }
         }
       }
+    }
+    
+    // v2仕様: 素材選択時、ライン追加中、またはドラッグ中はパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
+    if ((selectedMarkId || isDrawing || draggingMark) && mode !== "line") {
+      e.preventDefault();
+      e.stopPropagation();
     }
     
     // ハンドルやマークのタッチでない場合のみ処理
@@ -1129,7 +1130,7 @@ export default function TournamentEditPage() {
             style={{
               width: "100%",
               height: "100%",
-              touchAction: (selectedMarkId || isDrawing) ? "pinch-zoom" : "pan-x pan-y pinch-zoom", // v2仕様: 素材選択時またはライン追加中はパン操作を無効化
+              touchAction: (selectedMarkId || isDrawing || draggingMark) ? "pinch-zoom" : "pan-x pan-y pinch-zoom", // v2仕様: 素材選択時、ライン追加中、またはドラッグ中はパン操作を無効化
               WebkitTouchCallout: "none", // iOSの長押しメニューを無効化
               userSelect: "none", // テキスト選択を無効化
               position: "relative",
