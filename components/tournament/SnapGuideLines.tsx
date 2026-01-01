@@ -11,6 +11,16 @@ interface SnapGuideLinesProps {
 }
 
 export function SnapGuideLines({ snapGuide, variant = "drawing" }: SnapGuideLinesProps) {
+  // デバッグログ
+  console.log('[SnapGuideLines]', {
+    snapGuide,
+    variant,
+    snapGuideX: snapGuide?.x,
+    snapGuideY: snapGuide?.y,
+    snapGuideVisible: snapGuide?.visible,
+    willRender: snapGuide && snapGuide.visible,
+  });
+  
   if (!snapGuide || !snapGuide.visible) {
     return null;
   }

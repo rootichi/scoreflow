@@ -261,6 +261,18 @@ export const handleHorizontalLineDragSnap = (
     snapGuide.y = snapTargetY;
   }
 
+  const finalSnapGuide = (snapTargetXFinal !== null || snapTargetY !== null) ? snapGuide : null;
+  
+  // デバッグログ
+  console.log('[handleHorizontalLineDragSnap]', {
+    snapTargetXFinal,
+    snapTargetY,
+    snapGuide: finalSnapGuide,
+    snapGuideX: finalSnapGuide?.x,
+    snapGuideY: finalSnapGuide?.y,
+    snapGuideVisible: finalSnapGuide?.visible,
+  });
+
   return {
     adjustedLine: {
       ...movedLine,
@@ -269,7 +281,7 @@ export const handleHorizontalLineDragSnap = (
       y1: adjustedY1,
       y2: adjustedY2,
     },
-    snapGuide: (snapTargetXFinal !== null || snapTargetY !== null) ? snapGuide : null,
+    snapGuide: finalSnapGuide,
   };
 };
 
@@ -399,6 +411,18 @@ export const handleVerticalLineDragSnap = (
     snapGuide.y = snapTargetYFinal;
   }
 
+  const finalSnapGuide = (snapTargetX !== null || snapTargetYFinal !== null) ? snapGuide : null;
+  
+  // デバッグログ
+  console.log('[handleVerticalLineDragSnap]', {
+    snapTargetX,
+    snapTargetYFinal,
+    snapGuide: finalSnapGuide,
+    snapGuideX: finalSnapGuide?.x,
+    snapGuideY: finalSnapGuide?.y,
+    snapGuideVisible: finalSnapGuide?.visible,
+  });
+
   return {
     adjustedLine: {
       ...movedLine,
@@ -407,7 +431,7 @@ export const handleVerticalLineDragSnap = (
       y1: adjustedY1,
       y2: adjustedY2,
     },
-    snapGuide: (snapTargetX !== null || snapTargetYFinal !== null) ? snapGuide : null,
+    snapGuide: finalSnapGuide,
   };
 };
 
@@ -430,20 +454,32 @@ export const handleScoreDragSnap = (
     markId
   );
 
+  const finalSnapGuide =
+    snapTargetX !== null || snapTargetY !== null
+      ? {
+          x: snapTargetX !== null ? snapTargetX : undefined,
+          y: snapTargetY !== null ? snapTargetY : undefined,
+          visible: true,
+        }
+      : null;
+  
+  // デバッグログ
+  console.log('[handleScoreDragSnap]', {
+    snapTargetX,
+    snapTargetY,
+    snapGuide: finalSnapGuide,
+    snapGuideX: finalSnapGuide?.x,
+    snapGuideY: finalSnapGuide?.y,
+    snapGuideVisible: finalSnapGuide?.visible,
+  });
+
   return {
     adjustedScore: {
       ...movedScore,
       x: snappedX,
       y: snappedY,
     },
-    snapGuide:
-      snapTargetX !== null || snapTargetY !== null
-        ? {
-            x: snapTargetX !== null ? snapTargetX : undefined,
-            y: snapTargetY !== null ? snapTargetY : undefined,
-            visible: true,
-          }
-        : null,
+    snapGuide: finalSnapGuide,
   };
 };
 
