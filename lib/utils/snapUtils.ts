@@ -454,11 +454,83 @@ export const handleScoreDragSnap = (
     markId
   );
 
+  // 垂直線のX座標を収集してスナップ候補に追加
+  const verticalLineXCoordinates = collectVerticalLineXCoordinates(marks, markId);
+  const snapDistanceX = SNAP_DISTANCE_PX / canvasWidth;
+  let minDistanceX = snapDistanceX;
+  let snapTargetXFromVertical: number | null = null;
+  
+  verticalLineXCoordinates.forEach((xCoord) => {
+    const distance = Math.abs(movedScore.x - xCoord);
+    if (distance < minDistanceX) {
+      minDistanceX = distance;
+      snapTargetXFromVertical = xCoord;
+    }
+  });
+
+  // 水平線のY座標を収集してスナップ候補に追加
+  const horizontalLineYCoordinates = collectHorizontalLineYCoordinates(marks, markId);
+  const snapDistanceY = SNAP_DISTANCE_PX / canvasHeight;
+  let minDistanceY = snapDistanceY;
+  let snapTargetYFromHorizontal: number | null = null;
+  
+  horizontalLineYCoordinates.forEach((yCoord) => {
+    const distance = Math.abs(movedScore.y - yCoord);
+    if (distance < minDistanceY) {
+      minDistanceY = distance;
+      snapTargetYFromHorizontal = yCoord;
+    }
+  });
+
+  // スコア同士のスナップと垂直線・水平線のスナップを統合
+  let finalSnappedX = snappedX;
+  let finalSnappedY = snappedY;
+  let finalSnapTargetX: number | null = null;
+  let finalSnapTargetY: number | null = null;
+
+  // X方向のスナップ判定（スコア同士と垂直線の両方を考慮）
+  if (snapTargetX !== null && snapTargetXFromVertical !== null) {
+    const distanceToScore = Math.abs(movedScore.x - snapTargetX);
+    const distanceToVertical = Math.abs(movedScore.x - snapTargetXFromVertical);
+    if (distanceToVertical < distanceToScore) {
+      finalSnappedX = snapTargetXFromVertical;
+      finalSnapTargetX = snapTargetXFromVertical;
+    } else {
+      finalSnappedX = snapTargetX;
+      finalSnapTargetX = snapTargetX;
+    }
+  } else if (snapTargetXFromVertical !== null) {
+    finalSnappedX = snapTargetXFromVertical;
+    finalSnapTargetX = snapTargetXFromVertical;
+  } else if (snapTargetX !== null) {
+    finalSnappedX = snapTargetX;
+    finalSnapTargetX = snapTargetX;
+  }
+
+  // Y方向のスナップ判定（スコア同士と水平線の両方を考慮）
+  if (snapTargetY !== null && snapTargetYFromHorizontal !== null) {
+    const distanceToScore = Math.abs(movedScore.y - snapTargetY);
+    const distanceToHorizontal = Math.abs(movedScore.y - snapTargetYFromHorizontal);
+    if (distanceToHorizontal < distanceToScore) {
+      finalSnappedY = snapTargetYFromHorizontal;
+      finalSnapTargetY = snapTargetYFromHorizontal;
+    } else {
+      finalSnappedY = snapTargetY;
+      finalSnapTargetY = snapTargetY;
+    }
+  } else if (snapTargetYFromHorizontal !== null) {
+    finalSnappedY = snapTargetYFromHorizontal;
+    finalSnapTargetY = snapTargetYFromHorizontal;
+  } else if (snapTargetY !== null) {
+    finalSnappedY = snapTargetY;
+    finalSnapTargetY = snapTargetY;
+  }
+
   const finalSnapGuide =
-    snapTargetX !== null || snapTargetY !== null
+    finalSnapTargetX !== null || finalSnapTargetY !== null
       ? {
-          x: snapTargetX !== null ? snapTargetX : undefined,
-          y: snapTargetY !== null ? snapTargetY : undefined,
+          x: finalSnapTargetX !== null ? finalSnapTargetX : undefined,
+          y: finalSnapTargetY !== null ? finalSnapTargetY : undefined,
           visible: true,
         }
       : null;
@@ -467,6 +539,10 @@ export const handleScoreDragSnap = (
   console.log('[handleScoreDragSnap]', {
     snapTargetX,
     snapTargetY,
+    snapTargetXFromVertical,
+    snapTargetYFromHorizontal,
+    finalSnapTargetX,
+    finalSnapTargetY,
     snapGuide: finalSnapGuide,
     snapGuideX: finalSnapGuide?.x,
     snapGuideY: finalSnapGuide?.y,
@@ -476,8 +552,8 @@ export const handleScoreDragSnap = (
   return {
     adjustedScore: {
       ...movedScore,
-      x: snappedX,
-      y: snappedY,
+      x: clampCoordinate(finalSnappedX),
+      y: clampCoordinate(finalSnappedY),
     },
     snapGuide: finalSnapGuide,
   };
