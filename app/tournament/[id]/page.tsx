@@ -1750,10 +1750,11 @@ export default function TournamentEditPage() {
             )}
             {/* ドラッグ中のスナップガイドライン */}
             {(() => {
-              const shouldRender = (draggingMark || draggingHandle) && snapGuide && snapGuide.visible;
+              const shouldRender = (draggingMark || draggingHandle || draggingCrossArrow) && snapGuide && snapGuide.visible;
               console.log('[render - dragging snap guide]', {
                 draggingMark: !!draggingMark,
                 draggingHandle: !!draggingHandle,
+                draggingCrossArrow: !!draggingCrossArrow,
                 snapGuide,
                 snapGuideVisible: snapGuide?.visible,
                 shouldRender,
