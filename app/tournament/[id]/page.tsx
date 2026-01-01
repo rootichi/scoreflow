@@ -58,6 +58,8 @@ export default function TournamentEditPage() {
   const [scoreValue, setScoreValue] = useState("");
   const canvasRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  // v2仕様: ドラッグ中フラグ（状態更新を待たずに即座に反映するため）
+  const isDraggingMarkRef = useRef(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [lineStart, setLineStart] = useState<{ x: number; y: number } | null>(null);
   const [lineEnd, setLineEnd] = useState<{ x: number; y: number } | null>(null);
@@ -456,7 +458,8 @@ export default function TournamentEditPage() {
     }
     
     // v2仕様: 素材選択時、ライン追加中、またはドラッグ中はパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
-    if (selectedMarkId || isDrawing || draggingMark) {
+    // isDraggingMarkRefを参照して、状態更新を待たずに即座にパンを無効化
+    if (selectedMarkId || isDrawing || draggingMark || isDraggingMarkRef.current) {
       e.preventDefault();
       e.stopPropagation();
     }
@@ -672,6 +675,8 @@ export default function TournamentEditPage() {
     }
 
     setDraggingMark(null);
+    // v2仕様: useRefフラグをリセット
+    isDraggingMarkRef.current = false;
   };
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -734,6 +739,8 @@ export default function TournamentEditPage() {
               // touchGestures.handleTouchStart()を呼ぶ前にpreventDefault()を呼び出す
               e.preventDefault();
               e.stopPropagation();
+              // v2仕様: useRefで即座にフラグを設定（状態更新を待たずに反映）
+              isDraggingMarkRef.current = true;
               setLocalMarks(marks);
               setSelectedMarkId(mark.id);
               setSelectedPosition(coords);
@@ -762,6 +769,8 @@ export default function TournamentEditPage() {
               // touchGestures.handleTouchStart()を呼ぶ前にpreventDefault()を呼び出す
               e.preventDefault();
               e.stopPropagation();
+              // v2仕様: useRefで即座にフラグを設定（状態更新を待たずに反映）
+              isDraggingMarkRef.current = true;
               setLocalMarks(marks);
               setSelectedMarkId(mark.id);
               setSelectedPosition(coords);
@@ -787,7 +796,8 @@ export default function TournamentEditPage() {
     touchGestures.handleTouchStart(e);
     
     // v2仕様: 素材選択時、ライン追加中、またはドラッグ中はパン操作を無効化（編集用ドラッグ操作が競合しないようにするため）
-    if ((selectedMarkId || isDrawing || draggingMark) && mode !== "line") {
+    // isDraggingMarkRefを参照して、状態更新を待たずに即座にパンを無効化
+    if ((selectedMarkId || isDrawing || draggingMark || isDraggingMarkRef.current) && mode !== "line") {
       e.preventDefault();
       e.stopPropagation();
     }
@@ -841,7 +851,7 @@ export default function TournamentEditPage() {
     }
 
     // マークのドラッグ終了
-    if (draggingMark) {
+    if (draggingMark || isDraggingMarkRef.current) {
       await handleMarkDragEnd();
       editMode.endEdit();
       return;
@@ -987,7 +997,7 @@ export default function TournamentEditPage() {
     }
 
     // マークのドラッグ終了
-    if (draggingMark) {
+    if (draggingMark || isDraggingMarkRef.current) {
       await handleMarkDragEnd();
       setIsTouchDragging(false);
       editMode.endEdit();
@@ -1136,7 +1146,7 @@ export default function TournamentEditPage() {
             style={{
               width: "100%",
               height: "100%",
-              touchAction: (selectedMarkId || isDrawing || draggingMark) ? "pinch-zoom" : "pan-x pan-y pinch-zoom", // v2仕様: 素材選択時、ライン追加中、またはドラッグ中はパン操作を無効化
+              touchAction: (selectedMarkId || isDrawing || draggingMark || isDraggingMarkRef.current) ? "pinch-zoom" : "pan-x pan-y pinch-zoom", // v2仕様: 素材選択時、ライン追加中、またはドラッグ中はパン操作を無効化（useRefで即座に反映）
               WebkitTouchCallout: "none", // iOSの長押しメニューを無効化
               userSelect: "none", // テキスト選択を無効化
               position: "relative",
@@ -1236,6 +1246,8 @@ export default function TournamentEditPage() {
                           // 即座にpreventDefault()を呼び出してパンを無効化（状態更新前に実行）
                           e.preventDefault();
                           e.stopPropagation();
+                          // v2仕様: useRefで即座にフラグを設定（状態更新を待たずに反映）
+                          isDraggingMarkRef.current = true;
                           const touch = e.touches[0];
                           setTouchStartPos({ x: touch.clientX, y: touch.clientY });
                           setIsTouchDragging(false);
@@ -1624,6 +1636,8 @@ export default function TournamentEditPage() {
                       // 即座にpreventDefault()を呼び出してパンを無効化（状態更新前に実行）
                       e.preventDefault();
                       e.stopPropagation();
+                      // v2仕様: useRefで即座にフラグを設定（状態更新を待たずに反映）
+                      isDraggingMarkRef.current = true;
                       const touch = e.touches[0];
                       setTouchStartPos({ x: touch.clientX, y: touch.clientY });
                       setIsTouchDragging(false);
