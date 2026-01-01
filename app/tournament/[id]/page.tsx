@@ -648,6 +648,12 @@ export default function TournamentEditPage() {
     const updatedMark = localMarks.find((m) => m.id === draggingMark.id);
     if (!updatedMark) {
       setDraggingMark(null);
+      // v2仕様: useRefフラグをリセット
+      isDraggingMarkRef.current = false;
+      // v2仕様: DOM要素のtouchActionを元に戻す
+      if (imageContainerRef.current) {
+        imageContainerRef.current.style.touchAction = selectedMarkId ? "pinch-zoom" : "pan-x pan-y pinch-zoom";
+      }
       return;
     }
 
@@ -655,6 +661,12 @@ export default function TournamentEditPage() {
     const existingMark = marks.find((m) => m.id === draggingMark.id);
     if (!existingMark) {
       setDraggingMark(null);
+      // v2仕様: useRefフラグをリセット
+      isDraggingMarkRef.current = false;
+      // v2仕様: DOM要素のtouchActionを元に戻す
+      if (imageContainerRef.current) {
+        imageContainerRef.current.style.touchAction = selectedMarkId ? "pinch-zoom" : "pan-x pan-y pinch-zoom";
+      }
       return;
     }
 
@@ -677,6 +689,10 @@ export default function TournamentEditPage() {
     setDraggingMark(null);
     // v2仕様: useRefフラグをリセット
     isDraggingMarkRef.current = false;
+    // v2仕様: DOM要素のtouchActionを元に戻す
+    if (imageContainerRef.current) {
+      imageContainerRef.current.style.touchAction = selectedMarkId ? "pinch-zoom" : "pan-x pan-y pinch-zoom";
+    }
   };
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -739,6 +755,10 @@ export default function TournamentEditPage() {
               // touchGestures.handleTouchStart()を呼ぶ前にpreventDefault()を呼び出す
               e.preventDefault();
               e.stopPropagation();
+              // v2仕様: DOM要素のtouchActionを直接変更（状態更新を待たずに即座に反映）
+              if (imageContainerRef.current) {
+                imageContainerRef.current.style.touchAction = "pinch-zoom";
+              }
               // v2仕様: useRefで即座にフラグを設定（状態更新を待たずに反映）
               isDraggingMarkRef.current = true;
               setLocalMarks(marks);
@@ -769,6 +789,10 @@ export default function TournamentEditPage() {
               // touchGestures.handleTouchStart()を呼ぶ前にpreventDefault()を呼び出す
               e.preventDefault();
               e.stopPropagation();
+              // v2仕様: DOM要素のtouchActionを直接変更（状態更新を待たずに即座に反映）
+              if (imageContainerRef.current) {
+                imageContainerRef.current.style.touchAction = "pinch-zoom";
+              }
               // v2仕様: useRefで即座にフラグを設定（状態更新を待たずに反映）
               isDraggingMarkRef.current = true;
               setLocalMarks(marks);
@@ -1002,6 +1026,10 @@ export default function TournamentEditPage() {
       setIsTouchDragging(false);
       editMode.endEdit();
       touchGestures.clearGesture();
+      // v2仕様: DOM要素のtouchActionを元に戻す（handleMarkDragEnd内でも処理されるが、念のため）
+      if (imageContainerRef.current) {
+        imageContainerRef.current.style.touchAction = selectedMarkId ? "pinch-zoom" : "pan-x pan-y pinch-zoom";
+      }
       return;
     }
 
@@ -1246,6 +1274,10 @@ export default function TournamentEditPage() {
                           // 即座にpreventDefault()を呼び出してパンを無効化（状態更新前に実行）
                           e.preventDefault();
                           e.stopPropagation();
+                          // v2仕様: DOM要素のtouchActionを直接変更（状態更新を待たずに即座に反映）
+                          if (imageContainerRef.current) {
+                            imageContainerRef.current.style.touchAction = "pinch-zoom";
+                          }
                           // v2仕様: useRefで即座にフラグを設定（状態更新を待たずに反映）
                           isDraggingMarkRef.current = true;
                           const touch = e.touches[0];
@@ -1636,6 +1668,10 @@ export default function TournamentEditPage() {
                       // 即座にpreventDefault()を呼び出してパンを無効化（状態更新前に実行）
                       e.preventDefault();
                       e.stopPropagation();
+                      // v2仕様: DOM要素のtouchActionを直接変更（状態更新を待たずに即座に反映）
+                      if (imageContainerRef.current) {
+                        imageContainerRef.current.style.touchAction = "pinch-zoom";
+                      }
                       // v2仕様: useRefで即座にフラグを設定（状態更新を待たずに反映）
                       isDraggingMarkRef.current = true;
                       const touch = e.touches[0];
