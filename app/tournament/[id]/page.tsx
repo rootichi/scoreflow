@@ -68,6 +68,10 @@ export default function TournamentEditPage() {
   const [draggingHandle, setDraggingHandle] = useState<DraggingHandle | null>(null);
   const [copiedMark, setCopiedMark] = useState<Mark & { id: string } | null>(null);
   const [snapGuide, setSnapGuide] = useState<SnapGuide | null>(null); // スナップガイドライン（x: 垂直線、y: 水平線）
+  const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null); // タッチ開始位置（スクロール判定用）
+  const [isTouchDragging, setIsTouchDragging] = useState(false); // タッチドラッグ中かどうか
+  const [draggingCrossArrow, setDraggingCrossArrow] = useState<{ startX: number; startY: number } | null>(null);
+  const [selectedPosition, setSelectedPosition] = useState<{ x: number; y: number } | null>(null);
   
   // デバッグ: snapGuideの状態変化を監視
   useEffect(() => {
@@ -81,10 +85,6 @@ export default function TournamentEditPage() {
       draggingCrossArrow: !!draggingCrossArrow,
     });
   }, [snapGuide, draggingMark, draggingHandle, draggingCrossArrow]);
-  const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null); // タッチ開始位置（スクロール判定用）
-  const [isTouchDragging, setIsTouchDragging] = useState(false); // タッチドラッグ中かどうか
-  const [draggingCrossArrow, setDraggingCrossArrow] = useState<{ startX: number; startY: number } | null>(null);
-  const [selectedPosition, setSelectedPosition] = useState<{ x: number; y: number } | null>(null);
   
   // Canva風の編集モード管理
   const editMode = useEditMode();
