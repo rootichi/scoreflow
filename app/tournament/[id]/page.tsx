@@ -299,6 +299,7 @@ export default function TournamentEditPage() {
                       ...adjustedLine,
                     } as Mark & { id: string };
                   }
+                  setSnapGuide(null);
                   return movedLine;
                 } else if (isVerticalLine(original)) {
                   const movedLine = updateMarkCoordinates(original, dx, dy) as LineMark & { id: string };
@@ -317,6 +318,7 @@ export default function TournamentEditPage() {
                       ...adjustedLine,
                     } as Mark & { id: string };
                   }
+                  setSnapGuide(null);
                   return movedLine;
                 } else {
                   setSnapGuide(null);
@@ -343,6 +345,7 @@ export default function TournamentEditPage() {
                   } as Mark & { id: string };
                 }
                 
+                setSnapGuide(null);
                 return movedScore;
               }
             }
@@ -378,6 +381,7 @@ export default function TournamentEditPage() {
                     ...adjustedLine,
                   } as Mark & { id: string };
                 }
+                setSnapGuide(null);
                 return movedLine;
               } else if (isVerticalLine(original)) {
                 const movedLine = updateMarkCoordinates(original, dx, dy) as LineMark & { id: string };
@@ -396,6 +400,7 @@ export default function TournamentEditPage() {
                     ...adjustedLine,
                   } as Mark & { id: string };
                 }
+                setSnapGuide(null);
                 return movedLine;
               } else {
                 setSnapGuide(null);
@@ -421,6 +426,7 @@ export default function TournamentEditPage() {
               } as Mark & { id: string };
             }
             
+            setSnapGuide(null);
             return movedScore;
           }
         }
