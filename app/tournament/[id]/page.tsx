@@ -68,6 +68,18 @@ export default function TournamentEditPage() {
   const [draggingHandle, setDraggingHandle] = useState<DraggingHandle | null>(null);
   const [copiedMark, setCopiedMark] = useState<Mark & { id: string } | null>(null);
   const [snapGuide, setSnapGuide] = useState<SnapGuide | null>(null); // スナップガイドライン（x: 垂直線、y: 水平線）
+  
+  // デバッグ: snapGuideの状態変化を監視
+  useEffect(() => {
+    console.log('[snapGuide state changed]', {
+      snapGuide,
+      snapGuideX: snapGuide?.x,
+      snapGuideY: snapGuide?.y,
+      snapGuideVisible: snapGuide?.visible,
+      draggingMark: !!draggingMark,
+      draggingHandle: !!draggingHandle,
+    });
+  }, [snapGuide, draggingMark, draggingHandle]);
   const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null); // タッチ開始位置（スクロール判定用）
   const [isTouchDragging, setIsTouchDragging] = useState(false); // タッチドラッグ中かどうか
   const [draggingCrossArrow, setDraggingCrossArrow] = useState<{ startX: number; startY: number } | null>(null);
@@ -140,6 +152,17 @@ export default function TournamentEditPage() {
 
   const handleCanvasMove = useCallback((e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     const coords = getRelativeCoordinates(e);
+    
+    // デバッグログ
+    console.log('[handleCanvasMove]', {
+      mode,
+      isDrawing,
+      lineStart: !!lineStart,
+      draggingHandle: !!draggingHandle,
+      draggingMark: !!draggingMark,
+      draggingCrossArrow: !!draggingCrossArrow,
+      selectedMarkId,
+    });
     
     if (mode === "line" && isDrawing && lineStart) {
       // 水平/垂直の制限：より近い方向を選択
