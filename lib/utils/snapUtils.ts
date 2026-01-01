@@ -252,13 +252,24 @@ export const handleHorizontalLineDragSnap = (
     adjustedY2 = clampCoordinate(movedLine.y2 + yOffset);
   }
 
+  // スナップが発生しているかチェック（adjustedLineが元のmovedLineと異なる場合）
+  const hasSnapX = adjustedX1 !== movedLine.x1 || adjustedX2 !== movedLine.x2;
+  const hasSnapY = adjustedY1 !== movedLine.y1 || adjustedY2 !== movedLine.y2;
+  const hasSnap = hasSnapX || hasSnapY;
+
   // スナップガイドラインを設定（X方向とY方向の両方）
   const snapGuide: SnapGuide = { visible: true };
   if (snapTargetXFinal !== null) {
     snapGuide.x = snapTargetXFinal;
+  } else if (hasSnapX) {
+    // スナップが発生しているがsnapTargetXFinalがnullの場合、調整後のX座標を使用
+    snapGuide.x = adjustedX1;
   }
   if (snapTargetY !== null) {
     snapGuide.y = snapTargetY;
+  } else if (hasSnapY) {
+    // スナップが発生しているがsnapTargetYがnullの場合、調整後のY座標を使用
+    snapGuide.y = adjustedY1;
   }
 
   return {
@@ -269,7 +280,7 @@ export const handleHorizontalLineDragSnap = (
       y1: adjustedY1,
       y2: adjustedY2,
     },
-    snapGuide: (snapTargetXFinal !== null || snapTargetY !== null) ? snapGuide : null,
+    snapGuide: hasSnap ? snapGuide : null,
   };
 };
 
@@ -390,13 +401,24 @@ export const handleVerticalLineDragSnap = (
     adjustedX2 = clampCoordinate(movedLine.x2 + xOffset);
   }
 
+  // スナップが発生しているかチェック（adjustedLineが元のmovedLineと異なる場合）
+  const hasSnapX = adjustedX1 !== movedLine.x1 || adjustedX2 !== movedLine.x2;
+  const hasSnapY = adjustedY1 !== movedLine.y1 || adjustedY2 !== movedLine.y2;
+  const hasSnap = hasSnapX || hasSnapY;
+
   // スナップガイドラインを設定（X方向とY方向の両方）
   const snapGuide: SnapGuide = { visible: true };
   if (snapTargetX !== null) {
     snapGuide.x = snapTargetX;
+  } else if (hasSnapX) {
+    // スナップが発生しているがsnapTargetXがnullの場合、調整後のX座標を使用
+    snapGuide.x = adjustedX1;
   }
   if (snapTargetYFinal !== null) {
     snapGuide.y = snapTargetYFinal;
+  } else if (hasSnapY) {
+    // スナップが発生しているがsnapTargetYFinalがnullの場合、調整後のY座標を使用
+    snapGuide.y = adjustedY1;
   }
 
   return {
@@ -407,7 +429,7 @@ export const handleVerticalLineDragSnap = (
       y1: adjustedY1,
       y2: adjustedY2,
     },
-    snapGuide: (snapTargetX !== null || snapTargetYFinal !== null) ? snapGuide : null,
+    snapGuide: hasSnap ? snapGuide : null,
   };
 };
 
