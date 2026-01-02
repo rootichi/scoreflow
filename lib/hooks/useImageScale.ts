@@ -6,8 +6,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
  */
 export function useImageScale() {
   const imageContainerRef = useRef<HTMLDivElement>(null);
-  const [imageScale, setImageScale] = useState(1);
+  const [imageScale, setImageScale] = useState<number | null>(null); // null = 未計算
   const observerRef = useRef<ResizeObserver | null>(null);
+  const imageLoadHandlerRef = useRef<(() => void) | null>(null);
 
   const calculateImageScale = useCallback(() => {
     if (imageContainerRef.current) {
@@ -17,24 +18,24 @@ export function useImageScale() {
         if (imgElement.complete && imgElement.naturalWidth > 0 && imgElement.offsetWidth > 0) {
           const scale = imgElement.offsetWidth / imgElement.naturalWidth;
           setImageScale(scale);
-        } else {
-          // 画像がまだ読み込まれていない場合、読み込み完了を待つ
-          const handleLoad = () => {
-            if (imgElement.naturalWidth > 0 && imgElement.offsetWidth > 0) {
-              const scale = imgElement.offsetWidth / imgElement.naturalWidth;
-              setImageScale(scale);
-            }
-            imgElement.removeEventListener("load", handleLoad);
-          };
-          imgElement.addEventListener("load", handleLoad);
+          return true; // スケール計算成功
         }
       }
     }
+    return false; // スケール計算失敗（画像未読み込み）
   }, []);
 
   useEffect(() => {
-    // 初回計算
-    calculateImageScale();
+    // 既存のloadハンドラーをクリーンアップ
+    if (imageLoadHandlerRef.current) {
+      const imgElement = imageContainerRef.current?.querySelector("img");
+      if (imgElement) {
+        imgElement.removeEventListener("load", imageLoadHandlerRef.current);
+      }
+    }
+
+    // 初回計算を試みる
+    const calculated = calculateImageScale();
 
     // リサイズイベントの監視
     window.addEventListener("resize", calculateImageScale);
@@ -55,7 +56,16 @@ export function useImageScale() {
         calculateImageScale();
       } else {
         // 読み込み完了を待つ
-        imgElement.addEventListener("load", calculateImageScale, { once: true });
+        const handleLoad = () => {
+          // 少し待ってから計算（レイアウトが確定するまで）
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              calculateImageScale();
+            });
+          });
+        };
+        imageLoadHandlerRef.current = handleLoad;
+        imgElement.addEventListener("load", handleLoad, { once: true });
       }
     }
 
@@ -64,9 +74,13 @@ export function useImageScale() {
       if (observerRef.current) {
         observerRef.current.disconnect();
       }
+      if (imageLoadHandlerRef.current && imgElement) {
+        imgElement.removeEventListener("load", imageLoadHandlerRef.current);
+      }
     };
   }, [calculateImageScale]);
 
-  return { imageContainerRef, imageScale, calculateImageScale };
+  // imageScaleがnullの場合は1を返す（後方互換性のため）
+  return { imageContainerRef, imageScale: imageScale ?? 1, calculateImageScale, isImageScaleReady: imageScale !== null };
 }
 
