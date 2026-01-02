@@ -80,7 +80,7 @@ export default function TournamentEditPage() {
   const touchGestures = useTouchGestures();
   
   // カスタムフック
-  const { imageContainerRef, imageScale } = useImageScale();
+  const { imageContainerRef, imageScale, calculateImageScale } = useImageScale();
   const { getRelativeCoordinates } = useCanvasCoordinates(canvasRef);
   
   // v1仕様: 編集操作中のみスクロールを無効化（素材選択時はスクロールを許可）
@@ -117,6 +117,10 @@ export default function TournamentEditPage() {
         return;
       }
       setTournament(data);
+      // 大会読み込み後、画像のスケールを再計算（画像が読み込まれるまで待つ）
+      setTimeout(() => {
+        calculateImageScale();
+      }, 100);
       } catch (error) {
         await handleErrorWithNotification(error, { operation: "loadTournament", details: { tournamentId } }, "大会の読み込みに失敗しました");
         router.push("/");
@@ -124,7 +128,7 @@ export default function TournamentEditPage() {
     };
 
     loadTournament();
-  }, [user, tournamentId, router]);
+  }, [user, tournamentId, router, calculateImageScale]);
 
   useEffect(() => {
     if (!tournamentId) return;
