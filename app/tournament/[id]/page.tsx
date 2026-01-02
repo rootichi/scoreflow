@@ -822,14 +822,16 @@ export default function TournamentEditPage() {
         // タップ判定（移動距離が少ない場合）
         if (distance < TAP_MAX_DISTANCE && !isTouchDragging) {
           console.log(`[handleCanvasTouchEnd] adding score from touch end`);
+          // マウスイベントの発火を防止（handleAddScoreの前に設定）
+          touchProcessedRef.current = true; // タッチイベントが処理されたことを記録
+          e.preventDefault(); // マウスイベントの発火を防止
+          e.stopPropagation();
+          
           const coords = getRelativeCoordinates(e);
           await handleAddScore(coords, "handleCanvasTouchEnd");
           setIsTouchDragging(false);
           touchGestures.clearGesture();
           setTouchStartPos(null);
-          touchProcessedRef.current = true; // タッチイベントが処理されたことを記録
-          e.preventDefault(); // マウスイベントの発火を防止
-          e.stopPropagation();
           console.log(`[handleCanvasTouchEnd] score added, returning early`);
           return;
         } else {
