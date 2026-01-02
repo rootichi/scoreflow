@@ -73,19 +73,6 @@ export default function TournamentEditPage() {
   const [draggingCrossArrow, setDraggingCrossArrow] = useState<{ startX: number; startY: number } | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<{ x: number; y: number } | null>(null);
   
-  // デバッグ: snapGuideの状態変化を監視
-  useEffect(() => {
-    console.log('[snapGuide state changed]', {
-      snapGuide,
-      snapGuideX: snapGuide?.x,
-      snapGuideY: snapGuide?.y,
-      snapGuideVisible: snapGuide?.visible,
-      draggingMark: !!draggingMark,
-      draggingHandle: !!draggingHandle,
-      draggingCrossArrow: !!draggingCrossArrow,
-    });
-  }, [snapGuide, draggingMark, draggingHandle, draggingCrossArrow]);
-  
   // Canva風の編集モード管理
   const editMode = useEditMode();
   const touchGestures = useTouchGestures();
@@ -153,17 +140,6 @@ export default function TournamentEditPage() {
 
   const handleCanvasMove = useCallback((e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     const coords = getRelativeCoordinates(e);
-    
-    // デバッグログ
-    console.log('[handleCanvasMove]', {
-      mode,
-      isDrawing,
-      lineStart: !!lineStart,
-      draggingHandle: !!draggingHandle,
-      draggingMark: !!draggingMark,
-      draggingCrossArrow: !!draggingCrossArrow,
-      selectedMarkId,
-    });
     
     if (mode === "line" && isDrawing && lineStart) {
       // 水平/垂直の制限：より近い方向を選択
@@ -238,12 +214,6 @@ export default function TournamentEditPage() {
             marks,
             draggingHandle.markId
           );
-          console.log('[handleCanvasMove - draggingHandle horizontal start]', {
-            guide,
-            guideX: guide?.x,
-            guideY: guide?.y,
-            guideVisible: guide?.visible,
-          });
           newX1 = snappedX;
           newY1 = original.y1;
           setSnapGuide(guide);
@@ -255,12 +225,6 @@ export default function TournamentEditPage() {
             marks,
             draggingHandle.markId
           );
-          console.log('[handleCanvasMove - draggingHandle vertical start]', {
-            guide,
-            guideX: guide?.x,
-            guideY: guide?.y,
-            guideVisible: guide?.visible,
-          });
           newX1 = original.x1;
           newY1 = snappedY;
           setSnapGuide(guide);
@@ -275,12 +239,6 @@ export default function TournamentEditPage() {
             marks,
             draggingHandle.markId
           );
-          console.log('[handleCanvasMove - draggingHandle horizontal end]', {
-            guide,
-            guideX: guide?.x,
-            guideY: guide?.y,
-            guideVisible: guide?.visible,
-          });
           newX2 = snappedX;
           newY2 = original.y2;
           setSnapGuide(guide);
@@ -292,12 +250,6 @@ export default function TournamentEditPage() {
             marks,
             draggingHandle.markId
           );
-          console.log('[handleCanvasMove - draggingHandle vertical end]', {
-            guide,
-            guideX: guide?.x,
-            guideY: guide?.y,
-            guideVisible: guide?.visible,
-          });
           newX2 = original.x2;
           newY2 = snappedY;
           setSnapGuide(guide);
@@ -341,12 +293,6 @@ export default function TournamentEditPage() {
                       marks,
                       movedLine
                     );
-                    console.log('[handleCanvasMove - draggingCrossArrow horizontal]', {
-                      guide,
-                      guideX: guide?.x,
-                      guideY: guide?.y,
-                      guideVisible: guide?.visible,
-                    });
                     setSnapGuide(guide);
                     return {
                       ...m,
@@ -366,12 +312,6 @@ export default function TournamentEditPage() {
                       marks,
                       movedLine
                     );
-                    console.log('[handleCanvasMove - draggingCrossArrow vertical]', {
-                      guide,
-                      guideX: guide?.x,
-                      guideY: guide?.y,
-                      guideVisible: guide?.visible,
-                    });
                     setSnapGuide(guide);
                     return {
                       ...m,
@@ -398,12 +338,6 @@ export default function TournamentEditPage() {
                     marks,
                     selectedMarkId
                   );
-                  console.log('[handleCanvasMove - draggingCrossArrow score]', {
-                    guide,
-                    guideX: guide?.x,
-                    guideY: guide?.y,
-                    guideVisible: guide?.visible,
-                  });
                   setSnapGuide(guide);
                   return {
                     ...m,
@@ -441,12 +375,6 @@ export default function TournamentEditPage() {
                     marks,
                     movedLine
                   );
-                  console.log('[handleCanvasMove - draggingMark horizontal]', {
-                    guide,
-                    guideX: guide?.x,
-                    guideY: guide?.y,
-                    guideVisible: guide?.visible,
-                  });
                   setSnapGuide(guide);
                   return {
                     ...m,
@@ -466,12 +394,6 @@ export default function TournamentEditPage() {
                     marks,
                     movedLine
                   );
-                  console.log('[handleCanvasMove - draggingMark vertical]', {
-                    guide,
-                    guideX: guide?.x,
-                    guideY: guide?.y,
-                    guideVisible: guide?.visible,
-                  });
                   setSnapGuide(guide);
                   return {
                     ...m,
@@ -497,12 +419,6 @@ export default function TournamentEditPage() {
                 marks,
                 draggingMark.id
               );
-              console.log('[handleCanvasMove - draggingMark score]', {
-                guide,
-                guideX: guide?.x,
-                guideY: guide?.y,
-                guideVisible: guide?.visible,
-              });
               setSnapGuide(guide);
               return {
                 ...m,
@@ -1750,18 +1666,7 @@ export default function TournamentEditPage() {
               </svg>
             )}
             {/* ドラッグ中のスナップガイドライン */}
-            {(() => {
-              const shouldRender = (draggingMark || draggingHandle || draggingCrossArrow) && snapGuide && snapGuide.visible;
-              console.log('[render - dragging snap guide]', {
-                draggingMark: !!draggingMark,
-                draggingHandle: !!draggingHandle,
-                draggingCrossArrow: !!draggingCrossArrow,
-                snapGuide,
-                snapGuideVisible: snapGuide?.visible,
-                shouldRender,
-              });
-              return shouldRender;
-            })() && (
+            {(draggingMark || draggingHandle || draggingCrossArrow) && snapGuide && snapGuide.visible && (
               <svg
                 className="absolute top-0 left-0 w-full h-full pointer-events-none"
                 style={{ zIndex: 20 }}

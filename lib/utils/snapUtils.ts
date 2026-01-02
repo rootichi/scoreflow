@@ -262,16 +262,6 @@ export const handleHorizontalLineDragSnap = (
   }
 
   const finalSnapGuide = (snapTargetXFinal !== null || snapTargetY !== null) ? snapGuide : null;
-  
-  // デバッグログ
-  console.log('[handleHorizontalLineDragSnap]', {
-    snapTargetXFinal,
-    snapTargetY,
-    snapGuide: finalSnapGuide,
-    snapGuideX: finalSnapGuide?.x,
-    snapGuideY: finalSnapGuide?.y,
-    snapGuideVisible: finalSnapGuide?.visible,
-  });
 
   return {
     adjustedLine: {
@@ -412,16 +402,6 @@ export const handleVerticalLineDragSnap = (
   }
 
   const finalSnapGuide = (snapTargetX !== null || snapTargetYFinal !== null) ? snapGuide : null;
-  
-  // デバッグログ
-  console.log('[handleVerticalLineDragSnap]', {
-    snapTargetX,
-    snapTargetYFinal,
-    snapGuide: finalSnapGuide,
-    snapGuideX: finalSnapGuide?.x,
-    snapGuideY: finalSnapGuide?.y,
-    snapGuideVisible: finalSnapGuide?.visible,
-  });
 
   return {
     adjustedLine: {
@@ -534,20 +514,6 @@ export const handleScoreDragSnap = (
           visible: true,
         }
       : null;
-  
-  // デバッグログ
-  console.log('[handleScoreDragSnap]', {
-    snapTargetX,
-    snapTargetY,
-    snapTargetXFromVertical,
-    snapTargetYFromHorizontal,
-    finalSnapTargetX,
-    finalSnapTargetY,
-    snapGuide: finalSnapGuide,
-    snapGuideX: finalSnapGuide?.x,
-    snapGuideY: finalSnapGuide?.y,
-    snapGuideVisible: finalSnapGuide?.visible,
-  });
 
   return {
     adjustedScore: {
