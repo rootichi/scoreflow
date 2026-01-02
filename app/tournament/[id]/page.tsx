@@ -117,10 +117,13 @@ export default function TournamentEditPage() {
         return;
       }
       setTournament(data);
-      // 大会読み込み後、画像のスケールを再計算（画像が読み込まれるまで待つ）
-      setTimeout(() => {
-        calculateImageScale();
-      }, 100);
+      // 大会読み込み後、画像のスケールを再計算
+      // 画像のsrcが変更されるため、次のフレームで再計算
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          calculateImageScale();
+        });
+      });
       } catch (error) {
         await handleErrorWithNotification(error, { operation: "loadTournament", details: { tournamentId } }, "大会の読み込みに失敗しました");
         router.push("/");
@@ -1560,7 +1563,8 @@ export default function TournamentEditPage() {
               );
             })()}
             {/* スコアマーク */}
-            {(draggingMark || draggingCrossArrow ? localMarks : marks)
+            {/* スコアマーク - 画像スケールが計算されるまで非表示 */}
+            {isImageScaleReady && (draggingMark || draggingCrossArrow ? localMarks : marks)
               .filter((m) => m.type === "score")
               .map((mark) => {
                 const foundMark = (draggingMark || draggingCrossArrow ? localMarks : marks).find((m) => m.id === mark.id) || mark;
