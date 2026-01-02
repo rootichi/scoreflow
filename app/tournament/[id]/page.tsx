@@ -387,7 +387,14 @@ export default function TournamentEditPage() {
   }, [isDrawing, draggingHandle, draggingMark, draggingCrossArrow, selectedMarkId, handleCanvasMove, touchGestures, editMode, touchStartPos]);
 
   // スコア追加の共通処理
-  const handleAddScore = useCallback(async (coords: { x: number; y: number }) => {
+  const handleAddScore = useCallback(async (coords: { x: number; y: number }, source: string) => {
+    console.log(`[handleAddScore] called from: ${source}`, {
+      coords,
+      scoreValue,
+      timestamp: Date.now(),
+      stackTrace: new Error().stack,
+    });
+    
     if (!scoreValue.trim()) {
       showError("スコアを入力してください");
       return;
@@ -408,7 +415,11 @@ export default function TournamentEditPage() {
       fontSize: DEFAULT_SCORE_FONT_SIZE,
       color: DEFAULT_LINE_COLOR,
     };
+    
+    console.log(`[handleAddScore] adding mark:`, markData);
     const markId = await addMark(tournamentId, markData);
+    console.log(`[handleAddScore] mark added with id: ${markId}`);
+    
     addAction({
       type: "add",
       markId,
@@ -417,6 +428,7 @@ export default function TournamentEditPage() {
         createdAt: Timestamp.now(),
       } as Mark,
     });
+    
     setScoreValue("");
     setMode(null);
     editMode.endDrawing();
