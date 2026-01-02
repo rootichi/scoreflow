@@ -74,6 +74,7 @@ export default function TournamentEditPage() {
   const [draggingCrossArrow, setDraggingCrossArrow] = useState<{ startX: number; startY: number } | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<{ x: number; y: number } | null>(null);
   const touchProcessedRef = useRef(false); // タッチイベントが処理されたかどうかのフラグ
+  const [isPC, setIsPC] = useState(false); // PC版かどうかの判定
   
   // Canva風の編集モード管理
   const editMode = useEditMode();
@@ -82,6 +83,16 @@ export default function TournamentEditPage() {
   // カスタムフック
   const { imageContainerRef, imageScale, calculateImageScale, isImageScaleReady } = useImageScale();
   const { getRelativeCoordinates } = useCanvasCoordinates(canvasRef);
+  
+  // PC版/モバイル版の判定
+  useEffect(() => {
+    const checkIsPC = () => {
+      setIsPC(typeof window !== 'undefined' && window.innerWidth >= 768);
+    };
+    checkIsPC();
+    window.addEventListener("resize", checkIsPC);
+    return () => window.removeEventListener("resize", checkIsPC);
+  }, []);
   
   // v1仕様: 編集操作中のみスクロールを無効化（素材選択時はスクロールを許可）
   useScrollPrevention(isDrawing, !!draggingHandle, !!draggingMark || !!draggingCrossArrow, editMode.canEdit, false);
@@ -1149,6 +1160,7 @@ export default function TournamentEditPage() {
                 width: "100%",
                 height: "100%",
                 position: "relative",
+                overflow: "auto", // PC版・スマホ版共通: スクロール有効化
               }}
             >
               {/* キャンバス要素（画像とSVGを含む） */}
