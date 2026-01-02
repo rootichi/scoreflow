@@ -763,6 +763,30 @@ export default function TournamentEditPage() {
       return;
     }
 
+    // スコア追加モードの場合、タッチ情報から直接タップ判定を行う
+    if (mode === "score" && !draggingMark && !draggingHandle) {
+      // タッチ開始位置と終了位置を比較してタップ判定
+      const touch = e.changedTouches[0];
+      if (touch && touchStartPos) {
+        const dx = touch.clientX - touchStartPos.x;
+        const dy = touch.clientY - touchStartPos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const TAP_MAX_DISTANCE = 10; // タップ判定の最大移動距離（ピクセル）
+        
+        // タップ判定（移動距離が少ない場合）
+        if (distance < TAP_MAX_DISTANCE && !isTouchDragging) {
+          const coords = getRelativeCoordinates(e);
+          await handleAddScore(coords);
+          setIsTouchDragging(false);
+          touchGestures.clearGesture();
+          setTouchStartPos(null);
+          touchProcessedRef.current = true; // タッチイベントが処理されたことを記録
+          e.preventDefault(); // マウスイベントの発火を防止
+          e.stopPropagation();
+          return;
+        }
+      }
+    }
 
     // タッチジェスチャーを処理
     touchGestures.handleTouchEnd(e);
@@ -772,36 +796,6 @@ export default function TournamentEditPage() {
       ...e,
       touches: [e.changedTouches[0]],
     } as any) : null;
-
-    // タップジェスチャーの場合
-    if (touchGestures.gesture?.type === "tap") {
-      // スコア追加モードの場合
-      if (mode === "score" && !draggingMark && !draggingHandle) {
-        const coords = getRelativeCoordinates(e);
-        await handleAddScore(coords);
-        setIsTouchDragging(false);
-        touchGestures.clearGesture();
-        setTouchStartPos(null);
-        touchProcessedRef.current = true; // タッチイベントが処理されたことを記録
-        e.preventDefault(); // マウスイベントの発火を防止
-        e.stopPropagation();
-        return;
-      }
-    }
-
-    // ドラッグ操作でない場合（タップのみ）はスコア追加を処理（フォールバック）
-    // ただし、タップジェスチャーが検出されなかった場合のみ
-    if (!isTouchDragging && !draggingMark && !draggingHandle && mode === "score" && touchGestures.gesture?.type !== "tap") {
-      const coords = getRelativeCoordinates(e);
-      await handleAddScore(coords);
-      setIsTouchDragging(false);
-      touchGestures.clearGesture();
-      setTouchStartPos(null);
-      touchProcessedRef.current = true; // タッチイベントが処理されたことを記録
-      e.preventDefault(); // マウスイベントの発火を防止
-      e.stopPropagation();
-      return;
-    }
 
     // タッチ終了時にラインやスコアを選択する処理（タッチ中に指を動かしていない場合のみ）
     if (!isTouchDragging && !draggingMark && !draggingHandle && mode === null && touchEndCoords && canvasRef.current) {
