@@ -73,6 +73,7 @@ export default function TournamentEditPage() {
   const [isTouchDragging, setIsTouchDragging] = useState(false); // タッチドラッグ中かどうか
   const [draggingCrossArrow, setDraggingCrossArrow] = useState<{ startX: number; startY: number } | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<{ x: number; y: number } | null>(null);
+  const touchProcessedRef = useRef(false); // タッチイベントが処理されたかどうかのフラグ
   
   // Canva風の編集モード管理
   const editMode = useEditMode();
@@ -733,6 +734,12 @@ export default function TournamentEditPage() {
   const handleCanvasClick = async (e: React.MouseEvent<HTMLDivElement>) => {
     if (!tournament || !user) return;
 
+    // タッチイベントが処理された場合は、マウスイベントを無視（スマホでの重複防止）
+    if (touchProcessedRef.current) {
+      touchProcessedRef.current = false;
+      return;
+    }
+
     // ドラッグ中やハンドル操作中はクリックを無視
     if (draggingMark || draggingHandle || draggingCrossArrow) {
       return;
@@ -775,17 +782,24 @@ export default function TournamentEditPage() {
         setIsTouchDragging(false);
         touchGestures.clearGesture();
         setTouchStartPos(null);
+        touchProcessedRef.current = true; // タッチイベントが処理されたことを記録
+        e.preventDefault(); // マウスイベントの発火を防止
+        e.stopPropagation();
         return;
       }
     }
 
     // ドラッグ操作でない場合（タップのみ）はスコア追加を処理（フォールバック）
-    if (!isTouchDragging && !draggingMark && !draggingHandle && mode === "score") {
+    // ただし、タップジェスチャーが検出されなかった場合のみ
+    if (!isTouchDragging && !draggingMark && !draggingHandle && mode === "score" && touchGestures.gesture?.type !== "tap") {
       const coords = getRelativeCoordinates(e);
       await handleAddScore(coords);
       setIsTouchDragging(false);
       touchGestures.clearGesture();
       setTouchStartPos(null);
+      touchProcessedRef.current = true; // タッチイベントが処理されたことを記録
+      e.preventDefault(); // マウスイベントの発火を防止
+      e.stopPropagation();
       return;
     }
 
