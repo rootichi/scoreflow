@@ -751,6 +751,7 @@ export default function TournamentEditPage() {
       draggingHandle: !!draggingHandle,
       draggingCrossArrow: !!draggingCrossArrow,
       timestamp: Date.now(),
+      detail: e.detail, // クリック回数（タッチイベント由来の場合は0または1）
     });
     
     if (!tournament || !user) return;
@@ -759,6 +760,15 @@ export default function TournamentEditPage() {
     if (touchProcessedRef.current) {
       console.log(`[handleCanvasClick] skipped: touchProcessedRef is true`);
       touchProcessedRef.current = false;
+      return;
+    }
+
+    // タッチデバイスからのクリックイベントを無視（スマホでの重複防止）
+    // タッチイベントの後に発火するマウスイベントは、通常detailが0または1になる
+    // ただし、これは完全に信頼できる方法ではないため、touchProcessedRefと併用
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (isTouchDevice && mode === "score") {
+      console.log(`[handleCanvasClick] skipped: touch device and score mode`);
       return;
     }
 
