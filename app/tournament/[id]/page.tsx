@@ -23,6 +23,7 @@ import {
   handleVerticalLineDragSnap,
   handleScoreDragSnap,
 } from "@/lib/utils/snapUtils";
+import { processMarkDrag } from "@/lib/utils/dragUtils";
 import { createMarkUpdateData, updateMarkSafely, updateMarkCoordinates } from "@/lib/utils/markUtils";
 import { showError, showSuccess, showPrompt, showConfirm } from "@/lib/utils/notification";
 import { isValidCoordinate, isValidLineCoordinate } from "@/lib/utils/coordinateValidation";
@@ -270,84 +271,22 @@ export default function TournamentEditPage() {
       });
       setLocalMarks(updatedMarks);
     } else if (draggingCrossArrow) {
-      // 十字矢印UIのドラッグ処理（既存のdraggingMarkロジックを使用）
-      if (selectedMarkId) {
+      // 十字矢印UIのドラッグ処理
+      if (selectedMarkId && canvasRef.current) {
         const selectedMark = marks.find((m) => m.id === selectedMarkId);
         if (selectedMark) {
           const dx = coords.x - draggingCrossArrow.startX;
           const dy = coords.y - draggingCrossArrow.startY;
+          const rect = canvasRef.current.getBoundingClientRect();
           
           const updatedMarks = localMarks.map((m) => {
             if (m.id === selectedMarkId) {
-              if (selectedMark.type === "line") {
-                // 既存のdraggingMarkロジックを使用してラインを移動
-                const original = selectedMark as LineMark & { id: string };
-                if (isHorizontalLine(original)) {
-                  const movedLine = updateMarkCoordinates(original, dx, dy) as LineMark & { id: string };
-                  if (canvasRef.current) {
-                    const rect = canvasRef.current.getBoundingClientRect();
-                    const { adjustedLine, snapGuide: guide } = handleHorizontalLineDragSnap(
-                      coords,
-                      rect.width,
-                      rect.height,
-                      marks,
-                      movedLine
-                    );
-                    setSnapGuide(guide);
-                    return {
-                      ...m,
-                      ...adjustedLine,
-                    } as Mark & { id: string };
-                  }
-                  setSnapGuide(null);
-                  return movedLine;
-                } else if (isVerticalLine(original)) {
-                  const movedLine = updateMarkCoordinates(original, dx, dy) as LineMark & { id: string };
-                  if (canvasRef.current) {
-                    const rect = canvasRef.current.getBoundingClientRect();
-                    const { adjustedLine, snapGuide: guide } = handleVerticalLineDragSnap(
-                      coords,
-                      rect.width,
-                      rect.height,
-                      marks,
-                      movedLine
-                    );
-                    setSnapGuide(guide);
-                    return {
-                      ...m,
-                      ...adjustedLine,
-                    } as Mark & { id: string };
-                  }
-                  setSnapGuide(null);
-                  return movedLine;
-                } else {
-                  setSnapGuide(null);
-                  return updateMarkCoordinates(original, dx, dy);
-                }
-              } else if (selectedMark.type === "score") {
-                // スコアを移動
-                const original = selectedMark as ScoreMark & { id: string };
-                const movedScore = updateMarkCoordinates(original, dx, dy) as ScoreMark & { id: string };
-                
-                if (canvasRef.current) {
-                  const rect = canvasRef.current.getBoundingClientRect();
-                  const { adjustedScore, snapGuide: guide } = handleScoreDragSnap(
-                    movedScore,
-                    rect.width,
-                    rect.height,
-                    marks,
-                    selectedMarkId
-                  );
-                  setSnapGuide(guide);
-                  return {
-                    ...m,
-                    ...adjustedScore,
-                  } as Mark & { id: string };
-                }
-                
-                setSnapGuide(null);
-                return movedScore;
-              }
+              return processMarkDrag(selectedMark, dx, dy, {
+                coords,
+                canvasRect: rect,
+                marks,
+                setSnapGuide,
+              });
             }
             return m;
           });
@@ -359,80 +298,23 @@ export default function TournamentEditPage() {
       const dx = coords.x - draggingMark.startX;
       const dy = coords.y - draggingMark.startY;
       
-      const updatedMarks = localMarks.map((m) => {
-        if (m.id === draggingMark.id) {
-            if (draggingMark.type === "line") {
-              const original = draggingMark.originalMark as LineMark & { id: string };
-              
-              if (isHorizontalLine(original)) {
-                const movedLine = updateMarkCoordinates(original, dx, dy) as LineMark & { id: string };
-                if (canvasRef.current) {
-                  const rect = canvasRef.current.getBoundingClientRect();
-                  const { adjustedLine, snapGuide: guide } = handleHorizontalLineDragSnap(
-                    coords,
-                    rect.width,
-                    rect.height,
-                    marks,
-                    movedLine
-                  );
-                  setSnapGuide(guide);
-                  return {
-                    ...m,
-                    ...adjustedLine,
-                  } as Mark & { id: string };
-                }
-                setSnapGuide(null);
-                return movedLine;
-              } else if (isVerticalLine(original)) {
-                const movedLine = updateMarkCoordinates(original, dx, dy) as LineMark & { id: string };
-                if (canvasRef.current) {
-                  const rect = canvasRef.current.getBoundingClientRect();
-                  const { adjustedLine, snapGuide: guide } = handleVerticalLineDragSnap(
-                    coords,
-                    rect.width,
-                    rect.height,
-                    marks,
-                    movedLine
-                  );
-                  setSnapGuide(guide);
-                  return {
-                    ...m,
-                    ...adjustedLine,
-                  } as Mark & { id: string };
-                }
-                setSnapGuide(null);
-                return movedLine;
-              } else {
-                setSnapGuide(null);
-                return updateMarkCoordinates(original, dx, dy);
-              }
-          } else {
-            const original = draggingMark.originalMark as ScoreMark & { id: string };
-            const movedScore = updateMarkCoordinates(original, dx, dy) as ScoreMark & { id: string };
-            
-            if (canvasRef.current) {
-              const rect = canvasRef.current.getBoundingClientRect();
-              const { adjustedScore, snapGuide: guide } = handleScoreDragSnap(
-                movedScore,
-                rect.width,
-                rect.height,
-                marks,
-                draggingMark.id
-              );
-              setSnapGuide(guide);
-              return {
-                ...m,
-                ...adjustedScore,
-              } as Mark & { id: string };
-            }
-            
-            setSnapGuide(null);
-            return movedScore;
+      if (canvasRef.current) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const originalMark = draggingMark.originalMark;
+        
+        const updatedMarks = localMarks.map((m) => {
+          if (m.id === draggingMark.id) {
+            return processMarkDrag(originalMark, dx, dy, {
+              coords,
+              canvasRect: rect,
+              marks,
+              setSnapGuide,
+            });
           }
-        }
-        return m;
-      });
-      setLocalMarks(updatedMarks);
+          return m;
+        });
+        setLocalMarks(updatedMarks);
+      }
     } else {
       setSnapGuide(null);
     }
