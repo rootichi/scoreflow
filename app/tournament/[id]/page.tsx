@@ -732,31 +732,57 @@ export default function TournamentEditPage() {
   };
 
   const handleCanvasClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    console.log(`[handleCanvasClick] called`, {
+      mode,
+      touchProcessed: touchProcessedRef.current,
+      draggingMark: !!draggingMark,
+      draggingHandle: !!draggingHandle,
+      draggingCrossArrow: !!draggingCrossArrow,
+      timestamp: Date.now(),
+    });
+    
     if (!tournament || !user) return;
 
     // タッチイベントが処理された場合は、マウスイベントを無視（スマホでの重複防止）
     if (touchProcessedRef.current) {
+      console.log(`[handleCanvasClick] skipped: touchProcessedRef is true`);
       touchProcessedRef.current = false;
       return;
     }
 
     // ドラッグ中やハンドル操作中はクリックを無視
     if (draggingMark || draggingHandle || draggingCrossArrow) {
+      console.log(`[handleCanvasClick] skipped: dragging state is active`);
       return;
     }
 
     // スコア追加モード
     if (mode === "score") {
+      console.log(`[handleCanvasClick] processing score add`);
       const coords = getRelativeCoordinates(e);
-      await handleAddScore(coords);
+      await handleAddScore(coords, "handleCanvasClick");
     }
   };
 
   const handleCanvasTouchEnd = async (e: React.TouchEvent<HTMLDivElement>) => {
+    console.log(`[handleCanvasTouchEnd] called`, {
+      mode,
+      isDrawing,
+      draggingHandle: !!draggingHandle,
+      draggingMark: !!draggingMark,
+      draggingCrossArrow: !!draggingCrossArrow,
+      isTouchDragging,
+      touchStartPos,
+      touchesLength: e.touches.length,
+      changedTouchesLength: e.changedTouches.length,
+      timestamp: Date.now(),
+    });
+    
     if (!tournament || !user) return;
 
     // v1仕様: 編集操作中のみピンチズームを無効化（通常時は許可）
     if ((isDrawing || draggingHandle || draggingMark || draggingCrossArrow) && e.touches.length > 1) {
+      console.log(`[handleCanvasTouchEnd] skipped: multi-touch during editing`);
       e.preventDefault();
       e.stopPropagation();
       setTouchStartPos(null);
@@ -765,6 +791,7 @@ export default function TournamentEditPage() {
 
     // スコア追加モードの場合、タッチ情報から直接タップ判定を行う
     if (mode === "score" && !draggingMark && !draggingHandle) {
+      console.log(`[handleCanvasTouchEnd] checking score add condition`);
       // タッチ開始位置と終了位置を比較してタップ判定
       const touch = e.changedTouches[0];
       if (touch && touchStartPos) {
@@ -773,22 +800,39 @@ export default function TournamentEditPage() {
         const distance = Math.sqrt(dx * dx + dy * dy);
         const TAP_MAX_DISTANCE = 10; // タップ判定の最大移動距離（ピクセル）
         
+        console.log(`[handleCanvasTouchEnd] tap check:`, {
+          distance,
+          TAP_MAX_DISTANCE,
+          isTouchDragging,
+          willAdd: distance < TAP_MAX_DISTANCE && !isTouchDragging,
+        });
+        
         // タップ判定（移動距離が少ない場合）
         if (distance < TAP_MAX_DISTANCE && !isTouchDragging) {
+          console.log(`[handleCanvasTouchEnd] adding score from touch end`);
           const coords = getRelativeCoordinates(e);
-          await handleAddScore(coords);
+          await handleAddScore(coords, "handleCanvasTouchEnd");
           setIsTouchDragging(false);
           touchGestures.clearGesture();
           setTouchStartPos(null);
           touchProcessedRef.current = true; // タッチイベントが処理されたことを記録
           e.preventDefault(); // マウスイベントの発火を防止
           e.stopPropagation();
+          console.log(`[handleCanvasTouchEnd] score added, returning early`);
           return;
+        } else {
+          console.log(`[handleCanvasTouchEnd] tap condition not met, continuing`);
         }
+      } else {
+        console.log(`[handleCanvasTouchEnd] no touch or touchStartPos:`, {
+          hasTouch: !!touch,
+          hasTouchStartPos: !!touchStartPos,
+        });
       }
     }
 
     // タッチジェスチャーを処理
+    console.log(`[handleCanvasTouchEnd] calling touchGestures.handleTouchEnd`);
     touchGestures.handleTouchEnd(e);
     
     // タッチ終了位置を取得（選択判定用）
@@ -796,6 +840,11 @@ export default function TournamentEditPage() {
       ...e,
       touches: [e.changedTouches[0]],
     } as any) : null;
+    
+    console.log(`[handleCanvasTouchEnd] continuing after gesture processing`, {
+      gestureType: touchGestures.gesture?.type,
+      touchEndCoords,
+    });
 
     // タッチ終了時にラインやスコアを選択する処理（タッチ中に指を動かしていない場合のみ）
     if (!isTouchDragging && !draggingMark && !draggingHandle && mode === null && touchEndCoords && canvasRef.current) {
