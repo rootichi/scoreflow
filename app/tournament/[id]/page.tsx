@@ -67,6 +67,7 @@ export default function TournamentEditPage() {
   const [localMarks, setLocalMarks] = useState<Array<Mark & { id: string }>>([]);
   const [selectedMarkId, setSelectedMarkId] = useState<string | null>(null);
   const [draggingHandle, setDraggingHandle] = useState<DraggingHandle | null>(null);
+  const [isPC, setIsPC] = useState(false); // PC版かどうかの判定
   const [copiedMark, setCopiedMark] = useState<Mark & { id: string } | null>(null);
   const [snapGuide, setSnapGuide] = useState<SnapGuide | null>(null); // スナップガイドライン（x: 垂直線、y: 水平線）
   const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null); // タッチ開始位置（スクロール判定用）
@@ -90,6 +91,16 @@ export default function TournamentEditPage() {
   useEffect(() => {
     editMode.selectObject(selectedMarkId);
   }, [selectedMarkId, editMode]);
+
+  // PC版/モバイル版の判定
+  useEffect(() => {
+    const checkIsPC = () => {
+      setIsPC(typeof window !== 'undefined' && window.innerWidth >= 768);
+    };
+    checkIsPC();
+    window.addEventListener("resize", checkIsPC);
+    return () => window.removeEventListener("resize", checkIsPC);
+  }, []);
   
   // 描画モードの管理
   useEffect(() => {
@@ -1149,6 +1160,8 @@ export default function TournamentEditPage() {
                 width: "100%",
                 height: "100%",
                 position: "relative",
+                // PC版でスクロールを有効化、スマホ版は従来通り（overflow設定なし）
+                overflow: isPC ? "auto" : undefined,
               }}
             >
               {/* キャンバス要素（画像とSVGを含む） */}
